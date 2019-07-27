@@ -19,7 +19,7 @@ YAML: (YAML Ain't Markup Language)
 
 ```yaml
 server:
-	port: 8081
+    port: 8081
 ```
 
 
@@ -27,7 +27,7 @@ server:
 
 ```xml
 <server>
-	<port>8081</port>
+    <port>8081</port>
 </server>
 ```
 
@@ -76,8 +76,8 @@ k: v：字面量直接寫
 ​		物件還是K: V的方式
 
 ```yaml
-friends:
-	lastName: zhangsan
+    friends:
+    lastName: zhangsan
     age: 20
 ```
 
@@ -93,9 +93,9 @@ friends: {lastName: zhangsan,age: 18}
 
 ```yaml
 pets:
-	- cat
-	- dog
-	- pig
+    - cat
+    - dog
+    - pig
 ```
 
 ​		同一行的寫法:
