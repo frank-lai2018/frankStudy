@@ -43,8 +43,8 @@ server:
 
 ```yaml
 server:
-	port: 8081
-	path: /hello
+    port: 8081
+    path: /hello
 ```
 
 **有區分大小寫**
@@ -103,4 +103,119 @@ pets:
 ```yaml
 pets: [cat,dog,pig]
 ```
+
+# 3.SpringBoot resources文件夾中目錄結構
+
+1. ​	static : 保存所有的靜態資源(js、CSS、image...等)
+2. ​    templates : 保存所有的模板頁面(spring boot默認jar包使用嵌入式的    tomcat ，默認不支持JSP頁面)，可以使用模板引擎(freemarker、 thymeleaf)
+3. ​    application.properties：Spring Boot應用的配置文件，可以修改一些默認的配置；
+
+# 4.配置文件注入值
+
+配置文件
+
+```yaml
+person:
+    lastName: hello
+    age: 18
+    boss: false
+    birth: 2017/12/12
+    maps: {k1: v1,k2: 12}
+    lists:
+        ‐ lisi
+        ‐ zhaoliu
+    dog:
+        name: 小狗
+        age: 12
+```
+
+javaBean:
+
+```java
+/**
+ * 將配置文件中配置的每一個屬性值，映射到這個組件中
+ * @ConfigurationProperties: 告訴springboot將本類中的所有屬性和配置文件中相關的配置進行綁定
+ * 		prefix = "person" :配置文件中哪個下面的所有屬性進行一一映射
+ * 
+ * 只有這個組件是容器中的組件，才能使用容器提供的@ConfigurationProperties功能
+ * */
+@Component
+@ConfigurationProperties(prefix = "person")
+public class Persion {
+	
+	    private String lastName;
+	    private Integer age;
+	    private Boolean boss;
+	    private Date birth;
+	    private Map<String,Object> maps;
+	    private List<Object> lists;
+	    private Dog dog;
+    
+```
+
+我們可以導入配置文件處理器，以後編寫配置就有提示了
+
+```xml
+	<!--導入配置文件處理器，配置文件進行綁定就會有提示-->
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-configuration-processor</artifactId>
+<optional>true</optional>
+</dependency>
+
+```
+
+#### 1.properties配置文件在idea中默認utf-8可能會亂碼
+
+調整
+
+![](images\pic001.png)
+
+#### 2.@Value 獲取值和@ConfigurationProperties獲取值比較
+
+|                | @ConfigurationProperties | @VALUE     |
+| :------------- | ------------------------ | ---------- |
+| 功能           | 批量注入配置文件中屬性   | 一個個指定 |
+| 鬆散綁定       | 支持                     | 不支持     |
+| SpEL           | 不支持                   | 支持       |
+| JSR303數據較驗 | 支持                     | 不支持     |
+| 複雜類型封裝   | 支持                     | 不支持     |
+
+配置文件yaml還是properties他們都能獲取到值
+
+如過說，我們只是在某個業務邏輯中需要獲取一下配置文件中的某個值，使用@Value
+
+如果說，我們專門編寫了一個javaBean來和配置文件進行映射，我們就直接使用  @ConfigurationProperties
+
+#### 3.配置文件注入值數據校驗
+
+```java
+@Component
+@ConfigurationProperties(prefix = "person")
+@Validated
+public class Persion {
+	/**
+	* <bean class="Person">
+	* 	<property name="lastName" value="字面量/${key}從環境變亮、配置文件中獲取/#{SpEL}"></property>
+	* <bean/>
+	*/
+	   //lastName必須是郵件格式
+	   // @Email
+	    //@Value("${person.last-name}")
+	    private String lastName;
+	    //@Value("#{11*2}")
+	    private Integer age;
+	    //@Value("true")
+	    private Boolean boss;
+
+	    private Date birth;
+	    //@Value("${person.maps}")
+	    private Map<String,Object> maps;
+	    private List<Object> lists;
+	    private Dog dog;
+```
+
+#### 4.@PropertySource&@ImportResource&@Bean
+
+@PropertySource: 加載指定的配置文件
 
