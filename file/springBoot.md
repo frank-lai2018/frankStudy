@@ -1,3 +1,7 @@
+---
+
+---
+
 # **1. 配置文件**
 
 SpringBoot使用一個全局的配置文件，配置文件的名稱是固定的:
@@ -169,7 +173,7 @@ public class Persion {
 
 調整
 
-![](images\pic001.png)
+![](https://github.com/frank-lai2018/frankStudy/blob/master/file/images/pic001.png)
 
 #### 2.@Value 獲取值和@ConfigurationProperties獲取值比較
 
@@ -381,8 +385,9 @@ SpringBoot會從這四個位置全部加載主配置文件，互補配置
 
 
 
-==我們還可以通過spring.config.location來改變默認的配置文件位子==
+`我們還可以通過spring.config.location來改變默認的配置文件位子`
 
 **項目打包好以後，我們可以使用命令行參數的形式，啟動項目的時候來指定配置文件的新位子，指定配置文件和默認加載的這些配置文件共同起作用形成互補配置**
 
 java -jar spring-boot-02-config-02-0.0.1-SNAPSHOT.jar --spring.config.location=G:/application.properties
+
