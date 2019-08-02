@@ -53,7 +53,7 @@ server:
 
 ### 2.**值得寫法**
 
-## 	字面量:普通的值(數字、字串、布爾值)
+## 	變量:普通的值(數字、字串、布爾值)
 
 k: v：字面量直接寫
 
@@ -63,7 +63,7 @@ k: v：字面量直接寫
 
 ​	EX : name: "zhangsan \n lisi" ---> 輸出 : zhangsan 換行 lisi
 
-'' : 單引號，患轉譯特殊字，特殊字最終只是一個普通的字串數據，例如直接輸出 \
+'' : 單引號，會轉譯特殊字，特殊字最終只是一個普通的字串數據，例如直接輸出 \
 
 ​	EX : name: ‘zhangsan \n lisi’：輸出；zhangsan \n lisi
 
@@ -219,3 +219,170 @@ public class Persion {
 
 @PropertySource: 加載指定的配置文件
 
+```java
+@PropertySource(value = {"classpath:person.properties"})
+@Component
+//@ConfigurationProperties(prefix = "person")
+//@Validated
+public class Person {
+
+    /**
+     * <bean class="Person">
+     *      <property name="lastName" value="變量/${key}從環境變量、配置文件中獲取值/#{SpEL}"></property>
+     * <bean/>
+     */
+
+   //lastName必需是郵件格式
+   // @Email
+    //@Value("${person.last-name}")
+    private String lastName;
+    //@Value("#{11*2}")
+    private Integer age;
+    //@Value("true")
+    private Boolean boss;
+
+    private Date birth;
+    //@Value("${person.maps}")
+    private Map<String,Object> maps;
+    private List<Object> lists;
+    private Dog dog;
+```
+
+
+
+@ImportResource: 導入Spring的配置文件，讓配置文件裡面的內容生效
+
+Spring boot 裡面沒有Spring的配置文件，我們自己編寫的配置文件，也不能自動識別，想讓Spring的配置文件生效，加載進來，就把@ImportResource標註在一個配置類上
+
+```java
+@ImportResource(locations = {"classpath:beans.xml"})
+導入Spring的配置文件讓其生效
+```
+
+不用編寫Spring的配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF‐8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema‐instance"
+xsi:schemaLocation="http://www.springframework.org/schema/beans
+http://www.springframework.org/schema/beans/spring‐beans.xsd">
+<bean id="helloService" class="com.frank.springboot.service.HelloService"></bean>
+</beans>
+```
+
+SpringBoot推薦給容器中添加組件的方式，推薦使用全註解的方式
+
+1.配置類@Configuration ---->Spring配置文件
+
+2.使用@Bean給容器中添加組件
+
+```java
+/**
+ * @Configuration：指名當前類是一個配置類，就是來替代之前的Spring配置文件
+ *
+ *配置文件中用<bean><bean/>標籤添加組件
+ *
+ */
+@Configuration
+public class MyAppConfig {
+
+	//將方法的返回值添加到容器中，容器中這個組件默認的ID就是方法名
+    @Bean
+    public HelloService helloService02(){
+        System.out.println("配置類@Bean給容器中添加組件了");
+        return new HelloService();
+    }
+
+}
+```
+
+# 5.配置占位符
+
+1.隨機數
+
+```java
+${random.value}、${random.int}、${random.long}
+${random.int(10)}、${random.int[1024,65536]}
+```
+
+2.站位符獲取之前配置的值，如果沒有可以是用指定默認值
+
+```properties
+person.last‐name=張三${random.uuid}
+person.age=${random.int}
+person.birth=2017/12/15
+person.boss=false
+person.maps.k1=v1
+person.maps.k2=14
+person.lists=a,b,c
+person.dog.name=${person.hello:hello}_dog
+person.dog.age=15
+```
+
+# 6.Profile
+
+### 1.多Profile文件
+
+我們在主配置文件編寫的時候，文件名可以是application-{profile}.properties/yml
+
+默認使用application.properties的配置
+
+### 2.yml支持多文檔塊方式
+
+```yaml
+server:
+port: 8081
+spring:
+profiles:
+active: prod
+‐‐‐
+server:
+port: 8083
+spring:
+profiles: dev
+‐‐‐
+server:
+port: 8084
+spring:
+profiles: prod #指定屬於哪個環境
+```
+
+### 3.激活指定的profile
+
+1.在配置文件中指定 spring.profiles.active=dev
+
+2..命令行:
+
+​    java -jar spring-boot-02-config-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev；
+
+可以直接在測試的時候，配置傳入命令行參數
+
+3.虛擬機參數:
+
+-Dspring.profiles.active=dev
+
+
+
+# 7.配置文件加載位子
+
+springboot啟動會掃描以下位子的application.properties或者application.yml文件作為spring boot的默認配置文件
+
+–file:./config/
+–file:./
+–classpath:/config/
+–classpath:/
+
+**修先順序高到低，高修先級的配置會覆蓋低優先級的配置**
+
+
+
+SpringBoot會從這四個位置全部加載主配置文件，互補配置
+
+
+
+==我們還可以通過spring.config.location來改變默認的配置文件位子==
+
+**項目打包好以後，我們可以使用命令行參數的形式，啟動項目的時候來指定配置文件的新位子，指定配置文件和默認加載的這些配置文件共同起作用形成互補配置**
+
+java -jar spring-boot-02-config-02-0.0.1-SNAPSHOT.jar --spring.config.location=G:/application.properties
