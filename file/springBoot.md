@@ -173,7 +173,7 @@ public class Persion {
 
 調整
 
-![123](images\pic001.png)
+![pic001](images/pic001.png)
 
 #### 2.@Value 獲取值和@ConfigurationProperties獲取值比較
 
