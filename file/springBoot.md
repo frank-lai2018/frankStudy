@@ -422,7 +422,7 @@ SpringBoot會從這四個位置全部加載主配置文件，互補配置
 
 
 
-`$\textcolor{Blue}我們還可以通過spring.config.location來改變默認的配置文件位子`
+`<font color=#FF0000 >我們還可以通過spring.config.location來改變默認的配置文件位子</font >`
 
 **項目打包好以後，我們可以使用命令行參數的形式，啟動項目的時候來指定配置文件的新位子，指定配置文件和默認加載的這些配置文件共同起作用形成互補配置**
 
