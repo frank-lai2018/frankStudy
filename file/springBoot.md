@@ -414,11 +414,15 @@ springboot啟動會掃描以下位子的application.properties或者application.
 
 **也就是說如果file:./config/裡的配置跟classpath:/裡的配置有相同參數時，以file:./config/為準**
 
+![005](images/pic005.png)
+
+
+
 SpringBoot會從這四個位置全部加載主配置文件，互補配置
 
 
 
-`我們還可以通過spring.config.location來改變默認的配置文件位子`
+`$\textcolor{Blue}我們還可以通過spring.config.location來改變默認的配置文件位子`
 
 **項目打包好以後，我們可以使用命令行參數的形式，啟動項目的時候來指定配置文件的新位子，指定配置文件和默認加載的這些配置文件共同起作用形成互補配置**
 
