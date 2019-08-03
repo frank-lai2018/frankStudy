@@ -16,3 +16,13 @@ Git可以在三個地方設定環境變數，
 # 3.取消設置的環境面數
 
 ### **git config --local --unset user.name**
+
+
+
+# ４.初次設定
+
+```console
+$ git config --global user.name "Frank Lai"
+$ git config --global user.email jianhanlai@gmail.com
+```
+

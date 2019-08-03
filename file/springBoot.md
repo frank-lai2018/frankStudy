@@ -422,9 +422,61 @@ SpringBoot會從這四個位置全部加載主配置文件，互補配置
 
 
 
-`<font color=#FF0000 >我們還可以通過spring.config.location來改變默認的配置文件位子</font >`
+**==我們還可以通過spring.config.location來改變默認的配置文件位子==**
 
 **項目打包好以後，我們可以使用命令行參數的形式，啟動項目的時候來指定配置文件的新位子，指定配置文件和默認加載的這些配置文件共同起作用形成互補配置**
 
 java -jar spring-boot-02-config-02-0.0.1-SNAPSHOT.jar --spring.config.location=G:/application.properties
+
+
+
+# 8、外部配置加載程序
+
+**==SpringBoot也可以從以下位子加載配置，優先即從高到低，高優先級的配置覆蓋低修先級的配置，所有的配置會形成互補配置==**
+
+**1.命令行參數**
+
+所有的配置都可以在命令行上進行
+
+java -jar spring-boot-02-config-02-0.0.1-SNAPSHOT.jar --server.port=8087  --server.context-path=/abc
+
+多個配置用空格分開， --配置項=值
+
+
+
+2.來自java:comp/env的JNDI屬性
+
+3.Java系統屬性（System.getProperties()）
+
+4.操作系統環境變量
+
+5.RandomValuePropertySource配置的random.*屬性值
+
+
+
+==**由jar包外向jar包內進行尋找；**==
+
+==**優先加載帶profile**==
+
+**6.jar包 外部的application-{profile}.properties或application.yml(带spring.profile)配置文件**
+
+**7.jar包内部的application-{profile}.properties或application.yml(带spring.profile)配置文件**
+
+
+
+==**再來加載不帶profile**==
+
+**8.jar包外部的application.properties或application.yml(不帶spring.profile)配置文件**
+
+**9.jar包内部的application.properties或application.yml(不帶spring.profile)配置文件**
+
+
+
+10.@Configuration註解上的@PropertySource
+
+11.通過SpringApplication.setDefaultProperties指定的默認屬性
+
+所有支持的配置加載來源；
+
+[參考官方文檔(https://docs.spring.io/spring-boot/docs/1.5.9.RELEASE/reference/htmlsingle/#boot-features-external-config)
 
