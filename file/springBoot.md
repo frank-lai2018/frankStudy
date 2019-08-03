@@ -267,12 +267,14 @@ Spring boot 裡面沒有Spring的配置文件，我們自己編寫的配置文�
 
 ```xml
 <?xml version="1.0" encoding="UTF‐8"?>
-<beans xmlns="http://www.springframework.org/schema/beans"
-xmlns:xsi="http://www.w3.org/2001/XMLSchema‐instance"
-xsi:schemaLocation="http://www.springframework.org/schema/beans
-http://www.springframework.org/schema/beans/spring‐beans.xsd">
-<bean id="helloService" class="com.frank.springboot.service.HelloService"></bean>
-</beans>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema‐instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring‐beans.xsd">
+		
+			<bean id="helloService" class="com.frank.springboot.service.HelloService"></bean>
+		
+	</beans>
 ```
 
 SpringBoot推薦給容器中添加組件的方式，推薦使用全註解的方式
@@ -336,20 +338,20 @@ person.dog.age=15
 
 ```yaml
 server:
-port: 8081
+	port: 8081
 spring:
-profiles:
-active: prod
+	profiles:
+		active: prod
 ‐‐‐
 server:
-port: 8083
+	port: 8083
 spring:
-profiles: dev
+	profiles: dev
 ‐‐‐
 server:
-port: 8084
+	port: 8084
 spring:
-profiles: prod #指定屬於哪個環境
+	profiles: prod #指定屬於哪個環境
 ```
 
 ### 3.激活指定的profile
