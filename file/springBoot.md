@@ -256,11 +256,21 @@ public class Person {
 
 @ImportResource: 導入Spring的配置文件，讓配置文件裡面的內容生效
 
+### **方法2:**
+
 Spring boot 裡面沒有Spring的配置文件，我們自己編寫的配置文件，也不能自動識別，想讓Spring的配置文件生效，加載進來，就把@ImportResource標註在一個配置類上
 
 ```java
+//導入Spring的配置文件讓其生效
 @ImportResource(locations = {"classpath:beans.xml"})
-導入Spring的配置文件讓其生效
+@SpringBootApplication
+public class SpringBoot02ConfigApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringBoot02ConfigApplication.class, args);
+	}
+
+}
 ```
 
 不用編寫Spring的配置文件
@@ -277,7 +287,9 @@ Spring boot 裡面沒有Spring的配置文件，我們自己編寫的配置文�
 	</beans>
 ```
 
-SpringBoot推薦給容器中添加組件的方式，推薦使用全註解的方式
+以上方式不是SpringBoot推薦的，SpringBoot推薦給容器中添加組件的方式，推薦使用全註解的方式(寫配置類的方式)
+
+### **方法2:**
 
 1.配置類@Configuration ---->Spring配置文件
 
@@ -322,45 +334,64 @@ person.boss=false
 person.maps.k1=v1
 person.maps.k2=14
 person.lists=a,b,c
+#可用:來設置默認值
 person.dog.name=${person.hello:hello}_dog
 person.dog.age=15
 ```
 
 # 6.Profile
 
-### 1.多Profile文件
+### **1.多Profile文件**
 
-我們在主配置文件編寫的時候，文件名可以是application-{profile}.properties/yml
+我們在主配置文件編寫的時候，文件名可以是application-**{profile}**.properties/yml
+
+{profile}:可以自訂名稱，例如:DEV 、PROD....等
 
 默認使用application.properties的配置
 
-### 2.yml支持多文檔塊方式
+### **2.yml支持多文檔塊方式**
+
+**注意:spring boot 預設是先讀取application.properties，沒有此檔案才會讀取**
+
+**application.yml設定**
 
 ```yaml
 server:
-	port: 8081
+    port: 8081
 spring:
-	profiles:
-		active: prod
+    profiles:
+        active: prod #用來指定運行時，要用哪個環境的設定檔
+‐‐‐ #可以用---來區分3個區塊
+server:
+    port: 8083
+spring:
+    profiles: dev #指定屬於哪個環境
 ‐‐‐
 server:
-	port: 8083
+    port: 8084
 spring:
-	profiles: dev
-‐‐‐
-server:
-	port: 8084
-spring:
-	profiles: prod #指定屬於哪個環境
+    profiles: prod #指定屬於哪個環境
 ```
 
-### 3.激活指定的profile
+### **3.激活指定的profile方式**
 
-1.在配置文件中指定 spring.profiles.active=dev
+1.在配置文件中指定 **spring.profiles.active**=dev (用來指定運行時，要用哪個環境的設定檔)
 
-2..命令行:
+2..命令行: **--spring.profiles.active=dev**
+
+**cmd/sh:**
 
 ​    java -jar spring-boot-02-config-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev；
+
+**eclipse:**
+
+![002](images/002.png)
+
+**idea:**
+
+![003](images/pic003.png)
+
+
 
 可以直接在測試的時候，配置傳入命令行參數
 
@@ -368,20 +399,20 @@ spring:
 
 -Dspring.profiles.active=dev
 
-
+![004](images/pic004.png)
 
 # 7.配置文件加載位子
 
 springboot啟動會掃描以下位子的application.properties或者application.yml文件作為spring boot的默認配置文件
 
 –file:./config/
-–file:./
+–file:./ (當前項目的文件路徑下)
 –classpath:/config/
-–classpath:/
+–classpath:/ (類路徑下的跟目錄)
 
 **修先順序高到低，高修先級的配置會覆蓋低優先級的配置**
 
-
+**也就是說如果file:./config/裡的配置跟classpath:/裡的配置有相同參數時，以file:./config/為準**
 
 SpringBoot會從這四個位置全部加載主配置文件，互補配置
 
