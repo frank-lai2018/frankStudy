@@ -2,5 +2,11 @@
 
   a.使用WebApplicationContextUtils
 
+```java
 ApplicationContext context = WebApplicationContextUtils.getWebApplicationContext(this.getServletContext());
+```
+
+b.
+
+
 

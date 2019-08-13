@@ -1518,7 +1518,7 @@ SpringBoot对SpringMVC的自动配置不需要了，所有都是我们自己配�
 **我们需要在配置类中添加@EnableWebMvc即可；**
 
 ```java
-//使用WebMvcConfigurerAdapter可以来扩展SpringMVC的功能
+//使用WebMvcConfigurerAdapter可以來擴展SpringMVC的功能
 @EnableWebMvc
 @Configuration
 public class MyMvcConfig extends WebMvcConfigurerAdapter {
@@ -1526,7 +1526,7 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
        // super.addViewControllers(registry);
-        //浏览器发送 /atguigu 请求来到 success
+        //瀏覽器方送 /atguigu 情求來到 success
         registry.addViewController("/atguigu").setViewName("success");
     }
 }
@@ -1534,7 +1534,7 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
 
 原理：
 
-为什么@EnableWebMvc自动配置就失效了；
+為什麼@EnableWebMvc自動配置就生效了；
 
 1）@EnableWebMvc的核心
 
@@ -1557,7 +1557,7 @@ public class DelegatingWebMvcConfiguration extends WebMvcConfigurationSupport {
 @ConditionalOnWebApplication
 @ConditionalOnClass({ Servlet.class, DispatcherServlet.class,
 		WebMvcConfigurerAdapter.class })
-//容器中没有这个组件的时候，这个自动配置类才生效
+//容器中沒有這個組件的時候，這個自動配置類才能生效
 @ConditionalOnMissingBean(WebMvcConfigurationSupport.class)
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE + 10)
 @AutoConfigureAfter({ DispatcherServletAutoConfiguration.class,
@@ -1571,23 +1571,23 @@ public class WebMvcAutoConfiguration {
 
 
 
-## 5、如何修改SpringBoot的默认配置
+## 5、如何修改SpringBoot的默認配置
 
 模式：
 
-​	1）、SpringBoot在自动配置很多组件的时候，先看容器中有没有用户自己配置的（@Bean、@Component）如果有就用用户配置的，如果没有，才自动配置；如果有些组件可以有多个（ViewResolver）将用户配置的和自己默认的组合起来；
+​	1）、SpringBoot在自動配置很多組件的時候，先看容器中有沒有用戶自己配置的（@Bean、@Component）如果有就用用戶配置的，如果沒有，才自動配置，如果有些組件可以有多少(ViewResolver)  將用戶配置的合自己默認的組合起來
 
-​	2）、在SpringBoot中会有非常多的xxxConfigurer帮助我们进行扩展配置
+​	2）、在SpringBoot中會有非常多的xxxConfigurer幫助我們進行擴展配置
 
-​	3）、在SpringBoot中会有很多的xxxCustomizer帮助我们进行定制配置
+​	3）、在SpringBoot中會有非常多xxxCustomizer幫助我們進行擴展配置
 
 ## 6、RestfulCRUD
 
-### 1）、默认访问首页
+### 1）、默認訪問首頁
 
 ```java
 
-//使用WebMvcConfigurerAdapter可以来扩展SpringMVC的功能
+//使用WebMvcConfigurerAdapter可以來擴展SpringMVC的功能
 //@EnableWebMvc   不要接管SpringMVC
 @Configuration
 public class MyMvcConfig extends WebMvcConfigurerAdapter {
@@ -1595,12 +1595,12 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
        // super.addViewControllers(registry);
-        //浏览器发送 /atguigu 请求来到 success
+        //瀏覽器發送 /atguigu 請求來到 success
         registry.addViewController("/atguigu").setViewName("success");
     }
 
-    //所有的WebMvcConfigurerAdapter组件都会一起起作用
-    @Bean //将组件注册在容器
+    //所有的WebMvcConfigurerAdapter組件都會一起起作用
+    @Bean //將組件註冊在容器
     public WebMvcConfigurerAdapter webMvcConfigurerAdapter(){
         WebMvcConfigurerAdapter adapter = new WebMvcConfigurerAdapter() {
             @Override
@@ -1615,25 +1615,25 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
 
 ```
 
-### 2）、国际化
+### 2）、國際化
 
-**1）、编写国际化配置文件；**
+**1）、編寫國際化配置文件；**
 
-2）、使用ResourceBundleMessageSource管理国际化资源文件
+2）、使用ResourceBundleMessageSource管理國際化資源文件
 
-3）、在页面使用fmt:message取出国际化内容
+3）、在頁面使用fmt:message取出國際化內容
 
 
 
-步骤：
+步驟：
 
-1）、编写国际化配置文件，抽取页面需要显示的国际化消息
+1)、編寫國際化配置文件，抽取頁面需要顯示的國際化消息 
 
 ![](images/搜狗截图20180211130721.png)
 
 
 
-2）、SpringBoot自动配置好了管理国际化资源文件的组件；
+2）、SpringBoot自動配置好了管理國際化資源文件的組件；
 
 ```java
 @ConfigurationProperties(prefix = "spring.messages")
@@ -1646,14 +1646,14 @@ public class MessageSourceAutoConfiguration {
 	 * "org.mypackage"), it will be resolved from the classpath root.
 	 */
 	private String basename = "messages";  
-    //我们的配置文件可以直接放在类路径下叫messages.properties；
-    
+
+    //我們的配置文件可以直接放在類路徑下叫messages.properties
     @Bean
 	public MessageSource messageSource() {
 		ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
 		if (StringUtils.hasText(this.basename)) {
-            //设置国际化资源文件的基础名（去掉语言国家代码的）
-			messageSource.setBasenames(StringUtils.commaDelimitedListToStringArray(
+			//設置國際化資源文件的基礎名(去掉語言國家代碼的)
+            messageSource.setBasenames(StringUtils.commaDelimitedListToStringArray(
 					StringUtils.trimAllWhitespace(this.basename)));
 		}
 		if (this.encoding != null) {
@@ -1668,7 +1668,7 @@ public class MessageSourceAutoConfiguration {
 
 
 
-3）、去页面获取国际化的值；
+3）、去頁面獲取國際化的值；
 
 ![](images/搜狗截图20180211134506.png)
 
@@ -1713,13 +1713,11 @@ public class MessageSourceAutoConfiguration {
 </html>
 ```
 
-效果：根据浏览器语言设置的信息切换了国际化；
-
-
+效果:根據瀏覽器語言設置的信息切換了國際化
 
 原理：
 
-​	国际化Locale（区域信息对象）；LocaleResolver（获取区域信息对象）；
+​	國際化Locale（區域信息物件）；LocaleResolver（或取區域信息物件）；
 
 ```java
 		@Bean
@@ -1734,14 +1732,15 @@ public class MessageSourceAutoConfiguration {
 			localeResolver.setDefaultLocale(this.mvcProperties.getLocale());
 			return localeResolver;
 		}
-默认的就是根据请求头带来的区域信息获取Locale进行国际化
+默認的就是根據請求投來的區域訊息獲取Locale進行國際化
 ```
 
-4）、点击链接切换国际化
+4）、點及連接切換國際化
 
 ```java
 /**
- * 可以在连接上携带区域信息
+ * 
+ 可以在連接上攜帶區域信息
  */
 public class MyLocaleResolver implements LocaleResolver {
     
@@ -1772,22 +1771,20 @@ public class MyLocaleResolver implements LocaleResolver {
 
 ```
 
-### 3）、登陆
+### 3）、登入
 
-开发期间模板引擎页面修改以后，要实时生效
+開發期間模板引擎頁面修改後，要實時生效
 
-1）、禁用模板引擎的缓存
+1）、禁用模板引擎的緩存
 
 ```
-# 禁用缓存
+# 禁用緩存
 spring.thymeleaf.cache=false 
 ```
 
-2）、页面修改完成以后ctrl+f9：重新编译；
+2）、頁面修改完成以後ctrl+f9：重新編譯；
 
-
-
-登陆错误消息的显示
+登入錯誤消息的顯示
 
 ```html
 <p style="color: red" th:text="${msg}" th:if="${not #strings.isEmpty(msg)}"></p>
