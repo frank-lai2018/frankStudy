@@ -25,6 +25,8 @@
 
 [git](file/git.md )
 
+[gitlab](file/gitlab.md )
+
 ### 6.其他
 
 [maven](file/maven.md )
