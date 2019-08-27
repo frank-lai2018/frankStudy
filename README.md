@@ -17,6 +17,8 @@
 
 [redis](file/redis.md )
 
+[oracle](file/oracle.md )
+
 ### 4.linux 相關
 
 
