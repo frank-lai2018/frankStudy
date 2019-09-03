@@ -26,3 +26,17 @@ $ git config --global user.name "Frank Lai"
 $ git config --global user.email jianhanlai@gmail.com
 ```
 
+# 5.建立或刪除遠端branch
+
+建立遠端branch跟關聯
+git push --set-upstream origin branchName
+
+刪除遠端分支
+git push origin :branchName
+
+git branch -a #查看所有分支(包含遠端)
+git branch -r #查看遠端分支 
+git branch -vv #查看本地分支所關聯的遠端分支
+
+git branch -m old_branch new_branch #修改分支名子
+
