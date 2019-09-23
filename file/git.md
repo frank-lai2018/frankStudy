@@ -91,3 +91,20 @@ $ git blame -L 5,10 index.html
 7dc9302e (Eddie Kao 2019-05-28 16:00:49 +0800  9)     </div>
 6783cc21 (Eddie Kao 2019-05-28 16:00:35 +0800 10)   </body>
 ```
+
+8.修改 commit Description
+
+git commit --amend -m "20190909"
+
+![033](images/pic033.png)
+
+9.把系統的管控紀錄移除
+
+### 加上 –cached 參數
+
+不管是系統的 `rm` 或是 `git rm` 指令，都會真的把這個檔案從工作目錄裡刪掉，但如果只是「我不是真的想把這個檔案刪掉，只是不想讓這個檔案再被 Git 控管了」的話，可以加上 `--cached` 參數
+
+git rm aaa.txt --cached
+
+![034](images/pic034.png)
+
