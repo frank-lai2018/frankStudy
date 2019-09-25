@@ -13,6 +13,10 @@
 
 ### 2.Web Service
 
+[HttpClinet(4.5.10)](file/HttpClinet.md )
+
+[Jsoup(1.12.1)](file/jsoup.md )
+
 [cxf_ws](file/cxfws.md )
 
 ### 3.資料庫相關
