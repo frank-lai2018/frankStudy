@@ -42,3 +42,5 @@
 [maven](file/maven.md )
 
 [gradle](file/gradle.md )
+
+[eclipse](file/eclipse.md )
