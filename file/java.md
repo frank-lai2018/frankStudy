@@ -1,3 +1,5 @@
+# 1.JAVA物件導向3大特性
+
 1. 封裝(Encapsulation):將物件的狀態信息隱藏隱藏在物件內不，也就是成員屬性設成private，再提供public 的getter setter方法讓外界存取
 
 2. 繼承:實現程式重複使用的手段
@@ -6,7 +8,11 @@
 
 4. 方法override時，要都是類方法，或都是靜態方法，不能一個是類方法一個是靜態方法
 
-5. ## Static Initialization Block and  Initialization Block:
+
+# 2.Static Initialization Block and  Initialization Block:
+
+
+1. ## Static Initialization Block and  Initialization Block:
 
    **普通初始化區塊負責對物建進行初始化**
 
@@ -56,6 +62,28 @@
 
    6. 
 
-      
 
-      
+
+
+# 3.基本型別包裝類:
+
+
+
+1.因IntegerJDK預設會把127~-128的值放進cach裡，故直接用==式參考到同一個cach裡的值，但超過此範圍就無法用==比較，會建立新的物建在記憶體裡，其參考位子不同
+
+![036](images/pic036.png)
+
+2.JDK1.7後提供compare(value1,value2)來進行比較兩數相不相等
+
+```java
+        Integer i = 128;
+        Integer j = 129;
+        System.out.println(Integer.compare(i, j)); //-1
+        i = 128;
+        j = 128;
+        System.out.println(Integer.compare(i, j)); //0
+        i = 129;
+        j = 128;
+        System.out.println(Integer.compare(i, j)); //1
+```
+
