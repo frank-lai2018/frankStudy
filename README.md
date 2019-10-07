@@ -29,7 +29,7 @@
 
 ### 4.linux 相關
 
-
+[指令](file/command.md )
 
 ### 5.版控
 
