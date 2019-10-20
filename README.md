@@ -15,7 +15,11 @@
 
 [異常排除](file/javaException.md )
 
-### 2.Web Service
+## 2.前端
+
+[ES6](file/es6.md )
+
+### 3.Web Service
 
 [HttpClinet(4.5.10)](file/HttpClinet.md )
 
@@ -25,23 +29,23 @@
 
 [gson](file/gson.md )
 
-### 3.資料庫相關
+### 4.資料庫相關
 
 [redis](file/redis.md )
 
 [oracle](file/oracle.md )
 
-### 4.linux 相關
+### 5.linux 相關
 
 [指令](file/command.md )
 
-### 5.版控
+### 6.版控
 
 [git](file/git.md )
 
 [gitlab](file/gitlab.md )
 
-### 6.其他
+### 7.其他
 
 [maven](file/maven.md )
 
