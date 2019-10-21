@@ -19,6 +19,8 @@
 
 [ES6](file/es6.md )
 
+[ajax](file/ajax.md )
+
 ### 3.Web Service
 
 [HttpClinet(4.5.10)](file/HttpClinet.md )
