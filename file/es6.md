@@ -355,12 +355,12 @@ let fun = function () {
 
 # 8.Symbol
 
-前言：ES5中對象的屬性名都是字符串，容易造成重名，污染環境<br/>
+前言：ES5中物件的屬性名都是字串，容易造成重名，污染環境<br/>
 Symbol：<br/>
-    * 概念：ES6中的添加了一種原始數據類型symbol(已有的原始數據類型：String, Number, boolean, null, undefined, 對象)<br/>
+    * 概念：ES6中的添加了一種原始數據類型symbol(已有的原始數據類型：String, Number, boolean, null, undefined, 物件)<br/>
       特點：<br/>
         1、Symbol屬性對應的值是唯一的，解決命名衝突問題<br/>
-        2、Symbol值不能與其他數據進行計算，包括同字符串拼串<br/>
+        2、Symbol值不能與其他數據進行計算，包括同字串拼串<br/>
         3、for in, for of遍歷時不會遍歷symbol屬性。<br/>
       使用：<br/>
         1、調用Symbol函數得到symbol值<br/>
@@ -375,4 +375,45 @@ Symbol：<br/>
         3、內置Symbol值<br/>
           * 除了定義自己使用的Symbol值以外，ES6還提供了11個內置的Symbol值，指向語言內部使用的方法。<br/>
           - Symbol.iterator<br/>
-           * 對象的Symbol.iterator屬性，指向該對象的默認遍歷器方法(後邊講)<br/>
+           * 物件的Symbol.iterator屬性，指向該物件的默認遍歷器方法(後邊講)<br/>
+
+```javascript
+    window.onload = function () {
+      let symbol = Symbol();
+      console.log(typeof symbol);
+      console.log(symbol);
+      
+      // 用作物件的屬性(唯一)
+      let obj = {username: 'kobe', age: 39};
+      obj[symbol] = 'hello';
+      obj[symbol] = 'symbol';
+      console.log(obj);
+      for(let i in obj){
+        console.log(i);
+      }
+    }
+```
+
+# 9.Iterator
+
+概念： iterator是一種接口機制，為各種不同的數據結構提供統一的訪問機制<br/>
+    * 作用：<br/>
+      1、為各種數據結構，提供一個統一的、簡便的訪問接口；<br/>
+      2、使得數據結構的成員能夠按某種次序排列<br/>
+      3、ES6創造了一種新的遍歷命令for...of循環，Iterator接口主要供for...of消費。<br/>
+    * 工作原理：<br/>
+      - 創建一個指針物件，指向數據結構的起始位置。<br/>
+      - 第一次調用next方法，指針自動指向數據結構的第一個成員<br/>
+      - 接下來不斷調用next方法，指針會一直往後移動，直到指向最後一個成員<br/>
+      - 每調用next方法返回的是一個包含value和done的物件，{value: 當前成員的值,done: 布爾值}<br/>
+        * value表示當前成員的值，done對應的布爾值表示當前的數據的結構是否遍歷結束。<br/>
+        * 當遍歷結束的時候返回的value值是undefined，done值為false<br/>
+    原生具備iterator接口的數據(可用for of遍歷)<br/>
+     * 1、Array<br/>
+      2、arguments<br/>
+      3、set容器<br/>
+      4、map容器<br/>
+      5、String<br/>
+      。 。 。<br/>
+
+
