@@ -300,47 +300,54 @@ let fun = function () {
         console.log('失敗了' + error);
     });
     console.log('2222');
+```
 
+```html
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+	</head>
+	<body>
+		<div id="showDetail"></div>
+	</body>
+	<script>
+        //定義一個請求URL的方法
+		function getUrlResponse(url){
+            //創建一個promise物件
+			let promise = new Promise((resolve, reject) => {
+                //初始化promise狀態為pending
+                //啟動異部任務
+				let request = new XMLHttpRequest();
+				request.onreadystatechange = function(){
+					if(request.readyState == 4){
+						if(request.status == 200){
+							resolve(request.response);
+						}else{
+							reject("連接錯誤.....");
+						}
+					}
+				}
+				request.responseType="json";//設置返回的數據類型
+				request.open("GET",url);//規定請求的方法，創建連接
+				request.send();//發送
+			});
+			return promise;
+		}
 
-    //定義一個請求news的方法
-    function getNews(url) {
-        //創建一個promise物件
-        let promise = new Promise((resolve, reject) => {
-            //初始化promise狀態為pending
-            //啟動異部任務
-            let request = new XMLHttpRequest();
-            request.onreadystatechange = function () {
-                if(request.readyState === 4){
-                    if(request.status === 200){
-                        let news = request.response;
-                        resolve(news);
-                    }else{
-                        reject('请求失败了。。。');
-                    }
-                }
-            };
-            request.responseType = 'json';//設置返回的數據類型
-            request.open("GET", url);//規定請求的方法，創建連接
-            request.send();//發送
-        })
-        return promise;
-    }
+		let weatherUrl="https://ptx.transportdata.tw/MOTC/v2/Bus/RealTimeByFrequency/City/Taipei?$top=30&$format=JSON";
+		getUrlResponse(weatherUrl)
+			.then((res) => {
+				document.getElementById("showDetail").innerText=JSON.stringify(res);
+			},(errors) => {
+				document.getElementById("showDetail").innerText=errors;
+			});
 
-    getNews('http://localhost:3000/news?id=2')
-            .then((news) => {
-                console.log(news);
-                document.write(JSON.stringify(news));
-                console.log('http://localhost:3000' + news.commentsUrl);
-                return getNews('http://localhost:3000' + news.commentsUrl);
-            }, (error) => {
-                alert(error);
-            })
-            .then((comments) => {
-                console.log(comments);
-                document.write('<br><br><br><br><br>' + JSON.stringify(comments));
-            }, (error) => {
-                alert(error);
-            })
+		
+	</script>
+</html>
+
 ```
 
 
