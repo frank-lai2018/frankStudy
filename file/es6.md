@@ -353,3 +353,26 @@ let fun = function () {
 
 
 
+# 8.Symbol
+
+前言：ES5中對象的屬性名都是字符串，容易造成重名，污染環境<br/>
+Symbol：<br/>
+    * 概念：ES6中的添加了一種原始數據類型symbol(已有的原始數據類型：String, Number, boolean, null, undefined, 對象)<br/>
+      特點：<br/>
+        1、Symbol屬性對應的值是唯一的，解決命名衝突問題<br/>
+        2、Symbol值不能與其他數據進行計算，包括同字符串拼串<br/>
+        3、for in, for of遍歷時不會遍歷symbol屬性。<br/>
+      使用：<br/>
+        1、調用Symbol函數得到symbol值<br/>
+          let symbol = Symbol();<br/>
+          let obj = {};<br/>
+          obj[symbol] = 'hello';<br/>
+        2、傳參標識<br/>
+          let symbol = Symbol('one');<br/>
+          let symbol2 = Symbol('two');<br/>
+          console.log(symbol);// Symbol('one')<br/>
+          console.log(symbol2);// Symbol('two')<br/>
+        3、內置Symbol值<br/>
+          * 除了定義自己使用的Symbol值以外，ES6還提供了11個內置的Symbol值，指向語言內部使用的方法。<br/>
+          - Symbol.iterator<br/>
+           * 對象的Symbol.iterator屬性，指向該對象的默認遍歷器方法(後邊講)<br/>
