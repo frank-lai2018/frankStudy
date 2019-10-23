@@ -3,14 +3,14 @@
 a.宣告
 
 1.作用：
-   *與var類似，用於聲明一個變量
+   * 與var類似，用於聲明一個變量
 2.特點：
-   *在塊作用域內有效
-   *不能重複聲明
-   *不會預，不存在提升
+   * 在塊作用域內有效
+   * 不能重複聲明
+   * 不會預，不存在提升
 3.應用：
-   *循環遍歷加監聽
-   *使用let取代var是趨勢
+   * 循環遍歷加監聽
+   * 使用let取代var是趨勢
 
 ```javascript
     //console.log(age);// age is not defined
@@ -28,13 +28,13 @@ a.宣告
 b.變數的賦值
 
 1.理解：
-  *從對像或數組中提取數據，並賦值給變量（多個）
+  * 從對像或數組中提取數據，並賦值給變量（多個）
 2.對象的解構賦值
-  讓{n，a} = {n：'tom'，a：12}
-3.副本的解構賦值
-  令[a，b] = [1，'atguigu'];
+  let {n，a} = {n：'tom'，a：12}
+3.陣列的解構賦值
+  let [a，b] = [1，'atguigu'];
 4.用途
-  *給多個形參賦值
+  * 給多個形參賦值
 
 ```javascript
    let obj = {name : 'frank', age : 39};
@@ -71,19 +71,19 @@ b.變數的賦值
 
 
 
-1.作用：
-   *定義一個常量
-2.特點：
-   *不能修改
-   *其他特點同let
-3.應用：
-   *保存不用改變的數據
+1.作用：<br/>
+   * 定義一個常量<br/>
+2.特點：<br/>
+   * 不能修改<br/>
+   * 其他特點同let<br/>
+3.應用：<br/>
+   * 保存不用改變的數據<br/>
 
 # 3.模板字串
 
-1.模板字符串：簡化字符串的拼接
-   *模板字符串必須用``包含
-   *變化的部分使用$ {xxx}定義
+1.模板字符串：簡化字符串的拼接<br/>
+   * 模板字符串必須用``包含<br/>
+   * 變化的部分使用$ {xxx}定義<br/>
 
 ```javascript
     let obj = {
@@ -97,17 +97,17 @@ b.變數的賦值
 
 # 4.物件寫法簡化
 
-簡化的物件寫法
-*省略同名的屬性值
-*省略方法的功能
-*例如：
-   令x = 1;
-   令y = 2;
-   let obj= {
-     x，
-     y，
-     setX（x）{this.x = x}
-   };
+簡化的物件寫法<br/>
+* 省略同名的屬性值<br/>
+* 省略方法的功能<br/>
+* 例如：<br/>
+   let x = 1;<br/>
+   let y = 2;<br/>
+   let obj= {<br/>
+     x，<br/>
+     y，<br/>
+     setX（x）{this.x = x}<br/>
+   };<br/>
 
 ```javascript
     let x = 3;
@@ -133,21 +133,22 @@ b.變數的賦值
 
 # 5.箭頭函數
 
-*作用：定義匿名函數
-*基本語法：
-   *沒有參數：（）=> console.log（'xxxx'）
-   *一個參數：i => i + 2
-   *大於一個參數：（i，j）=> i + j
-   *函數體不用大括號：默認返回結果
-   *函數體如果有多個語句，需要用{}包圍，若有需要返回的內容，需要手動返回
-*使用場景：多用於定義局部函數
+* 作用：定義匿名函數
 
-*箭頭函數的特點：
-     1，簡潔
-     2，箭頭函數沒有自己的這個，箭頭函數的這個不是調用的時候決定的，而是在定義的時候處在的對象就是它的這個
+* 基本語法：<br/>
+   *沒有參數：（）=> console.log（'xxxx'）<br/>
+   *一個參數：i => i + 2<br/>
+   *大於一個參數：（i，j）=> i + j<br/>
+   *函數體不用大括號：默認返回結果<br/>
+   *函數體如果有多個語句，需要用{}包圍，若有需要返回的內容，需要手動返回<br/>
+* 使用場景：多用於定義局部函數
+
+* 箭頭函數的特點：<br/>
+     1，簡潔<br/>
+     2，箭頭函數沒有自己的這個，箭頭函數的這個不是調用的時候決定的，而是在定義的時候處在的對象就是它的這個<br/>
     3，箭頭函數的這個看外層的是否有函數，
          如果有，外層函數的這個就是內部箭頭函數的這個，
-         如果沒有，則這是窗口。
+         如果沒有，則這是窗口。<br/>
 
 ```javascript
 let fun = function () {
@@ -209,20 +210,20 @@ let fun = function () {
 
 # 6.點點點運算符
 
-*用途
-1.休息
-     *已取代取代參數，但比例取代參數靈活，只能是最後部分形參參數
-   函數add（... values）{
-     令總和= 0;
-     for（值的值）{
-       總和==值;
-     }
-     返回總和
-   }
-2.擴展運算符
-   令arr1 = [1,3,5];
-   令arr2 = [2，... arr1,6];
-   arr2.push（... arr1）;
+*用途<br/>
+* 1.休息<br/>
+     *已取代取代參數，但比例取代參數靈活，只能是最後部分形參參數<br/>
+    function add(...values) {<br/>
+        let sum = 0;<br/>
+        for(value of values) {<br/>
+        sum += value;<br/>
+        }<br/>
+        return sum;<br/>
+    }
+* 2.擴展運算符<br/>
+    let arr1 = [1,3,5];<br/>
+    let arr2 = [2,...arr1,6];<br/>
+    arr2.push(...arr1);<br/>
 
 ```javascript
     function fun(...values) {
@@ -247,13 +248,13 @@ let fun = function () {
 
 # 7.Promise
 
-1.理解：
+1.理解：<br/>
   * Promise物件：代表了未來某個將要發生的事件（通常是一個異步操作）
-    *有了promise物件，可以將異步操作以同步的流程表達出來，避免了層層層疊的替換函數（俗稱'放置地獄'）
-  * ES6的Promise是一個構造函數，用於生成promise實例
-2.使用promise基本步驟（2步）：
-    *創建承諾物件
-    讓諾言=新的承諾（（解決，拒絕）=> {
+    *有了promise物件，可以將異步操作以同步的流程表達出來，避免了層層層疊的替換函數（俗稱'放置地獄'）<br/>
+  * ES6的Promise是一個構造函數，用於生成promise實例<br/>
+2.使用promise基本步驟（2步）：<br/>
+    *創建承諾物件<br/>
+    let promise=new promise（（resolve，reject）=> {
         //初始化promise狀態為待定
       //執行異步操作
       if（異步操作成功）{
@@ -267,20 +268,20 @@ let fun = function () {
       結果=> console.log（result），
       errorMsg =>警報（errorMsg）
     ））
-3. promise物件的3個狀態
-    *待定：初始化狀態
-    *完整：成功狀態
-    *被拒絕：失敗狀態
-4.應用：
-    *使用Promise實現超時處理
+3. promise物件的3個狀態<br/>
+    *待定：初始化狀態<br/>
+    *完整：成功狀態<br/>
+    *被拒絕：失敗狀態<br/>
+4.應用：<br/>
+    *使用Promise實現超時處理<br/>
 
-  *使用promise封裝處理ajax請求
-    讓request = new XMLHttpRequest（）;
-    request.onreadystatechange = function（）{
-    }
-    request.responseType ='json';
-    request.open（“ GET”，url）;
-    request.send（）;
+  *使用promise封裝處理ajax請求<br/>
+    let request = new XMLHttpRequest（）;<br/>
+    request.onreadystatechange = function（）{<br/>
+    }<br/><
+    request.responseType ='json';<br/>
+    request.open（“ GET”，url）;<br/>
+    request.send（）;<br/>
 
 ```javascript
     //創建一個promise實例物件
