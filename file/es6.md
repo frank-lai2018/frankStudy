@@ -417,3 +417,54 @@ Symbol：<br/>
       。 。 。<br/>
 
 
+```javascript
+  // 自定義iterator生成指針物件
+    function myIterator(arr){
+      let index = 0;
+      return {
+        next(){
+          return index < arr.length ? ({value:arr[index++],done:false}) : ({value:undefined,done:true});
+        } 
+      };
+    }
+
+    let arr = [1,2,3,"abc"];
+    let obj=myIterator(arr);
+    console.log(obj.next());
+    console.log(obj.next());
+    console.log(obj.next());
+    console.log(obj.next());
+    console.log(obj.next());
+    //使用解構賦值以及...三點運算符時會調用iterator接口
+    let b=[2,3,4,5];
+    let c=[1,...b,6];
+    console.log(c);
+    let [r,t]=c;
+    console.log(r,t);
+
+    // 原生測試 陣列
+    let arr3 = [1, 2, 'kobe', true];
+    for(let i of arr3){
+      console.log(i);
+    }
+    // 字串  string
+    let str = 'abcdefg';
+    for(let item of str){
+      console.log(item);
+    }
+
+    //等同於在指定的數據內結構上部屬了iterator接口
+    //當使用for of去歷遍某一個數據結構的時候，首先去找Symbol.iterator，找到則歷遍，找不到則拋出錯誤
+    let targetData={
+      [Symbol.iterator](){
+        let index = 0;
+        return {
+          next(){
+            return index < arr.length ? ({value:arr[index++],done:false}) : ({value:undefined,done:true});
+          } 
+        };
+      }
+    }
+```
+
+# 10.Generator
