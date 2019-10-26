@@ -454,7 +454,7 @@ Symbol：<br/>
     }
 
     //等同於在指定的數據內結構上部屬了iterator接口
-    //當使用for of去歷遍某一個數據結構的時候，首先去找Symbol.iterator，找到則歷遍，找不到則拋出錯誤
+    //當使用for of去歷遍某一個數據結構的時候，首先去找Symbol.iterator，找到則歷遍，找不到則拋出錯誤:obj is not iterable 
     let targetData={
       [Symbol.iterator](){
         let index = 0;
@@ -468,3 +468,201 @@ Symbol：<br/>
 ```
 
 # 10.Generator
+
+概念：<br/>
+      1、ES6提供的解決異步編程的方案之一<br/>
+      2、Generator函數是一個狀態機，內部封裝了不同狀態的數據，<br/>
+      3、用來生成遍歷器對象<br/>
+      4、可暫停函數(惰性求值), yield可暫停，next方法可啟動。每次返回的是yield後的表達式結果<br/>
+特點：<br/>
+      1、function 與函數名之間有一個星號<br/>
+      2、內部用yield表達式來定義不同的狀態<br/>
+      例如：<br/>
+        function* generatorExample(){<br/>
+          let result = yield 'hello'; // 狀態值為hello<br/>
+          yield 'generator'; // 狀態值為generator<br/>
+        }<br/>
+      3、generator函數返回的是指針對象(iterator)，而不會執行函數內部邏輯<br/>
+      4、調用next方法函數內部邏輯開始執行，遇到yield表達式停止，返回{value: yield後的表達式結果/undefined, done: false/true}<br/>
+      5、再次調用next方法會從上一次停止時的yield處開始，直到最後<br/>
+      6、yield語句返回結果通常為undefined， 當調用next方法時傳參內容會作為啟動時yield語句的返回值。<br/>
+
+```javascript
+  function* myGenerator(){
+    console.log("開始執行");
+    let res= yield "11111";
+    console.log(res); //bbbbbb
+    console.log("暫停中...");
+    yield "22222";
+    console.log("執行完畢");
+    return "END";
+  }
+
+  let MG = myGenerator();
+  console.log(MG.next("aaaaaa"));
+  console.log(MG.next("bbbbbb"));
+  console.log(MG.next());
+
+
+  //物件的symbol.iterator屬性指向遍歷器物件
+  let obj ={name:"frank",age:31};
+  obj[Symbol.iterator]=function* myObjGenerator(){
+    yield 1;
+    yield 2;
+    yield 3;
+  }
+  for(let i of obj){
+    console.log(i);//1 2 3
+  }
+
+
+```
+
+
+# 11.Class
+
+基本上與JAVA差不多
+
+1. 通過class定義類/實現類的繼承
+2. 在類中通過constructor定義構造方法
+3. 通過new來創建類的實例
+4. 通過extends來實現類的繼承
+5. 通過super調用父類的構造方法
+6. Override從父類中繼承的一般方法
+
+```javascript
+  class Person {
+    constructor(name,age){
+      this.name=name;
+      this.age=age;
+    }
+    showName(){
+      console.log(this.name,this.age);
+    }
+  }
+
+  let person=new Person("frank",31);
+  console.log(person);
+
+  //繼承
+  class StarPerson extends Person{
+    constructor(name,age,salary){
+      super(name,age);//一定要寫，呼叫父類建構式
+      this.salary=salary;
+    }
+
+    //Override
+    showName(){
+      console.log(this.name,this.age,this.salary);
+    }
+  }
+
+  new StarPerson("apple",31,100000).showName(); //apple 31 100000
+```
+# 12.Set and Map
+
+1. Set容器 : 無序不可重複的多個value的集合體
+  * Set()
+  * Set(array)
+  * add(value)
+  * delete(value)
+  * has(value)
+  * clear()
+  * size
+2. Map容器​​ : 無序的 key不重複的多個key-value的集合體
+  * Map()
+  * Map(array)
+  * set(key, value)//添加
+  * get(key)
+  * delete(key)
+  * has(key)
+  * clear()
+  * size
+
+```javascript
+  //實現陣列去掉重複的實例
+  let arr = [1,2,2,2,3,3,3,4,5,6];
+  let arr1=arr;
+  arr=[];
+  let set =new Set(arr1);
+  for(let i of set){
+    arr.push(i);
+  }
+  console.log(arr);
+
+  let map= new Map([["name","frank"],["age",31]]);
+  console.log(map);
+```
+
+# 13.ES6其他方法
+
+1. includes(str) : 判斷是否包含指定的字符串
+2. startsWith(str) : 判斷是否以指定字符串開頭
+3. endsWith(str) : 判斷是否以指定字符串結尾
+4. repeat(count) : 當前的字串重複指定次數輸出
+
+```javascript
+  let str="amy is girl";
+  console.log(str.includes("is")); //true
+  console.log(str.startsWith("amy")); //true
+  console.log(str.endsWith("girl")); //true
+  console.log(str.repeat(4)); //amy is girlamy is girlamy is girlamy is girl
+```
+
+5. 二進制與八進制數值表示法: 二進制用0b, 八進制用0o
+6. Number.isFinite(i) : 判斷是否是有限大的數
+7. Number.isNaN(i) : 判斷是否是NaN
+8. Number.isInteger(i) : 判斷是否是整數
+9. Number.parseInt(str) : 將字符串轉換為對應的數值
+10. Math.trunc(i) : 直接去除小數部分
+
+```javascript
+    console.log(0b1010);//10
+    console.log(0o56);//46
+    console.log(Number.isFinite(Infinity));//判斷是否是有限大的數，Infinit代表無窮大
+    console.log(Number.isFinite(NaN));//false
+    console.log(Number.isFinite(5));//true
+    //Number.isNaN(i) : 判斷是否是NaN
+    console.log(Number.isNaN(NaN));//true
+    console.log(Number.isNaN(5));//falsse
+
+    //Number.isInteger(i) : 判斷是否是整數
+    console.log(Number.isInteger(5.23));//false
+    console.log(Number.isInteger(5.0));//true
+    console.log(Number.isInteger(5));//true
+
+    //Number.parseInt(str) : 將字串轉換為對應的數值
+    console.log(Number.parseInt('123abc'));//123
+    console.log(Number.parseInt('a123abc'));//NaN
+
+    // Math.trunc(i) : 直接去除小數部分
+    console.log(Math.trunc(13.123));//13
+```
+
+11. Array.from(v) : 將偽數組對像或可遍歷對象轉換為真數組
+12. Array.of(v1, v2, v3) : 將一系列值轉換成數組
+13. find(function(value, index, arr){return true}) : 找出第一個滿足條件返回true的元素
+14. findIndex(function(value, index, arr){return true}) : 找出第一個滿足條件返回true的元素下標
+
+```javascript
+    //Array.from(v) : 將偽陣列對像或可遍歷對象轉換為真陣列
+    let btns = document.getElementsByTagName('button');
+    console.log(btns.length);//3
+    Array.from(btns).forEach(function (item, index) {
+        console.log(item, index);
+    });
+    //Array.of(v1, v2, v3) : 將一系列值轉換成陣列
+    let arr = Array.of(1, 'abc', true);
+    console.log(arr);
+    //find(function(value, index, arr){return true}) : 找出第一個滿足條件返回true的元素
+    let arr1 = [1,3,5,2,6,7,3];
+    let result = arr1.find(function (item, index) {
+        return item >3
+    });
+    console.log(result);//5
+    //findIndex(function(value, index, arr){return true}) : 找出第一個滿足條件返回true的元素下標
+    let result1 = arr1.findIndex(function (item, index) {
+        return item >3
+    });
+    console.log(result1);//2
+```
