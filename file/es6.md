@@ -561,23 +561,23 @@ Symbol：<br/>
 ```
 # 12.Set and Map
 
-1. Set容器 : 無序不可重複的多個value的集合體
-  * Set()
-  * Set(array)
-  * add(value)
-  * delete(value)
-  * has(value)
-  * clear()
-  * size
-2. Map容器​​ : 無序的 key不重複的多個key-value的集合體
-  * Map()
-  * Map(array)
-  * set(key, value)//添加
-  * get(key)
-  * delete(key)
-  * has(key)
-  * clear()
-  * size
+1. Set容器 : 無序不可重複的多個value的集合體<br/>
+  * Set()<br/>
+  * Set(array)<br/>
+  * add(value)<br/>
+  * delete(value)<br/>
+  * has(value)<br/>
+  * clear()<br/>
+  * size<br/>
+2. Map容器​​ : 無序的 key不重複的多個key-value的集合體<br/>
+  * Map()<br/>
+  * Map(array)<br/>
+  * set(key, value)//添加<br/>
+  * get(key)<br/>
+  * delete(key)<br/>
+  * has(key)<br/>
+  * clear()<br/>
+  * size<br/>
 
 ```javascript
   //實現陣列去掉重複的實例
