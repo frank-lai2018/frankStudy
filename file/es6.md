@@ -666,3 +666,143 @@ Symbol：<br/>
     });
     console.log(result1);//2
 ```
+
+# 14.ES6 module
+
+需先安裝以下模組:<br/>
+  * babel-cli, babel-preset-es2015和browserify<br/><br/>
+
+    command:<br/>
+        * npm install babel-cli browserify -g <br/>
+	      * npm install babel-preset-es2015 --save-dev <br/>
+	      * (preset 為預設將es6轉換成es5的所有插件打包)<br/>
+
+定義 .babelrc 文件: <br/>
+  	```
+    {
+      "presets": ["es2015"]
+    }
+	  ```
+
+編寫以下測試程式:
+
+
+單獨export:
+
+js/src/module1.js:
+```javascript
+export function foo(){
+    console.log("module1 foo...");
+}
+export function bar(){
+    console.log("module1 bar...");
+}
+```
+js/src/module2.js:
+```javascript
+function fun1(){
+    console.log("module2 fun...")
+}
+function fun2(){
+    console.log("module2 fun2...")
+}
+
+export {fun1,fun2};
+```
+js/src/main.js
+```javascript
+
+import {foo,bar} from "./module1";
+import {fun1,fun2} from "./module2";
+
+foo();
+bar();
+fun1();
+fun2();
+```
+需先將ES6轉化為ES5
+```
+babel .\js\src -d .\js\build
+```
+再將此檔案用browserify打包成瀏覽器可讀的JS
+```
+browserify .\js\build\main.js -o .\js\dist\app.js
+```
+
+編寫index.html時，引用打包好的app.js
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ES6_Babel_Browserify</title>
+</head>
+<body>
+<script type='text/javascript' src='./js/dist/app.js'></script>
+</body>
+</html>
+```
+
+執行結果:
+
+![037](images/pic037.png)
+
+
+默認export:
+
+js/src/module3.js:
+```javascript
+export default {
+    msg:"默認 export",
+    foo(){
+        console.log(this.msg);
+    }
+}
+```
+
+js/src/main.js
+```javascript
+
+import module3 from "./module3";
+
+module3.foo();
+```
+重新執行:
+```
+babel .\js\src -d .\js\build
+browserify .\js\build\main.js -o .\js\dist\app.js
+```
+
+執行結果:
+
+![038](images/pic038.png)
+
+
+引入第3方API(以jquery 1.X版為例)
+
+1.使用npm安裝jquery
+
+@後面可以指定版本，預設下載最新版
+```
+npm install jquery@1 
+```
+2.
+編寫程式:
+js/src/main.js
+```javascript
+
+import $ from "jquery";
+
+$("body").css("background","green");
+```
+重新執行:
+```
+babel .\js\src -d .\js\build
+browserify .\js\build\main.js -o .\js\dist\app.js
+```
+
+
+執行結果:
+
+![039](images/pic039.png)
