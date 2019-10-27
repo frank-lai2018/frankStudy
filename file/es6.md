@@ -30,9 +30,9 @@ b.變數的賦值
 1.理解：
   * 從對像或數組中提取數據，並賦值給變量（多個）
 2.對象的解構賦值
-  let {n，a} = {n：'tom'，a：12}
+    let {n，a} = {n：'tom'，a：12}
 3.陣列的解構賦值
-  let [a，b] = [1，'atguigu'];
+    let [a，b] = [1，'atguigu'];
 4.用途
   * 給多個形參賦值
 
@@ -670,6 +670,7 @@ Symbol：<br/>
 # 14.ES6 module
 
 需先安裝以下模組:<br/>
+
   * babel-cli, babel-preset-es2015和browserify<br/><br/>
 
     command:<br/>
@@ -686,8 +687,7 @@ Symbol：<br/>
 
 編寫以下測試程式:
 
-
-單獨export:
+### **單獨export:**
 
 js/src/module1.js:
 ```javascript
@@ -748,8 +748,7 @@ browserify .\js\build\main.js -o .\js\dist\app.js
 
 ![037](images/pic037.png)
 
-
-默認export:
+### **默認export:**
 
 js/src/module3.js:
 ```javascript
@@ -778,8 +777,7 @@ browserify .\js\build\main.js -o .\js\dist\app.js
 
 ![038](images/pic038.png)
 
-
-引入第3方API(以jquery 1.X版為例)
+### **引入第3方API(以jquery 1.X版為例)**
 
 1.使用npm安裝jquery
 
