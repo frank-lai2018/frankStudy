@@ -189,7 +189,8 @@
 
 私有過濾器:將過濾器以屬性的方式定義在Vue物件裡
 
-``<link rel="stylesheet" href="./lib/bootstrap-3.3.7.css">
+```html
+<link rel="stylesheet" href="./lib/bootstrap-3.3.7.css">
 <body>
     <div id="app">
 
@@ -317,6 +318,40 @@
 
                     return `${y}-${m}-${d} ${hh}:${mm}:${ss} ~~~~~~~`
                 }
+            }
+        }
+    })
+</script>
+```
+
+# 5.按鍵事件
+
+使用keyup事件綁定輸入特定按鈕的事件
+
+```html
+<body>
+    <div id="app">
+
+                    
+        <input type="text" name="" id="input" @keyup.enter="add">
+    </div>
+        
+    </body>
+    <script src="./lib/vue.js"></script>
+<script>
+
+    //自定義全局按鍵修飾符
+    Vue.config.keyCodes.f2 = 113;
+
+    let vm =new Vue({
+        el: "#app",
+        data() {
+            return {
+            }
+        },
+        methods: {
+            add(){
+               .....
             }
         }
     })
