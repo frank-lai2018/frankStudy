@@ -1,4 +1,4 @@
-1.判斷查詢出來值為NULL顯示的值
+# 1.判斷查詢出來值為NULL顯示的值
 
 a.NVL(expr1, expr2)函数
 
@@ -14,4 +14,17 @@ c.NULLIF (expr1, expr2) 函数
 
 ```
 
+```
+
+# 2.分頁查詢
+
+需要加上ROWNUM計算資料筆數，在控制ROWNUM顯示的資訊，來達到分頁效果
+
+
+```html
+SELECT * FROM(
+       SELECT ROWNUM aa,PE_EXTERNAL_PROD.* 
+       FROM PE_EXTERNAL_PROD) 
+WHERE aa<=10
+AND aa BETWEEN 2 AND 11
 ```
