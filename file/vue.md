@@ -358,7 +358,7 @@
 </script>
 ```
 
-# .自訂義指令
+# 6.自訂義指令
 
 bind：只調用一次，指令第一次綁定到元素時調用。在這裡可以進行一次性的初始化設置，例如CSS樣式。
 
@@ -443,3 +443,214 @@ update：所在組件的 VNode 更新時調用，但是可能發生在其子 VNo
 </script>
 </html>
 ```
+
+# 7.過度動畫
+
+*   a.列表過度
+    *   使用<transition-group>標籤將li包覆起來
+        設置過度CSS屬性.v-enter,.v-leave-to 和.v-enter-active,.v-leave-active
+    b.表格過度
+    *   在tbody標籤使用is屬性指定為transition-group
+        設置過度CSS屬性.v-enter,.v-leave-to 和.v-enter-active,.v-leave-active
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<link rel="stylesheet" href="./lib/bootstrap-3.3.7.css">
+<body>
+    <div id="app">
+        
+        <div class="panel panel-primary">
+              <div class="panel-heading">
+                    <h3 class="panel-title">Panel title</h3>
+              </div>
+              <div class="panel-body form-inline">
+                   <label>
+                       id:
+                       <input type="text" v-model="id">
+                   </label>
+                   <label>
+                       name:
+                       <input type="text" v-model="name">
+                   </label>
+                   
+                   <button type="button" class="btn btn-large btn-block btn-primary" v-on:click="add">添加</button>
+                   
+              </div>
+        </div>
+        
+        <ul>
+            <transition-group>
+                <li v-for="(item, index) in list" :key="item.id" @click="del(index)">{{item.name}}</li>
+            </transition-group>
+        </ul>
+    </div>
+
+    <hr>
+    <div id="app1">
+        
+        <div class="panel panel-primary">
+              <div class="panel-heading">
+                    <h3 class="panel-title">Panel title</h3>
+              </div>
+              <div class="panel-body form-inline">
+                   <label>
+                       id:
+                       <input type="text" v-model="id">
+                   </label>
+                   <label>
+                       name:
+                       <input type="text" v-model="name">
+                   </label>
+                   
+                   <button type="button" class="btn btn-large btn-block btn-primary" v-on:click="add1">添加</button>
+                   
+              </div>
+        </div>
+        
+        
+        <table class="table table-bordered  table-hover  table-striped table-success">
+            <thead>
+                <tr>
+                    <th>id</th>
+                    <th>name</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody is="transition-group" name="my">
+                    <tr v-for="(item, index) in list" :key="item.id">
+                        <td>{{item.id}}</td>
+                        <td>{{item.name}}</td>
+                        <td>
+                        <button type="button" class="btn btn-large btn-block btn-danger" @click="del1(index)">刪除</button>
+                        </td>
+                    </tr>
+            </tbody>
+        </table>
+        
+    </div>
+</body>
+<script src="./lib/vue.js"></script>
+<style>
+    /*更改表格 table-striped 顏色*/
+    .table-striped > tbody > tr:nth-child(2n+1) > td, .table-striped > tbody > tr:nth-child(2n+1) > th {
+    background-color: rgba(0, 255, 255, 0.096);
+    }
+    .table-striped > tbody > tr:nth-child(2n) > td, .table-striped > tbody > tr:nth-child(2n) > th {
+    background-color: rgba(0, 255, 255, 0.356);
+    }
+
+    li {
+      border: 1px dashed #999;
+      margin: 5px;
+      line-height: 35px;
+      padding-left: 5px;
+      font-size: 12px;
+      width: 100%;
+    }
+
+    /*移動高亮*/
+    li:hover {
+      background-color: hotpink;
+      transition: all 0.8s ease;
+    }
+
+    /*過度屬性*/
+    .v-enter,
+    .v-leave-to {
+      opacity: 0;
+      transform: translateY(80px);
+    }
+
+    .v-enter-active,
+    .v-leave-active {
+      transition: all 0.6s ease;
+    }
+
+    /* 下面的 .v-move 和 .v-leave-active 配合使用，能夠實現列表後續的元素，漸漸地飄上來的效果 */
+    .v-move {
+      transition: all 0.6s ease;
+    }
+    .v-leave-active{
+      position: absolute;
+    }
+
+
+    .my-move {
+      transition: all 0.6s ease;
+    }
+    .my-leave-active{
+      position: absolute;
+    }
+    .my-enter,
+    .my-leave-to {
+      opacity: 0;
+      transform: translateY(80px);
+    }
+
+    .my-enter-active,
+    .my-leave-active {
+      transition: all 1s ease;
+    }
+</style>
+<script>
+    let vm = new Vue({
+        el:"#app",
+        data() {
+            return {
+                flag:false,
+                id:"",
+                name:"",
+                list:[
+                    {id:"1",name:"frank1"},
+                    {id:"2",name:"frank2"},
+                    {id:"3",name:"frank3"},
+                    {id:"4",name:"frank4"}
+                ]
+            }
+        },
+        methods: {
+            add(){
+                this.list.push({id:this.id,name:this.name});
+            },
+            del(index){
+                this.list.splice(index,1);
+            }
+        },
+    });
+
+    let vm1 = new Vue({
+        el:"#app1",
+        data() {
+            return {
+                flag:false,
+                id:"",
+                name:"",
+                list:[
+                    {id:"1",name:"frank1"},
+                    {id:"2",name:"frank2"},
+                    {id:"3",name:"frank3"},
+                    {id:"4",name:"frank4"}
+                ]
+            }
+        },
+        methods: {
+            add1(){
+                this.list.push({id:this.id,name:this.name});
+            },
+            del1(index){
+                this.list.splice(index,1);
+            }
+        },
+    });
+</script>
+</html>
+```
+
+
