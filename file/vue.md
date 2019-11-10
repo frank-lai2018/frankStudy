@@ -449,7 +449,7 @@ update：所在組件的 VNode 更新時調用，但是可能發生在其子 VNo
 *   a.列表過度
     *   使用<transition-group>標籤將li包覆起來
         設置過度CSS屬性.v-enter,.v-leave-to 和.v-enter-active,.v-leave-active
-    b.表格過度
+*   b.表格過度
     *   在tbody標籤使用is屬性指定為transition-group
         設置過度CSS屬性.v-enter,.v-leave-to 和.v-enter-active,.v-leave-active
 
@@ -652,5 +652,366 @@ update：所在組件的 VNode 更新時調用，但是可能發生在其子 VNo
 </script>
 </html>
 ```
+# 8.組件
 
+## 自定義全局組件有以下三種方式:
+
+* 1.方式1
+
+    * 使用 Vue.extend 來創建全局的Vue組件
+    * 使用 Vue.component('組件的名稱',  Vue.extend 創建出來的組件模闆對象)，來註冊組件
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <mycom1></mycom1>
+    </div>    
+</body>
+    <script src="./lib/vue.js"></script>
+    <script>
+
+
+        // 1.1 使用 Vue.extend 來創建全局的Vue組件
+        // let com1 = Vue.extend({
+        //     template:"<h2>自定義組件方式1</h2>"// 通過 template 屬性，指定了組件要展示的HTML結構
+        // });
+        // 1.2 使用 Vue.component('組件的名稱', 創建出來的組件模闆對象)
+        // 如果使用 Vue.component 定義全局組件的時候，組件名稱使用了 駝峰命名，則在引用組件的時候，需要把 大寫的駝峰改為小寫的字母，同時，兩個單詞之前，使用 - 鏈接；
+        // 如果不使用駝峰,則直接拿名稱來使用即可;
+        // Vue.component("mycom1",com1);
+
+        Vue.component("mycom1",Vue.extend({
+            template:"<h2>自定義組件方式1</h2>"// 通過 template 屬性，指定了組件要展示的HTML結構
+        }));
+
+        let vm = new Vue({
+            el:"#app",
+            data() {
+                return {
+                    
+                }
+            },
+            methods: {
+                
+            },
+        })
+    </script>
+</html>
+```
+
+* 2.方式2
+
+    *   使用 Vue.component('組件的名稱', 創建出來的組件模闆對象)，來註冊組件
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <mycom2></mycom2>
+    </div>    
+</body>
+    <script src="./lib/vue.js"></script>
+    <script>
+        
+        // 注意:不論是哪種方式創建出來的組件,組件的 template 屬性指向的模板內容,必須有且只能有唯一的一個根元素
+        Vue.component("mycom2",{
+            template:"<div><h2>自定義組件方式2</h2><span>1111</span></div>"
+        });
+
+
+        let vm = new Vue({
+            el:"#app",
+            data() {
+                return {
+                    
+                }
+            },
+            methods: {
+                
+            },
+        })
+    </script>
+</html>
+```
+
+* 3.方式3
+    * 在 被控制的 #app 外面,使用 template 元素,定義組件的HTML模板結構
+    * 使用 Vue.component('組件的名稱', 模板結構ID)，來註冊組件
+
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <mycom3></mycom3>
+    </div>    
+
+    <!-- 在 被控制的 #app 外面,使用 template 元素,定義組件的HTML模板結構 -->
+    <template id="temp1">
+        <div>
+            <h1>這是自定義組件3</h1>
+            <span>1244</span>
+        </div>
+    </template>
+
+</body>
+    <script src="./lib/vue.js"></script>
+    <script>
+        
+        Vue.component("mycom3",{
+            template:"#temp1"
+        });
+
+        let vm = new Vue({
+            el:"#app",
+            data() {
+                return {
+                    
+                }
+            },
+            methods: {
+                
+            },
+        })
+
+    </script>
+</html>
+```
+## 定義私有組件
+
+在vue物件裡使用components定義
+
+語法:
+
+```javascript
+        let vm2 = new Vue({
+            el:"#app2",
+            components:{
+                    組件名:{
+                        template:模板定義物件
+                    }
+                },
+        })
+```
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app2">
+        <login></login>
+    </div>
+    <template id="temp2">
+        <div>
+            <h1>這是私有自定義組件3</h1>
+            <span>1244</span>
+        </div>
+    </template>
+
+</body>
+    <script src="./lib/vue.js"></script>
+    <script>
+        
+
+        let vm2 = new Vue({
+            el:"#app2",
+            components:{
+                    login:{
+                        template:"#temp2"
+                    }
+                },
+            data() {return {} },
+            methods: {},
+        })
+    </script>
+</html>
+```
+
+## 元件DATA，METHODS
+
+* 使用v-if v-else 實踐組件切換
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <a href="" v-on:click.prevent="flag=true">登入</a>
+        <a href="" v-on:click.prevent="flag=false">註冊</a>
+        <login v-if="flag"></login>
+        <register v-else="flag"></register>
+    </div>
+
+    <template id="tmp1">
+        <div>
+            <h1>{{msg}}</h1>
+        </div>
+    </template>
+    <template id="tmp2">
+        <div>
+            <h1>{{msg2}}</h1>
+        </div>
+    </template>
+</body>
+
+<script src="./lib/vue.js"></script>
+<script>
+
+    Vue.component("login",{
+        template:"#tmp1",
+        data() {
+            return {
+                msg:"登入組件"
+            }
+        },
+        methods:{}
+    });
+
+    Vue.component("register",{
+        template:"#tmp2",
+        data() {
+            return {
+                msg2:"註冊組件"
+            }
+        },
+        methods:{}
+    });
+
+    let vm = new Vue({
+        el:"#app",
+        data() {
+            return {
+                flag:true
+            }
+        },
+        methods: {
+            
+        },
+    })
+</script>
+
+</html>
+```
+
+* 使用component tag 實踐組件切換
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<style>
+    /*過度屬性*/
+    .v-enter,
+    .v-leave-to {
+      opacity: 0;
+      transform: translateX(180px);
+    }
+
+    .v-enter-active,
+    .v-leave-active {
+      transition: all 0.6s ease;
+    }
+
+</style>
+<body>
+    <div id="app">
+        <a href="" v-on:click.prevent="comName='login'">登入</a>
+        <a href="" v-on:click.prevent="comName='register'">註冊</a>
+        
+        <!-- 通過 mode 屬性,設置組件切換時候的 模式 -->
+        <transition mode="in-out">
+            <!-- Vue提供了 component ,來展示對應名稱的組件 -->
+            <!-- component 是一個佔位符, :is 屬性,可以用來指定要展示的組件的名稱 -->
+            <component :is="comName"></component>
+        </transition>
+    </div>
+
+    <template id="tmp1">
+        <div>
+            <h1>{{msg}}</h1>
+        </div>
+    </template>
+    <template id="tmp2">
+        <div>
+            <h1>{{msg2}}</h1>
+        </div>
+    </template>
+</body>
+
+<script src="./lib/vue.js"></script>
+<script>
+
+    Vue.component("login",{
+        template:"#tmp1",
+        data() {
+            return {
+                msg:"登入組件"
+            }
+        },
+        methods:{}
+    });
+
+    Vue.component("register",{
+        template:"#tmp2",
+        data() {
+            return {
+                msg2:"註冊組件"
+            }
+        },
+        methods:{}
+    });
+
+    let vm = new Vue({
+        el:"#app",
+        data() {
+            return {
+                comName:"login"
+            }
+        },
+        methods: {
+            
+        },
+    })
+</script>
+
+</html>
+```
 
