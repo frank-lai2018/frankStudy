@@ -1015,3 +1015,88 @@ update：所在組件的 VNode 更新時調用，但是可能發生在其子 VNo
 </html>
 ```
 
+* 父元件傳vlaue或function給子元件
+    * 傳vlaue透過在tag上加上 v-bind:變數名=XXX 傳入
+```html
+<com1 v-bind:parentmsg="msg"></com1>
+
+```
+* 
+    * 傳function透過在tag上加上 v-On:函式名=XXX 傳入
+```html
+<com1 v-bind:func="show"></com1>
+
+```
+
+* 子元件向父元件傳值
+    * 透過父元件提供的方法傳直到父元件
+
+```html
+<com1 v-bind:func="show"></com1>
+
+```
+
+* 
+    *　透過ref綁定元件，獲取DOM上元件元素，訪問其DATA及function，this.$refs.tag_id.data或function
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+            <login ref="childrenLogin"></login>
+            <h1 ref="parentObj">我是父元件</h1>
+            <button type="button" class="btn btn-large btn-block btn-default" v-on:click="handle">button</button>
+            
+    </div>
+</body>
+<script src="./lib/vue.js"></script>
+<script>
+
+    let login={
+        template:"<h1>我是子元件</h1>",
+        data() {
+            return {
+                msg:"子元件內容"
+            }
+        },
+        methods:{
+            func(){
+                console.log("子元件方法");
+            }
+        }
+    }
+
+    Vue.component("login",login);
+
+    let vm = new Vue({
+        el:"#app",
+        data() {
+            return {
+                
+            }
+        },
+        methods: {
+            handle(){
+                let msg=this.$refs.parentObj.innerText;
+                console.log(msg); //我是父元件
+               
+                let msg1=this.$refs.childrenLogin.msg;
+                console.log(msg1); //子元件內容
+                
+                let msg2=this.$refs.childrenLogin.func;
+                msg2(); //子元件方法
+
+            }
+        },
+    })
+</script>
+</html>
+
+```
