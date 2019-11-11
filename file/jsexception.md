@@ -12,3 +12,12 @@ b.處理方式，在server端的response 加入以下header，即可
 //       response.setHeader("Access-Control-Allow-Origin","*");//不管域名
     }
 ```
+
+c.Android處理方式
+
+Android的WebView處理跨域問題很簡單，只要將AllowUniversalAccessFromFileURLs設置為True就行了
+
+```java
+WebSettings webSetting = mWebView.getSettings();
+webSetting.setAllowUniversalAccessFromFileURLs(true);
+```
