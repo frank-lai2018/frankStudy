@@ -1017,22 +1017,86 @@ update：所在組件的 VNode 更新時調用，但是可能發生在其子 VNo
 
 * 父元件傳vlaue或function給子元件
     * 傳vlaue透過在tag上加上 v-bind:變數名=XXX 傳入
-```html
-<com1 v-bind:parentmsg="msg"></com1>
-
-```
-* 
     * 傳function透過在tag上加上 v-On:函式名=XXX 傳入
-```html
-<com1 v-bind:func="show"></com1>
+    * 注意變數名不能有大寫，不然無法傳值，例如:如果設parentDATA11不會出錯，只會出現以下警告資訊
+![042](images/pic042.png)
 
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <com1 v-bind:parentdata1="parentDATA1" v-bind:parentdata2="parentDATA2" v-on:func="childrenToparent"></com1>
+    </div>  
+    <template id="temp1">
+        <div>
+            <h1>子組件</h1>
+            <button type="button" class="btn btn-large btn-block btn-danger" v-on:click="handle">button</button>
+        </div>
+    </template>  
+</body>
+<script src="./lib/vue.js"></script>
+<script>
+
+    Vue.component("com1",{
+        template:"#temp1",
+        props:['parentdata1','parentdata2'],
+        data(){
+            return {
+                childrenMsg1:"子組件DATA1",
+                childrenMsg2:"子組件DATA2",
+
+            };
+        },
+        created() {
+            this.handle();
+        },
+        methods:{
+            handle(){
+                console.log("parentdata1",this.parentdata1);
+                console.log("parentdata2",this.parentdata2);
+
+                this.$emit('func',this.childrenMsg1,this.childrenMsg2);
+            }
+        }
+    });
+
+    let vm = new Vue({
+        el:"#app",
+        data() {
+            return {
+                parentDATA1:"父祖件DATA1",
+                parentDATA2:"父祖件DATA2",
+                childrenmodify1:"",
+                childrenmodify2:""
+            }
+        },
+        methods: {
+            childrenToparent(data1,data2){
+                this.childrenmodify1=data1;
+                this.childrenmodify2=data2;
+                console.log("childrenmodify1",this.childrenmodify1);
+                console.log("childrenmodify2",this.childrenmodify2);
+            }
+        }
+
+    })
+</script>
+</html>
 ```
 
 * 子元件向父元件傳值
     * 透過父元件提供的方法傳直到父元件
 
 ```html
-<com1 v-bind:func="show"></com1>
+例子同上
 
 ```
 
