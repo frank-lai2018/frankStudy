@@ -1170,8 +1170,8 @@ update：所在組件的 VNode 更新時調用，但是可能發生在其子 VNo
 *   導入**<script src="./lib/vue-router.js"></script>**
 *   創件VueRouter物件，並配置屬性routes作為URL跟組件的映射
 *   把上一步創件的VueRouter物件指派給Vue物件裡的router屬性，以做關聯
-*   在HTML裡添加TAG <router-view></router-view>**，此TAG就是來顯示VueRouter對應到的組件
-*   可以使用**<router-link to="" tag="">XXX</router-link>**，做為切換的按鈕，始標籤預設轉換為a tag，如果喜轉匯為其他標籤，使用tag屬性極可轉換，其也會預設添加修改URL hash值的事件
+*   在HTML裡添加TAG(**router-view**)，此TAG就是來顯示VueRouter對應到的組件
+*   可以使用**router-link**，做為切換的按鈕，始標籤預設轉換為a tag，如果喜轉匯為其他標籤，使用tag屬性極可轉換，其也會預設添加修改URL hash值的事件
 
 ```html
 <!DOCTYPE html>
