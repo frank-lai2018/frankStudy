@@ -1277,3 +1277,306 @@ update：所在組件的 VNode 更新時調用，但是可能發生在其子 VNo
 </script>
 </html>
 ```
+* router query url 傳值
+
+    *   URL?號後面帶參數傳入，vue router會以正則表達式去解析參數，並附入Vue物件裡的query屬性陣列裡，取值只需使用this.$route.query.xxx即可以取到值
+
+瀏覽器Vue物件
+
+![043](images/pic043.png)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width= , initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+
+        <router-link to="/login?id=221&name=apple">login</router-link>
+        <router-link to="/register">register</router-link>
+
+        <router-view></router-view>
+    </div>
+</body>
+<script src="./lib//vue.js"></script>
+<script src="./lib/vue-router.js"></script>
+<script>
+    let login={
+        template:"<h1>login----{{this.$route.query.id}}----{{this.$route.query.name}}</h1>",
+        created() {
+            this.show();
+        },
+        data() {
+            return {
+                id:this.$route.query.id,
+                name:this.$route.query.name
+            }
+        },
+        methods: {
+            show(){
+                console.log("id",this.id,"name",this.name);
+            }
+        },
+    }
+    let register={
+        template:"<h1>register</h>"
+    }
+
+    let router  = new VueRouter({
+        routes:[
+            {path:"/",redirect:"/login"},
+            {path:"/login",component:login},
+            {path:"/register",component:register}
+        ]
+    })
+
+    let vm = new Vue({
+        el:"#app",
+        router
+    })
+</script>
+</html>
+```
+
+*    URl後面擺佔位符傳值<br>
+    *   例如http://localhost:52330/20_router_params_url%E5%82%B3%E5%80%BC.html#/login/12/apple ，當中12跟apple是要傳入的參數，在router的path的屬性中只需加上 /:變數名 即可獲取對應的參數 例如 path:'/login/:id/:name'
+
+    *   在vue物件裡，此參數是存在params陣列屬性裡，一樣是使用正則匹配，取用時只需用以下方式取
+    *   this.$route.params.xxx
+
+瀏覽器Vue物件
+
+![044](images/pic044.png)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width= , initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <router-link to="/login/12/apple">login</router-link>
+        <router-link to="/register">register</router-link>
+        <router-view></router-view>
+    </div>
+</body>
+<script src="./lib//vue.js"></script>
+<script src="./lib/vue-router.js"></script>
+<script>
+    let login={
+        template:"<h1>login----{{this.$route.params.id}}----{{this.$route.params.name}}</h1>",
+        created() {
+            this.show();
+        },
+        data() {
+            return {
+                id:this.$route.params.id,
+                name:this.$route.params.name
+            }
+        },
+        methods: {
+            show(){
+                console.log("id",this.id,"name",this.name);
+            }
+        },
+    }
+    let register={
+        template:"<h1>register</h>"
+    }
+
+    let router  = new VueRouter({
+        routes:[
+            {path:"/",redirect:"/login"},
+            {path:"/login/:id/:name",component:login},
+            {path:"/register",component:register}
+        ]
+    })
+
+    let vm = new Vue({
+        el:"#app",
+        router
+    })
+</script>
+</html>
+```
+
+*   嵌套router
+
+    *   使用routes裡的children屬性實現嵌套router，注意children屬性裡哦path不用帶/線
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<script src="./lib/vue.js"></script>
+<script src="./lib/vue-router.js"></script>
+<body>
+    <div id="app">
+        <router-link to="/account">account</router-link>
+
+        <router-view></router-view>
+    </div>
+
+    <template id="tmp1">
+        <div>
+            <h1>.........</h1>
+             <router-link to="/account/login">login</router-link>
+             <router-link to="/account/register">register</router-link>
+
+             <router-view></router-view>
+        </div>
+    </template>
+</body>
+<script>
+    let account = {
+        template:"#tmp1"
+    };
+
+    let login={
+        template:"<h1>login</h1>"
+    }
+    let register={
+        template:"<h1>register</h1>"
+    }
+
+    let router = new VueRouter({
+        routes:[
+            {
+                path:"/account",
+                component:account,
+                children:[
+                    {
+                        path:"login",
+                        component:login
+                    },
+                    {
+                        path:"register",
+                        component:register
+                    }
+                ]
+            }
+        ]
+    });
+
+    let vm = new Vue({
+        el:"#app",
+        router
+    })
+</script>
+</html>
+```
+
+*   命名router-view
+
+    *   命名router-view實現，多個router-view顯示不同組件
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<style>
+
+html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    #header {
+      background-color: orange;
+      height: 80px;
+    }
+
+    h1 {
+      margin: 0;
+      padding: 0;
+      font-size: 16px;
+    }
+
+    .container {
+      display: flex;
+      height: 600px;
+    }
+
+    #left {
+      background-color: lightgreen;
+      flex: 5;
+    }
+
+    #main {
+      background-color: lightpink;
+      flex: 5;
+    }
+
+</style>
+<body>
+    <div id="app">
+        <router-view></router-view>
+        <div class="container">
+            <router-view name="left"></router-view>
+            <router-view name="main"></router-view>
+        </div>
+    </div>
+</body>
+<script src="./lib/vue.js"></script>
+<script src="./lib/vue-router.js"></script>
+<script>
+    let header={
+        template:"<div id='header'>header.........</div>"
+    };
+    let leftmenu={
+        template:"<div id='leftmenu'>leftmenu.........</div>"
+    };
+    let main={
+        template:"<div id='main'>main.........</div>"
+    };
+
+    let router = new VueRouter({
+        routes:[
+            {
+                path:"/",
+                components:{
+
+                    "default":header,
+                    "left":leftmenu,
+                    "main":main
+                }
+
+            }
+        ]
+    });
+
+    let vm = new Vue({
+        el:"#app",
+        router
+    })
+
+</script>
+
+</html>
+
+```
+
+顯示結果:
+
+![045](images/pic045.png)
+
