@@ -21,6 +21,8 @@
 
 [ajax](file/ajax.md )
 
+[angular](file/angular.md )
+
 [VUE](file/vue.md )
 
 [前端疑難雜症](file/jsexception.md )

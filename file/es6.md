@@ -804,3 +804,41 @@ browserify .\js\build\main.js -o .\js\dist\app.js
 執行結果:
 
 ![039](images/pic039.png)
+
+# 15.聲明式與命令式區別
+
+* 1.命令式：命令程序執行的時候每一步都是按照自己的指令，更注重執行的過程，也就是程式執行過程需自己實現所有邏輯
+
+* 2.聲明式：更注重執行的結果，也就是說使用的局部封裝的工具函式來達成目的，不需所有邏輯都自己實現
+
+```html
+<!DOCTYPE html>
+<html>
+<head lang="en">
+  <meta charset="UTF-8">
+  <title></title>
+</head>
+
+<body ng-app="">
+
+<script type="text/javascript">
+    //命令式
+    var arr = [1,2,3,4,5];
+    var newArr = [];
+    for(var i=0;i<arr.length;i++){
+      var num = arr[i]*2;
+      newArr.push(num);
+    }
+    console.log(newArr);
+
+    //聲明式
+    var newArr2 = arr.map(function (item) {
+      return item*2;
+    });
+    console.log(newArr2);
+  }
+</script>
+</body>
+</html>
+```
+
