@@ -19,6 +19,8 @@
 
 [H5](file/h5.md )
 
+[JS]](file/js.md )
+
 [ES6](file/es6.md )
 
 [ajax](file/ajax.md )
@@ -56,6 +58,8 @@
 [gitlab](file/gitlab.md )
 
 ### 7.其他
+
+[gulp](file/gulp.md )
 
 [maven](file/maven.md )
 
