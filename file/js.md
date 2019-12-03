@@ -149,3 +149,46 @@ console.log(user1.name);
 console.log(user2.name);
 ```
 
+# 物件特性
+
+    value: 物件屬性值,
+    writable: 屬性值是否可以修改,
+    enumerable: 屬姓名稱是否可以列舉,
+    configurable: 可否用delete刪除屬性，或是用Object.defineProperty，Object.defineProperties修改屬性的屬性設定
+
+    Object.getOwnPropertyDescriptor(物件名,屬姓名):可以取得屬性的屬性設定
+
+*   使用Object.defineProperty或Object.defineProperties設置屬性，預設屬性特性皆為false
+
+*   如果設置了set get方法，代表屬性值要自己設定，故不可以再設定value及writable屬性的屬性
+
+```javascript
+function UserName(name,age){
+    Object.defineProperty(this,'name',{
+            // set:() => name,
+            get:() => name
+        });
+    Object.defineProperty(this,'age',{
+            // set:() => age,
+            get:() => age
+        });
+    Object.defineProperty(this,'status',{
+            // set:() => age,
+            value: 10,
+            writable: false,
+            enumerable: false,
+            configurable: false
+        });
+
+    this.toString = () => `${this.name}--${this.age}`
+
+}
+
+let user1 = new UserName('frank',31);
+let user2 = new UserName('apple',31);
+user1.name ='frank1';
+console.log(user1.status);
+console.log(user2.status);
+
+console.log(Object.getOwnPropertyDescriptor(user1,'status'));
+```
