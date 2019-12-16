@@ -19,7 +19,7 @@
 
 [H5](file/h5.md )
 
-[JS]](file/js.md )
+[JS](file/js.md )
 
 [ES6](file/es6.md )
 
@@ -28,6 +28,8 @@
 [angular](file/angular.md )
 
 [VUE](file/vue.md )
+
+[前端範例](file/jsexample.md )
 
 [前端疑難雜症](file/jsexception.md )
 
