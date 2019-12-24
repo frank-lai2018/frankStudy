@@ -110,3 +110,19 @@ SimpleDateFormat simpleDateFormat =
 String date = simpleDateFormat.format(new Date());
 System.out.println(date);
 輸出:星期三 十二月 2013 17:09:04.757+0800
+
+
+# 5.固定每天幾點做捨事寫法:
+
+```java
+	Calendar now = Calendar.getInstance();
+	int dayOfWeek = now.get(Calendar.DAY_OF_WEEK);
+
+	if (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY) {
+		String time = DateFormatUtils.format(now, "HHmm");
+
+		if (time.compareTo("0000") >= 0 && time.compareTo("0600") <= 0) {
+		   XXXXXX
+		}
+	}
+```
