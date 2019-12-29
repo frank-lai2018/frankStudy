@@ -192,3 +192,77 @@ console.log(user2.status);
 
 console.log(Object.getOwnPropertyDescriptor(user1,'status'));
 ```
+
+# 變數提升
+## 在變量定義之前可以訪問此變量，其值為undefined。
+
+	用var聲明的變數具有，變數提升，只是在宣告行前使用會取到undefined的值
+	
+	var foo = 3
+	
+	以下也是變數提升不是函式提升，因為用Var宣告了
+	var foo =function (){}
+
+# 函數提升
+## 在函數定義之前就可以去調用執行這個函數。
+
+	一定要用function 聲明的才有函數提升
+	
+		function foo(){}
+
+## 變數提升完再執行函數提升
+
+# 物件
+
+實例物件的隱式原型等於建構函式的顯示原型
+
+
+# 全局執行上下文
+* 在執行全局代碼前將window確定為全局執行上下文
+* 對全局數據進行預處理:(以下依順序執行)
+    * var定義的全局變量==>undefined, 添加為window的屬性
+    * function聲明的全局函數==>賦值(fun), 添加為window的方法
+    * this==>賦值(window)
+* 開始執行全局代碼
+
+# 函數執行上下文
+* 在調用函數, 準備執行函數體之前, 創建對應的函數執行上下文對象
+* 對局部數據進行預處理
+    * 形參變量==>賦值(實參)==>添加為執行上下文的屬性
+    * arguments==>賦值(實參列表), 添加為執行上下文的屬性
+    * var定義的局部變量==>undefined, 添加為執行上下文的屬性
+* function聲明的函數 ==>賦值(fun), 添加為執行上下文的方法
+* this==>賦值(調用函數的對象)
+* 開始執行函數體代碼
+
+```javascript
+ //EX1:
+ function a() {}
+  var a;
+  console.log(typeof a) //function
+
+
+ //EX2:
+  if (!(b in window)) {
+    var b = 1;
+  }
+  console.log(b)//undefined
+  
+ //EX3:
+  var c = 1
+  function c(c) {
+    console.log(c)
+    var c = 3
+  }
+  c(2) //報錯，c不是一個函式
+```
+
+# 閉包
+
+## 1.在函式定義執行時創建，需有嵌套函式，才產生閉包，且閉包內部變數，是內部函式引用到外部函式的變量時才產生
+
+## 2.閉包生命週期:
+    1.函式定義時創建
+    2.內部函是沒人引用，成為垃圾函式時消失於內存
+
+## 3.閉包作用，用來包裝函式理的變數，使其可以在函式執行完後依然存在於內存，並依此函式對外提供的方法調用變數
