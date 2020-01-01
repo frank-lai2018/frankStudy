@@ -100,6 +100,10 @@
 ```
 * class and style
 
+* class:
+
+
+
 ```html
 <style>
     .red {
@@ -153,8 +157,82 @@
         })
     </script>
 ```
+* v-if v-show
+    * v-if:會直接刪除TAG
+    * v-show:主會加上display:none
+* v-for
+    * 可以用來遍歷陣列跟物件
 
-# 4.過濾器
+# 4.表單元素輸入綁定
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>表單元素輸入綁定</title>
+</head>
+<body>
+<div id="demo">
+  <form action="/xxx" @submit.prevent="handleSubmit">
+    <span>用戶名: </span>
+    <input type="text" v-model="username"><br>
+
+    <span>密碼: </span>
+    <input type="password" v-model="pwd"><br>
+
+    <span>性別: </span>
+    <input type="radio" id="female" value="女" v-model="sex">
+    <label for="female">女</label>
+    <input type="radio" id="male" value="男" v-model="sex">
+    <label for="male">男</label><br>
+
+    <span>興趣: </span>
+    <input type="checkbox" id="basket" value="basket" v-model="likes">
+    <label for="basket">籃球</label>
+    <input type="checkbox" id="foot" value="foot" v-model="likes">
+    <label for="foot">足球</label>
+    <input type="checkbox" id="pingpang" value="pingpang" v-model="likes">
+    <label for="pingpang">乒乓</label><br>
+
+    <span>城市: </span>
+    <select v-model="cityId">
+      <option value="">未選擇</option>
+      <option :value="city.id" v-for="(city, index) in allCitys" :key="city.id">{{city.name}}</option>
+    </select><br>
+    <span>介紹: </span>
+    <textarea rows="10" v-model="info"></textarea><br><br>
+
+    <input type="submit" value="註冊">
+  </form>
+</div>
+
+<link rel="stylesheet" href="../css/bootstrap-3.3.7.css">
+<script type="text/javascript" src="../js/vue.js"></script>
+<script type="text/javascript">
+  new Vue({
+    el: '#demo',
+    data: {
+      username: '',
+      pwd: '',
+      sex: '男',
+      likes: ['foot'],
+      allCitys: [{id: 1, name: 'BJ'}, {id: 2, name: 'SS'}, {id: 3, name: 'SZ'}],
+      cityId: '2',
+      info: ''
+    },
+    methods: {
+      handleSubmit () {
+        console.log(this.username, this.pwd, this.sex, this.likes, this.cityId, this.info)
+      }
+    }
+  })
+</script>
+</body>
+</html>
+```
+
+# 5.過濾器
 
 語法:
     a.{{傳入參數 | 過濾器名稱}}
@@ -324,7 +402,7 @@
 </script>
 ```
 
-# 5.按鍵事件
+# 6.按鍵事件
 
 使用keyup事件綁定輸入特定按鈕的事件
 
