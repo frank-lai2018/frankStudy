@@ -92,13 +92,13 @@ $ git blame -L 5,10 index.html
 6783cc21 (Eddie Kao 2019-05-28 16:00:35 +0800 10)   </body>
 ```
 
-8.修改 commit Description
+# 8.修改 commit Description
 
 git commit --amend -m "20190909"
 
 ![033](images/pic033.png)
 
-9.把系統的管控紀錄移除
+# 9.把系統的管控紀錄移除
 
 ### 加上 –cached 參數
 
@@ -108,3 +108,8 @@ git rm aaa.txt --cached
 
 ![034](images/pic034.png)
 
+# 10.如果看不到別人新建的遠端分支
+
+用已下指令取回所有遠端分支
+
+git fetch

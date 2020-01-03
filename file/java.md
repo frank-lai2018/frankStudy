@@ -91,24 +91,37 @@
 
 # 4.常見的時間格式:
 
+```
 dd-MM-yy                            31-01-12
 dd-MM-yyyy                          31-01-2013
 MM-dd-yyyy                          01-31-2013
 yyyy-MM-dd                          2013-01-31
-yyyy-MM-dd HH:mm:ss            2013-01-31 23:59:59
+yyyy-MM-dd HH:mm:ss                 2013-01-31 23:59:59
 yyyy-MM-dd HH:mm:ss.SSS             2013-01-31 23:59:59.999
 yyyy-MM-dd HH:mm:ss.SSSZ            2013-01-31 23:59:59.999+0100
 EEEEE MMMMM yyyy HH:mm:ss.SSSZ    Saturday November 2013 10:45:42.720+0100
+```
+
 EX:
+
 String pattern = "yyyy-MM-dd";
-SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+
+SimpleDateFormat simpleDateFormat = new 
+SimpleDateFormat(pattern);
+
 Date date = simpleDateFormat.parse("2013-12-04");
+
 EX:
+
 String pattern = "EEEEE MMMMM yyyy HH:mm:ss.SSSZ";
+
 SimpleDateFormat simpleDateFormat =
         new SimpleDateFormat(pattern, new Locale("zh", "ZH")); //指定具体語言環境
+
 String date = simpleDateFormat.format(new Date());
+
 System.out.println(date);
+
 輸出:星期三 十二月 2013 17:09:04.757+0800
 
 
