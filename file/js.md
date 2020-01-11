@@ -266,3 +266,5 @@ console.log(Object.getOwnPropertyDescriptor(user1,'status'));
     2.內部函是沒人引用，成為垃圾函式時消失於內存
 
 ## 3.閉包作用，用來包裝函式理的變數，使其可以在函式執行完後依然存在於內存，並依此函式對外提供的方法調用變數
+
+# [js event](javascript/jsevent.md)
