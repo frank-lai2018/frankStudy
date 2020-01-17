@@ -26,7 +26,9 @@
 
 # 14.[組件間傳值方式](vue/componmentData.md)
 
-# 15.[創建Vue專案](vue/createvue.md)
+# 15[pubsub-js組件間傳值](vue/pubsub-js.md)
+
+# 16.[創建Vue專案](vue/createvue.md)
 
 # 13webpack
 
