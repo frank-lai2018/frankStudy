@@ -1,5 +1,11 @@
 # 10.router
 
+## **前端路由:組件**
+
+## **後端路由:處理請求的回調函數**
+
+## **可以使用<keep-alive>標籤把<router-view>包起來，使其組件切換時，繼續存活著**
+
 *   導入**<script src="./lib/vue-router.js"></script>**
 *   創件VueRouter物件，並配置屬性routes作為URL跟組件的映射
 *   把上一步創件的VueRouter物件指派給Vue物件裡的router屬性，以做關聯

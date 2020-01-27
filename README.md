@@ -53,13 +53,19 @@
 
 [指令](file/command.md )
 
+[ubuntu](file/ubuntu.md )
+
 ### 6.版控
 
 [git](file/git.md )
 
 [gitlab](file/gitlab.md )
 
-### 7.其他
+### 7.python
+
+[python](file/python.md )
+
+### 8.其他
 
 [gulp](file/gulp.md )
 

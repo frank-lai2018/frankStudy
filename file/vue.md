@@ -30,6 +30,10 @@
 
 # 16.[創建Vue專案](vue/createvue.md)
 
+# 17.[vue ajax](vue/vueAJAX.md)
+
+# 18.[mint-ui](vue/mintui.md)
+
 # 13webpack
 
 
