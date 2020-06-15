@@ -139,3 +139,25 @@ System.out.println(date);
 		}
 	}
 ```
+
+# 6.使用LOG4J 記錄LOG方法:
+
+
+
+```java
+    /*LOG PRINT*/
+    private void printErrorLog(Exception e) {
+        StackTraceElement[] arr = e.getStackTrace();
+        for (int i = 0; i < arr.length; i++) {
+            log.error("  " + arr[i].toString());
+        }
+    }
+
+    private void printWarnLog(Exception e) {
+        StackTraceElement[] arr = e.getStackTrace();
+        for (int i = 0; i < arr.length; i++) {
+            log.warn("  " + arr[i].toString());
+        }
+    }
+
+```
