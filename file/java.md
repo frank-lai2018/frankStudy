@@ -161,3 +161,69 @@ System.out.println(date);
     }
 
 ```
+# 7.多執行緒:
+
+## 1.創建執行緒的方法:
+    a.繼承 Thread
+    b.實作 Runnable
+
+## 2.處理執行緒安全的方法:
+    a.synchronized 同步代碼塊
+    b.synchronized 同步方法
+    c.Lock 鎖
+
+## 3.synchronized與Lock的異同
+ 
+相同:
+
+    兩者都可以處理執行緒安全問題
+
+不同:
+    
+    synchronized:在執行完相應的同步代碼後，會自動釋放同步監視器
+
+    Lock:需要手動的啟動同步(lock())，同時結束同步也需要手動的實現(unlock())
+
+```java
+public class Ticket01 implements Runnable{
+	private int count = 100;
+
+	/**
+	 * 建構是可以帶參數
+	 * fair:預設式false，為true時代表，先進先執行，後進後執行，所有執行緒平等，不會發生1執行完又搶到CPU執行權的狀況
+	 * 
+	 * */
+	ReentrantLock lock = new ReentrantLock();
+	
+	
+	@Override
+	public void run() {
+		
+		while(true) {
+			try {
+				//鎖啟動
+				lock.lock();
+				if(count > 0) {
+					try {
+						Thread.sleep(200);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					
+					System.out.println("執行緒 "+Thread.currentThread().getName()+" 售票號碼:"+count--+" 號");
+				}else {
+					break;
+				}
+			}finally {
+				//不管成功或失敗都解鎖
+				lock.unlock();
+			}
+		}
+		
+		
+	}
+
+}
+
+```
+
