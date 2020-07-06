@@ -6,3 +6,13 @@ ls -alt 新到舊
 ls -alrt 舊到新
 
 ```
+
+2.查找檔案中關鍵字
+
+```
+find .|xargs grep -ri "app_notification_rec_log" -l 
+
+
+find . -name "*.java" |xargs grep -ri "APP_NOTIFICATION_REC_LOG" -l
+
+```
