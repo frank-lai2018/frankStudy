@@ -227,3 +227,7 @@ public class Ticket01 implements Runnable{
 
 ```
 
+# java8 lambda
+
+    條件:需要函數式接口(functionalInterface)才能使用，即interface中只能有一個抽象方法
+
