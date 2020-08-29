@@ -4,6 +4,16 @@
 
 *   computed屬性定義的方法，會存在緩存裡，會監視方法依賴的值有無變化，有變化及會更新緩存，無變化時，調用屬性不在調用方法
 
+
+1. 計算屬性
+  在computed屬性對像中定義計算屬性的方法
+  在頁面中使用{{方法名}}來顯示計算的結果
+2. 監視屬性:
+  通過通過vm對象的$watch()或watch配置來監視指定的屬性
+  當屬性變化時, 回調函數自動調用, 在函數內部進行計算
+3. 計算屬性高級:
+  通過getter/setter實現對屬性數據的顯示和監視
+  計算屬性存在緩存, 多次讀取只執行一次getter計算
 ```html
 <!DOCTYPE html>
 <html lang="en">
@@ -56,3 +66,93 @@
 </script>
 </html>
 ```
+
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>計算屬性和監視</title>
+</head>
+<body>
+<!--
+1. 計算屬性
+  在computed屬性對像中定義計算屬性的方法
+  在頁面中使用{{方法名}}來顯示計算的結果
+2. 監視屬性:
+  通過通過vm對象的$watch()或watch配置來監視指定的屬性
+  當屬性變化時, 回調函數自動調用, 在函數內部進行計算
+3. 計算屬性高級:
+  通過getter/setter實現對屬性數據的顯示和監視
+  計算屬性存在緩存, 多次讀取只執行一次getter計算
+-->
+<div id="demo">
+  姓: <input type="text" placeholder="First Name" v-model="firstName"><br>
+  名: <input type="text" placeholder="Last Name" v-model="lastName"><br>
+  <!--fullName1是根據fistName和lastName計算產生-->
+  姓名1(單向): <input type="text" placeholder="Full Name1" v-model="fullName1"><br>
+  姓名2(單向): <input type="text" placeholder="Full Name2" v-model="fullName2"><br>
+  姓名3(雙向): <input type="text" placeholder="Full Name3" v-model="fullName3"><br>
+
+  <p>{{fullName1}}</p>
+  <p>{{fullName1}}</p>
+</div>
+
+<script type="text/javascript" src="../js/vue.js"></script>
+<script type="text/javascript">
+  const vm = new Vue({
+    el: '#demo',
+    data: {
+      firstName: 'A',
+      lastName: 'B',
+       fullName2: 'A-B'
+    },
+
+    // 計算屬性配置: 值為對象
+    computed: {
+      fullName1 () { // 屬性的get()
+        console.log('fullName1()', this)
+        return this.firstName + '-' + this.lastName
+      },
+
+      fullName3: {
+        // 當獲取當前屬性值時自動調用, 將返回值(根據相關的其它屬性數據)作為屬性值
+        get () {
+          console.log('fullName3 get()')
+          return this.firstName + '-' + this.lastName
+        },
+        // 當屬性值發生了改變時自動調用, 監視當前屬性值變化, 同步更新相關的其它屬性值
+        set (value) {// fullName3的最新value值  A-B23
+          console.log('fullName3 set()', value)
+          // 更新firstName和lastName
+          const names = value.split('-')
+          this.firstName = names[0]
+          this.lastName = names[1]
+        }
+      }
+    },
+
+    watch: {
+      // 配置監視firstName
+      firstName: function (value) { // 相當於屬性的set
+        console.log('watch firstName', value)
+        // 更新fullName2
+        this.fullName2 = value + '-' + this.lastName
+      }
+    }
+  })
+
+  // 監視lastName
+  vm.$watch('lastName', function (value) {
+    console.log('$watch lastName', value)
+    // 更新fullName2
+    this.fullName2 = this.firstName + '-' + value
+  })
+
+</script>
+</body>
+</html>
+```
+
+

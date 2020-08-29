@@ -113,3 +113,18 @@ git rm aaa.txt --cached
 用已下指令取回所有遠端分支
 
 git fetch
+
+# 11.更改密碼
+
+要 git push 時，遇到
+```console
+git remote: HTTP Basic: Access denied
+```
+代表遠端跟近端的密碼不符合，就是有一方密碼改變了
+
+## 清空本地端的密碼
+```console
+git config --system --unset credential.helper
+```
+再重新 push 時，就會要再次輸入帳號密碼
+
