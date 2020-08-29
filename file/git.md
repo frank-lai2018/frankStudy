@@ -128,3 +128,10 @@ git config --system --unset credential.helper
 ```
 再重新 push 時，就會要再次輸入帳號密碼
 
+## 重新啟動自動存取密碼
+```console
+git config --global credential.helper store
+```
+
+
+
