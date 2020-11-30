@@ -74,6 +74,8 @@
 
 [maven](file/maven.md )
 
+[nvm](file/nvm.md )
+
 [gradle](file/gradle.md )
 
 [eclipse](file/eclipse.md )
