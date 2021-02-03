@@ -24,14 +24,14 @@ null、undefined、''(空字串)、0、NaN 這5個就是所謂的Falsy Family
 function add(a, b) {
   return a + b;
 }
-console.log(add(1, 2));	
+console.log(add(1, 2));
 console.log(add.call(undefined, 1, 2));//沒有指定this基本上跟()功能一樣
 ```
 
 ##  apply
 
     apply也是 Function 的內建函式，執行作用跟call一樣，唯一的區別是傳入參數，第一個參數傳入this，第二個參數傳入參數陣列
-    
+
 * 功能
 
     1.執行 function
@@ -46,7 +46,7 @@ console.log(add.call(undefined, 1, 2));//沒有指定this基本上跟()功能一
 function add(a, b) {
   return a + b;
 }
-console.log(add(1, 2));	
+console.log(add(1, 2));
 console.log(add.apply(undefined, [1, 2]));//沒有指定this基本上跟()功能一樣
 ```
 
@@ -197,9 +197,9 @@ console.log(Object.getOwnPropertyDescriptor(user1,'status'));
 ## 在變量定義之前可以訪問此變量，其值為undefined。
 
 	用var聲明的變數具有，變數提升，只是在宣告行前使用會取到undefined的值
-	
+
 	var foo = 3
-	
+
 	以下也是變數提升不是函式提升，因為用Var宣告了
 	var foo =function (){}
 
@@ -207,7 +207,7 @@ console.log(Object.getOwnPropertyDescriptor(user1,'status'));
 ## 在函數定義之前就可以去調用執行這個函數。
 
 	一定要用function 聲明的才有函數提升
-	
+
 		function foo(){}
 
 ## 變數提升完再執行函數提升
@@ -247,7 +247,7 @@ console.log(Object.getOwnPropertyDescriptor(user1,'status'));
     var b = 1;
   }
   console.log(b)//undefined
-  
+
  //EX3:
   var c = 1
   function c(c) {
@@ -268,3 +268,5 @@ console.log(Object.getOwnPropertyDescriptor(user1,'status'));
 ## 3.閉包作用，用來包裝函式理的變數，使其可以在函式執行完後依然存在於內存，並依此函式對外提供的方法調用變數
 
 # [js event](javascript/jsevent.md)
+
+# [js httpRequest](javascript/http.md)
