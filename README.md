@@ -19,6 +19,8 @@
 
 [異常排除](file/javaException.md )
 
+[java指令](file/javaCmd.md)
+
 ## 2.前端
 [HTTP](file/HTTP.md )
 
