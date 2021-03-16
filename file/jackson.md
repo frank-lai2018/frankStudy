@@ -37,3 +37,11 @@ public class MainTest {
 }
 
 ```
+
+# 如果不是每個屬性都是必要值，可以在CLASS上加上@JsonIgnoreProperties(ignoreUnknown = true) 註解，這樣有值就會注入，沒有即不會注入不會抱錯
+# 如果某個物件屬性，不需轉乘JSON，只需在屬性上加上 @JsonIgnore(true) 預設為true 不轉換 false 轉換
+
+EX:
+![060](images/pic060.png)
+
+

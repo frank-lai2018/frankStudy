@@ -8,7 +8,7 @@ SpringBoot使用一個全局的配置文件，配置文件的名稱是固定的:
 
 ​	application.properties
 
-​	application.yaml 或 application.yml 
+​	application.yaml 或 application.yml
 
 配置文件的作用:修改SpringBoot自動配置的默認值，SpringBoot在底層都給我們自動配置好了
 
@@ -140,13 +140,13 @@ javaBean:
  * 將配置文件中配置的每一個屬性值，映射到這個組件中
  * @ConfigurationProperties: 告訴springboot將本類中的所有屬性和配置文件中相關的配置進行綁定
  * 		prefix = "person" :配置文件中哪個下面的所有屬性進行一一映射
- * 
+ *
  * 只有這個組件是容器中的組件，才能使用容器提供的@ConfigurationProperties功能
  * */
 @Component
 @ConfigurationProperties(prefix = "person")
 public class Persion {
-	
+
 	    private String lastName;
 	    private Integer age;
 	    private Boolean boss;
@@ -154,7 +154,7 @@ public class Persion {
 	    private Map<String,Object> maps;
 	    private List<Object> lists;
 	    private Dog dog;
-    
+
 ```
 
 我們可以導入配置文件處理器，以後編寫配置就有提示了
@@ -281,9 +281,9 @@ public class SpringBoot02ConfigApplication {
 		xmlns:xsi="http://www.w3.org/2001/XMLSchema‐instance"
 		xsi:schemaLocation="http://www.springframework.org/schema/beans
 		http://www.springframework.org/schema/beans/spring‐beans.xsd">
-		
+
 			<bean id="helloService" class="com.frank.springboot.service.HelloService"></bean>
-		
+
 	</beans>
 ```
 
@@ -505,19 +505,19 @@ java -jar spring-boot-02-config-02-0.0.1-SNAPSHOT.jar --server.port=8087  --serv
 
 - List<String> configurations = getCandidateConfigurations(annotationMetadata,      attributes);獲取候選配置
 
-  
-  
-  
-  
+
+
+
+
   - ```java
   SpringFactoriesLoader.loadFactoryNames()
     掃描所有jar包類路徑下  META-INF/spring.factories
   把掃描到的這些文件的內容包裝成properties物件
     從properties中獲取到EnableAutoConfiguration.class類（類名）對應的值，然後把它們添加到容器中
-  
+
     ```
-  
-    
+
+
 
 **==將類路徑下  META-INF/sring.factories 裡面配置的所有EnableAutoConfiguration的值加入到容器中；==**
 
@@ -639,17 +639,17 @@ org.springframework.boot.autoconfigure.webservices.WebServicesAutoConfiguration
 //即使我們配置文件中不配置spring.http.encoding.enabled=true，也是默認生效的
 
 public class HttpEncodingAutoConfiguration {
-  
+
     //他已經和SpringBoot的配置文件映射了
   	private final HttpEncodingProperties properties;
-  
+
     //只有一個有參數建構式的情況下，參數的值就會從容器中拿
   	public HttpEncodingAutoConfiguration(HttpEncodingProperties properties) {
 		this.properties = properties;
 	}
-  
+
     @Bean   //給容器中添加一個組件，這個組件的某些值需要從properties中獲取
-	@ConditionalOnMissingBean(CharacterEncodingFilter.class) 
+	@ConditionalOnMissingBean(CharacterEncodingFilter.class)
     //判斷容器沒有這個組件?
 	public CharacterEncodingFilter characterEncodingFilter() {
 		CharacterEncodingFilter filter = new OrderedCharacterEncodingFilter();
@@ -667,7 +667,7 @@ public class HttpEncodingAutoConfiguration {
 5)、所有在配置文件中能配置的屬性都是在xxxxProperties類中封裝的，配置文件能配置什麼就可以參照某個功能對應的這個屬性類
 
 ```java
-@ConfigurationProperties(prefix = "spring.http.encoding") 
+@ConfigurationProperties(prefix = "spring.http.encoding")
 //從配置文件中獲取指定的值和bean的屬性進行綁定
 public class HttpEncodingProperties {
 
@@ -738,8 +738,8 @@ Positive matches:（自動配置類匹配到的，有啟用的）
    DispatcherServletAutoConfiguration matched:
       - @ConditionalOnClass found required class 'org.springframework.web.servlet.DispatcherServlet'; @ConditionalOnMissingClass did not find unwanted class (OnClassCondition)
       - @ConditionalOnWebApplication (required) found StandardServletEnvironment (OnWebApplicationCondition)
-        
-    
+
+
 Negative matches:（沒有啟用的，沒有匹配的自動配置類）
 -----------------
 
@@ -750,7 +750,7 @@ Negative matches:（沒有啟用的，沒有匹配的自動配置類）
    AopAutoConfiguration:
       Did not match:
          - @ConditionalOnClass did not find required classes 'org.aspectj.lang.annotation.Aspect', 'org.aspectj.lang.reflect.Advice' (OnClassCondition)
-        
+
 ```
 
 
@@ -922,7 +922,7 @@ SpringBoot默認幫我們配置好了日誌
     		%d表示日期時間，
     		%thread表示執行緒名，
     		%-5level：級別從左顯示5個字符寬度
-    		%logger{50} 表示logger名子最長50個字，否則案這據點分割。 
+    		%logger{50} 表示logger名子最長50個字，否則案這據點分割。
     		%msg：日誌消息，
     		%n是換行
         -->
@@ -984,7 +984,7 @@ logback.xml：直接就被日誌框架識別了；
             %d表示日期時間，
             %thread表示執行緒名，
             %-5level：級別從左顯示5個字符寬度
-            %logger{50} 表示logger名子最長50個字，否則案這據點分割。 
+            %logger{50} 表示logger名子最長50個字，否則案這據點分割。
             %msg：日誌消息，
             %n是換行
         -->
@@ -1151,7 +1151,7 @@ public class ResourceProperties implements ResourceLoaderAware {
 			public SimpleUrlHandlerMapping faviconHandlerMapping() {
 				SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
 				mapping.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
-              	//所有  **/favicon.ico 
+              	//所有  **/favicon.ico
 				mapping.setUrlMap(Collections.singletonMap("**/favicon.ico",
 						faviconRequestHandler()));
 				return mapping;
@@ -1195,10 +1195,10 @@ http://www.webjars.org/
 ==2）、"/**" 訪問當前項目的任何資源，都去(靜態資源的文夾)找映射==
 
 ```
-"classpath:/META-INF/resources/", 
+"classpath:/META-INF/resources/",
 "classpath:/resources/",
-"classpath:/static/", 
-"classpath:/public/" 
+"classpath:/static/",
+"classpath:/public/"
 "/"：當前項目跟路徑
 ```
 
@@ -1227,7 +1227,7 @@ spring.resources.static-locations=classoath:/frank/,classpath:/apple/
 
 JSP、Velocity、Freemarker、Thymeleaf
 
-![](images/template-engine.png) 
+![](images/template-engine.png)
 
 
 
@@ -1323,7 +1323,7 @@ Simple expressions:（表達式語法）
                 #response : (only in Web Contexts) the HttpServletResponse object.
                 #session : (only in Web Contexts) the HttpSession object.
                 #servletContext : (only in Web Contexts) the ServletContext object.
-                
+
                 ${session.foo}
             3）、内置的一些工具物件：
 #execInfo : information about the template being processed.
@@ -1350,13 +1350,13 @@ Simple expressions:（表達式語法）
     <p>Surname: <span th:text="*{lastName}">Pepper</span>.</p>
     <p>Nationality: <span th:text="*{nationality}">Saturn</span>.</p>
     </div>
-    
+
     Message Expressions: #{...}：獲取國際化內容
     Link URL Expressions: @{...}：定義URL；
     		@{/order/process(execId=${execId},execType='FAST')}
     Fragment Expressions: ~{...}：片段引用表答式
     		<div th:insert="~{commons :: main}">...</div>
-    		
+
 Literals（字面量）
       Text literals: 'one text' , 'Another one!' ,…
       Number literals: 0 , 34 , 3.0 , 12.3 ,…
@@ -1380,7 +1380,7 @@ Conditional operators:條件運算（三元運算符）
     If-then-else: (if) ? (then) : (else)
     Default: (value) ?: (defaultvalue)
 Special tokens:
-    No-Operation: _ 
+    No-Operation: _
 ```
 
 ## 4、SpringMVC自動配置
@@ -1404,7 +1404,7 @@ Spring Boot 自動配置好了SpringMVC
 
 - Custom `Favicon` support (see below).  favicon.ico
 
-  
+
 
 - 自動註冊了of `Converter`, `GenericConverter`, `Formatter` beans.
 
@@ -1429,7 +1429,7 @@ Spring Boot 自動配置好了SpringMVC
 
     ==自己給容器添加HttpMessageConverter，只需要將自己的組件註冊在容器中（@Bean,@Component）==
 
-    
+
 
 - Automatic registration of `MessageCodesResolver` (see below).定義錯誤代碼生成規則
 
@@ -1565,7 +1565,7 @@ public class DelegatingWebMvcConfiguration extends WebMvcConfigurationSupport {
 public class WebMvcAutoConfiguration {
 ```
 
-4）、@EnableWebMvc将WebMvcConfigurationSupport组件导入进来；
+4）、@EnableWebMvc將WebMvcConfigurationSupport組件導入進來；
 
 5）、导入的WebMvcConfigurationSupport只是SpringMVC最基本的功能；
 
@@ -1627,7 +1627,7 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
 
 步驟：
 
-1)、編寫國際化配置文件，抽取頁面需要顯示的國際化消息 
+1)、編寫國際化配置文件，抽取頁面需要顯示的國際化消息
 
 ![](images/搜狗截图20180211130721.png)
 
@@ -1638,14 +1638,14 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
 ```java
 @ConfigurationProperties(prefix = "spring.messages")
 public class MessageSourceAutoConfiguration {
-    
+
     /**
 	 * Comma-separated list of basenames (essentially a fully-qualified classpath
 	 * location), each following the ResourceBundle convention with relaxed support for
 	 * slash based locations. If it doesn't contain a package qualifier (such as
 	 * "org.mypackage"), it will be resolved from the classpath root.
 	 */
-	private String basename = "messages";  
+	private String basename = "messages";
 
     //我們的配置文件可以直接放在類路徑下叫messages.properties
     @Bean
@@ -1739,11 +1739,11 @@ public class MessageSourceAutoConfiguration {
 
 ```java
 /**
- * 
+ *
  可以在連接上攜帶區域信息
  */
 public class MyLocaleResolver implements LocaleResolver {
-    
+
     @Override
     public Locale resolveLocale(HttpServletRequest request) {
         String l = request.getParameter("l");
@@ -1779,7 +1779,7 @@ public class MyLocaleResolver implements LocaleResolver {
 
 ```
 # 禁用緩存
-spring.thymeleaf.cache=false 
+spring.thymeleaf.cache=false
 ```
 
 2）、頁面修改完成以後ctrl+f9：重新編譯；
@@ -1949,7 +1949,7 @@ insert的公共片段在div标签中
 
 
 
-引入片段的时候传入参数： 
+引入片段的时候传入参数：
 
 ```html
 
@@ -2152,7 +2152,7 @@ insert的公共片段在div标签中
 @Controller
 @RequestMapping("${server.error.path:${error.path:/error}}")
 public class BasicErrorController extends AbstractErrorController {
-    
+
     @RequestMapping(produces = "text/html")//产生html类型的数据；浏览器发送的请求来到这个方法处理
 	public ModelAndView errorHtml(HttpServletRequest request,
 			HttpServletResponse response) {
@@ -2160,7 +2160,7 @@ public class BasicErrorController extends AbstractErrorController {
 		Map<String, Object> model = Collections.unmodifiableMap(getErrorAttributes(
 				request, isIncludeStackTrace(request, MediaType.TEXT_HTML)));
 		response.setStatus(status.value());
-        
+
         //去哪个页面作为错误页面；包含页面地址和页面内容
 		ModelAndView modelAndView = resolveErrorView(request, response, status, model);
 		return (modelAndView == null ? new ModelAndView("error", model) : modelAndView);
@@ -2203,7 +2203,7 @@ public class BasicErrorController extends AbstractErrorController {
 	private ModelAndView resolve(String viewName, Map<String, Object> model) {
         //默认SpringBoot可以去找到一个页面？  error/404
 		String errorViewName = "error/" + viewName;
-        
+
         //模板引擎可以解析这个页面地址就用模板引擎解析
 		TemplateAvailabilityProvider provider = this.templateAvailabilityProviders
 				.getProvider(errorViewName, this.applicationContext);
@@ -2244,7 +2244,7 @@ protected ModelAndView resolveErrorView(HttpServletRequest request,
 
 ​			**1）、有模板引擎的情况下；error/状态码;** 【将错误页面命名为  错误状态码.html 放在模板引擎文件夹里面的 error文件夹下】，发生此状态码的错误就会来到  对应的页面；
 
-​			我们可以使用4xx和5xx作为错误页面的文件名来匹配这种类型的所有错误，精确优先（优先寻找精确的状态码.html）；		
+​			我们可以使用4xx和5xx作为错误页面的文件名来匹配这种类型的所有错误，精确优先（优先寻找精确的状态码.html）；
 
 ​			页面能获取的信息；
 
@@ -2436,7 +2436,7 @@ public ServletRegistrationBean dispatcherServletRegistration(
          dispatcherServlet, this.serverProperties.getServletMapping());
     //默认拦截： /  所有请求；包静态资源，但是不拦截jsp请求；   /*会拦截jsp
     //可以通过server.servletPath来修改SpringMVC前端控制器默认拦截的请求路径
-    
+
    registration.setName(DEFAULT_DISPATCHER_SERVLET_BEAN_NAME);
    registration.setLoadOnStartup(
          this.webMvcProperties.getServlet().getLoadOnStartup());
@@ -2525,7 +2525,7 @@ EmbeddedServletContainerAutoConfiguration：嵌入式的Servlet容器自动配�
 //导入了EmbeddedServletContainerCustomizerBeanPostProcessor：
 //后置处理器：bean初始化前后（创建完对象，还没赋值赋值）执行初始化工作
 public class EmbeddedServletContainerAutoConfiguration {
-    
+
     @Configuration
 	@ConditionalOnClass({ Servlet.class, Tomcat.class })//判断当前是否引入了Tomcat依赖；
 	@ConditionalOnMissingBean(value = EmbeddedServletContainerFactory.class, search = SearchStrategy.CURRENT)//判断当前容器没有用户自己定义EmbeddedServletContainerFactory：嵌入式的Servlet容器工厂；作用：创建嵌入式的Servlet容器
@@ -2537,7 +2537,7 @@ public class EmbeddedServletContainerAutoConfiguration {
 		}
 
 	}
-    
+
     /**
 	 * Nested configuration if Jetty is being used.
 	 */
@@ -2598,7 +2598,7 @@ public EmbeddedServletContainer getEmbeddedServletContainer(
       ServletContextInitializer... initializers) {
     //创建一个Tomcat
    Tomcat tomcat = new Tomcat();
-    
+
     //配置Tomcat的基本环节
    File baseDir = (this.baseDirectory != null ? this.baseDirectory
          : createTempDir("tomcat"));
@@ -2613,7 +2613,7 @@ public EmbeddedServletContainer getEmbeddedServletContainer(
       tomcat.getService().addConnector(additionalConnector);
    }
    prepareContext(tomcat.getHost(), initializers);
-    
+
     //将配置好的Tomcat传入进去，返回一个EmbeddedServletContainer；并且启动Tomcat服务器
    return getTomcatEmbeddedServletContainer(tomcat);
 }
@@ -2884,10 +2884,10 @@ protected WebApplicationContext createRootApplicationContext(
    builder.initializers(
          new ServletContextApplicationContextInitializer(servletContext));
    builder.contextClass(AnnotationConfigEmbeddedWebApplicationContext.class);
-    
+
     //调用configure方法，子类重写了这个方法，将SpringBoot的主程序类传入了进来
    builder = configure(builder);
-    
+
     //使用builder创建一个Spring应用
    SpringApplication application = builder.build();
    if (application.getSources().isEmpty() && AnnotationUtils
@@ -2927,7 +2927,7 @@ public ConfigurableApplicationContext run(String... args) {
       analyzers = new FailureAnalyzers(context);
       prepareContext(context, environment, listeners, applicationArguments,
             printedBanner);
-       
+
        //刷新IOC容器
       refreshContext(context);
       afterRefresh(context, applicationArguments);
@@ -3067,7 +3067,7 @@ https://hub.docker.com/
 [root@localhost ~]# docker pull tomcat
 3、根据镜像启动容器
 docker run --name mytomcat -d tomcat:latest
-4、docker ps  
+4、docker ps
 查看运行中的容器
 5、 停止运行中的容器
 docker stop  容器的id
@@ -3122,7 +3122,7 @@ c4f1ac60b3fc        tomcat              "catalina.sh run"        About an hour a
 
 //错误日志
 [root@localhost ~]# docker logs 42f09819908b
-error: database is uninitialized and password option is not specified 
+error: database is uninitialized and password option is not specified
   You need to specify one of MYSQL_ROOT_PASSWORD, MYSQL_ALLOW_EMPTY_PASSWORD and MYSQL_RANDOM_ROOT_PASSWORD；这个三个参数必须指定一个
 ```
 
@@ -3238,7 +3238,7 @@ static class Generic {
 ```properties
 schema-*.sql、data-*.sql
 默认规则：schema.sql，schema-all.sql；
-可以使用   
+可以使用
 	schema:
       - classpath:department.sql
       指定位置
@@ -3426,7 +3426,7 @@ public interface UserRepository extends JpaRepository<User,Integer> {
 3）、基本的配置JpaProperties
 
 ```yaml
-spring:  
+spring:
  jpa:
     hibernate:
 #     更新或者创建数据表结构
@@ -3493,7 +3493,7 @@ public ConfigurableApplicationContext run(String... args) {
    ConfigurableApplicationContext context = null;
    FailureAnalyzers analyzers = null;
    configureHeadlessProperty();
-    
+
    //获取SpringApplicationRunListeners；从类路径下META-INF/spring.factories
    SpringApplicationRunListeners listeners = getRunListeners(args);
     //回调所有的获取SpringApplicationRunListener.starting()方法
@@ -3506,12 +3506,12 @@ public ConfigurableApplicationContext run(String... args) {
       ConfigurableEnvironment environment = prepareEnvironment(listeners,
             applicationArguments);
        		//创建环境完成后回调SpringApplicationRunListener.environmentPrepared()；表示环境准备完成
-       
+
       Banner printedBanner = printBanner(environment);
-       
+
        //创建ApplicationContext；决定创建web的ioc还是普通的ioc
       context = createApplicationContext();
-       
+
       analyzers = new FailureAnalyzers(context);
        //准备上下文环境;将environment保存到ioc中；而且applyInitializers()；
        //applyInitializers()：回调之前保存的所有的ApplicationContextInitializer的initialize方法
@@ -3520,7 +3520,7 @@ public ConfigurableApplicationContext run(String... args) {
       prepareContext(context, environment, listeners, applicationArguments,
             printedBanner);
        //prepareContext运行完成以后回调所有的SpringApplicationRunListener的contextLoaded（）；
-       
+
        //s刷新容器；ioc容器初始化（如果是web应用还会创建嵌入式的Tomcat）；Spring注解版
        //扫描，创建，加载所有组件的地方；（配置类，组件，自动配置）
       refreshContext(context);
