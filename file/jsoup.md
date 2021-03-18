@@ -1,12 +1,12 @@
 gradle
 
-``` 
+```
 compile 'org.jsoup:jsoup:1.12.1'
 ```
 
 maven
 
-``` 
+```
 <!-- https://mvnrepository.com/artifact/org.jsoup/jsoup -->
 <dependency>
     <groupId>org.jsoup</groupId>
@@ -19,7 +19,7 @@ maven
 使用Jsoup發送http request post(json)
 
 ```java
- 
+
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String CONTENT_TYPE_VALUE = "application/json";
     private static final String CHARSET = "charset";
@@ -47,3 +47,16 @@ maven
     }
 ```
 
+# Jsoup body預設為1M，如body超過1M需使用 進行設定
+
+
+```java
+        Response execute = Jsoup.connect(url)
+                .headers(map)
+                .maxBodySize(1024 * 1024 * 20)//20M，0為無限制
+                .method(Method.POST)
+                .requestBody(param)
+                .ignoreHttpErrors(true)
+                .ignoreContentType(true)
+                .execute();
+```
