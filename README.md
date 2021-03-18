@@ -1,25 +1,11 @@
 # frankStudy
 ### 1.JAVA
 
-[APP](file/app.md )
-
-[APP 推播](file/appNotification.md )
-
-[java](file/java.md )
-
-[Jackson](file/jackson.md )
-
-[憑證匯入](file/crt.md )
-
-[URL百分比編碼](file/urlEncoder.md )
-
-[spring](file/spring.md )
-
-[springBoot](file/springBoot.md )
-
-[異常排除](file/javaException.md )
-
-[java指令](file/javaCmd.md)
+|        |  |  |  |
+| ---------- | --- |--- |--- |
+|[java](file/java.md )|[java指令](file/javaCmd.md)| [spring](file/spring.md ) |  [springBoot](file/springBoot.md ) |
+| [Jackson](file/jackson.md ) |  [憑證匯入](file/crt.md ) |[APP](file/app.md )| [APP 推播](file/appNotification.md )|
+|[URL百分比編碼](file/urlEncoder.md )|[異常排除](file/javaException.md )|||
 
 ## 2.前端
 [HTTP](file/HTTP.md )
