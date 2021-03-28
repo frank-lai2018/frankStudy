@@ -55,5 +55,5 @@
 |        |  |  |  |
 | ---------- | --- |--- |--- |
 |[maven](file/maven.md )|[gradle](file/gradle.md )|[eclipse](file/eclipse.md )|[vsCode](file/VSCode.md )|
-|[gulp](file/gulp.md )|[apache](file/apache.md )|[nvm](file/nvm.md )||
+|[gulp](file/gulp.md )|[apache](file/apache.md )|[nvm](file/nvm.md )|[eclipse 插件安裝]](file/eclipsePlugins.md )|
 
