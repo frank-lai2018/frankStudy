@@ -4,7 +4,7 @@
 
 keytool -import -trustcacerts -keystore "**${JAVA_HOME}\jre\lib\security\cacerts**" -storepass **changeit** -alias "**取個別名**" -import -file "**要匯入的憑證**"
 
-P.S. 密碼預設為 changeit 
+P.S. 密碼預設為 changeit
 
 ### **win環境因多了JDK外的JRE，故這個外面的JRE也需要匯入**
 
@@ -33,3 +33,19 @@ keytool -import -trustcacerts -keystore /opt/jdk1.8.0_221/jre/lib/security/cacer
 ![014](images/pic014.png)
 
 ![015](images/pic015.png)
+
+# 增加LOG(resquest and response log)
+```xml
+	<jaxrs:server id="thirdPartyWebServices" address="/">
+		<jaxrs:providers>
+			<ref bean="jacksonJsonProvider" />
+		</jaxrs:providers>
+		<jaxrs:serviceBeans>
+			<ref bean="proxyAccessXXXService" />
+            <!-- <ref bean="proxyEmployeeService" />-->
+		</jaxrs:serviceBeans>
+		<jaxrs:features>
+			<bean class="org.apache.cxf.feature.LoggingFeature"></bean>
+		</jaxrs:features>
+	</jaxrs:server>
+```
