@@ -36,4 +36,4 @@
 
 # 生成模式(Creational Patterns)
 
-[單利模式(Singleton)](file/designPattern/Singleton.md )
+[單利模式(Singleton)](designPattern/Singleton.md )
