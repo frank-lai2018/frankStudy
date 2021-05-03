@@ -16,3 +16,9 @@ find .|xargs grep -ri "app_notification_rec_log" -l
 find . -name "*.java" |xargs grep -ri "APP_NOTIFICATION_REC_LOG" -l
 
 ```
+
+3.dos2unix 多個檔案轉換
+
+```
+find . -name "*.sh" | xargs dos2unix
+```
