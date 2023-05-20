@@ -1,0 +1,2 @@
+1.DAO層 JAP jdbc template OR 框架
+2.spring security
