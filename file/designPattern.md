@@ -323,3 +323,7 @@ public  class  Agent {
 [策略模式 (Strategy Pattern)](designPattern/strategy.md )
 
 [命令模式 (Command Pattern)](designPattern/command.md )
+
+[責任鏈模式 (Chain of Responsibility Pattern)](designPattern/chainOfResponsibility.md )
+
+[觀察者模式 (Observer Pattern)](designPattern/observer.md )
