@@ -44,7 +44,7 @@ public  interface  Strategy {
 public  class  StrategyA  implements  Strategy {
 ​
     public  void  show () {
-        System . out . println ( "買一送一" );
+        System.out.println ( "買一送一" );
     }
 }
 ​
@@ -52,7 +52,7 @@ public  class  StrategyA  implements  Strategy {
 public  class  StrategyB  implements  Strategy {
 ​
     public  void  show () {
-        System . out . println ( "滿200元減50元" );
+        System.out.println ( "滿200元減50元" );
     }
 }
 ​
@@ -60,7 +60,7 @@ public  class  StrategyB  implements  Strategy {
 public  class  StrategyC  implements  Strategy {
 ​
     public  void  show () {
-        System . out . println ( "滿1000元加一元換購任意200元以下商品" );
+        System.out.println ( "滿1000元加一元換購任意200元以下商品" );
     }
 }
 ```
@@ -72,12 +72,12 @@ public  class  SalesMan {
     private  Strategy  strategy ;                 
                                                
     public  SalesMan ( Strategy  strategy ) {       
-        this . strategy  =  strategy ;              
+        this.strategy  =  strategy ;              
     }                                          
                                                
     //向客戶展示促銷活動                                
     public  void  salesManShow (){                
-        strategy . show ();                       
+        strategy.show ();                       
     }                                          
 }         
 ```
@@ -118,10 +118,10 @@ public  class  Arrays {
         if ( c  ==  null ) {
             sort ( a );
         } else {
-            if ( LegacyMergeSort . userRequested )
+            if ( LegacyMergeSort.userRequested )
                 legacyMergeSort ( a , c );
             else
-                TimSort . sort ( a , 0 , a . length , c , null , 0 , 0 );
+                TimSort.sort ( a , 0 , a.length , c , null , 0 , 0 );
         }
     }
 }
@@ -135,12 +135,12 @@ public  class  demo {
 ​
         Integer [] data  = { 12 , 2 , 3 , 2 , 4 , 5 , 1 };
         // 實現降序排序
-        Arrays . sort ( data , new  Comparator < Integer > () {
+        Arrays.sort ( data , new  Comparator < Integer > () {
             public  int  compare ( Integer  o1 , Integer  o2 ) {
                 return  o2  -  o1 ;
             }
         });
-        System . out . println ( Arrays . toString ( data )); //[12, 5, 4, 3, 2, 2, 1]
+        System.out.println ( Arrays.toString ( data )); //[12, 5, 4, 3, 2, 2, 1]
     }
 }
 ```
@@ -151,7 +151,7 @@ public  class  demo {
 class  TimSort < T > {
     static  < T >  void  sort ( T [] a , int  lo , int  hi , Comparator <?  super  T >  c ,
                          T [] work , int  workBase , int  workLen ) {
-        assert  c  !=  null  &&  a  !=  null  &&  lo  >=  0  &&  lo  <=  hi  &&  hi  <=  a . length ;
+        assert  c  !=  null  &&  a  !=  null  &&  lo  >=  0  &&  lo  <=  hi  &&  hi  <=  a.length ;
 ​
         int  nRemaining   =  hi  -  lo ;
         if ( nRemaining  <  2 )
@@ -173,12 +173,12 @@ class  TimSort < T > {
             return  1 ;
 ​
         // Find end of run, and reverse range if descending
-        if ( c . compare ( a [ runHi ++ ], a [ lo ]) <  0 ) { // Descending
-            while ( runHi  <  hi  &&  c . compare ( a [ runHi ], a [ runHi  -  1 ]) <  0 )
+        if ( c.compare ( a [ runHi ++ ], a [ lo ]) <  0 ) { // Descending
+            while ( runHi  <  hi  &&  c.compare ( a [ runHi ], a [ runHi  -  1 ]) <  0 )
                 runHi ++ ;
             reverseRange ( a , lo , runHi );
         } else {                               // Ascending
-            while ( runHi  <  hi  &&  c . compare ( a [ runHi ], a [ runHi  -  1 ]) >=  0 )
+            while ( runHi  <  hi  &&  c.compare ( a [ runHi ], a [ runHi  -  1 ]) >=  0 )
                 runHi ++ ;
         }
 ​

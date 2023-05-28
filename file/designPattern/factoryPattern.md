@@ -38,9 +38,9 @@ public  class  SimpleCoffeeFactory {
 ​
     public  Coffee  createCoffee ( String  type ) {
         Coffee  coffee  =  null ;
-        if ( "americano" . equals ( type )) {
+        if ( "americano".equals ( type )) {
             coffee  =  new  AmericanoCoffee ();
-        } else  if ( "latte" . equals ( type )) {
+        } else  if ( "latte".equals ( type )) {
             coffee  =  new  LatteCoffee ();
         }
         return  coffee ;
@@ -64,9 +64,9 @@ public  class  SimpleCoffeeFactory {
 ​
     public  static  Coffee  createCoffee ( String  type ) {
         Coffee  coffee  =  null ;
-        if ( "americano" . equals ( type )) {
+        if ( "americano".equals ( type )) {
             coffee  =  new  AmericanoCoffee ();
-        } else  if ( "latte" . equals ( type )) {
+        } else  if ( "latte".equals ( type )) {
             coffee  =  new  LatteCoffee ();
         }
         return  coffe ;
@@ -141,13 +141,13 @@ public  class  CoffeeStore {
     private  CoffeeFactory  factory ;
 ​
     public  CoffeeStore ( CoffeeFactory  factory ) {
-        this . factory  =  factory ;
+        this.factory  =  factory ;
     }
 ​
     public  Coffee  orderCoffee ( String  type ) {
-        Coffee  coffee  =  factory . createCoffee ();
-        coffee . addMilk ();
-        coffee . addsugar ();
+        Coffee  coffee  =  factory.createCoffee ();
+        coffee.addMilk ();
+        coffee.addsugar ();
         return  coffee ;
     }
 }
@@ -280,27 +280,27 @@ public  class  CoffeeFactory {
 ​
     static {
         Properties  p  =  new  Properties ();
-        InputStream  is  =  CoffeeFactory . class . getClassLoader (). getResourceAsStream ( "bean.properties" );
+        InputStream  is  =  CoffeeFactory.class.getClassLoader (). getResourceAsStream ( "bean.properties" );
         try {
-            p . load ( is );
+            p.load ( is );
             //遍歷Properties集合對象
-            Set < Object >  keys  =  p . keySet ();
+            Set < Object >  keys  =  p.keySet ();
             for ( Object  key : keys ) {
                 //根據鍵獲取值（全類名）
-                String  className  =  p . getProperty (( String ) key );
+                String  className  =  p.getProperty (( String ) key );
                 //獲取字節碼對象
-                Class  clazz  =  Class . forName ( className );
-                Coffee  obj  = ( Coffee ) clazz . newInstance ();
-                map . put (( String ) key , obj );
+                Class  clazz  =  Class.forName ( className );
+                Coffee  obj  = ( Coffee ) clazz.newInstance ();
+                map.put (( String ) key , obj );
             }
         } catch ( Exception  e ) {
-            e . printStackTrace ();
+            e.printStackTrace ();
         }
     }
 ​
     public  static  Coffee  createCoffee ( String  name ) {
 ​
-        return  map . get ( name );
+        return  map.get ( name );
     }
 }
 ```
@@ -314,16 +314,16 @@ public  class  CoffeeFactory {
 public  class  Demo {
     public  static  void  main ( String [] args ) {
         List < String >  list  =  new  ArrayList <> ();
-        list . add ( "令狐衝" );
-        list . add ( "風清揚" );
-        list . add ( "任我行" );
+        list.add ( "令狐衝" );
+        list.add ( "風清揚" );
+        list.add ( "任我行" );
 ​
         //獲取迭代器對象
-        Iterator < String >  it  =  list . iterator ();
+        Iterator < String >  it  =  list.iterator ();
         //使用迭代器遍歷
-        while ( it . hasNext ()) {
-            String  ele  =  it . next ();
-            System . out . println ( ele );
+        while ( it.hasNext ()) {
+            String  ele  =  it.next ();
+            System.out.println ( ele );
         }
     }
 }

@@ -31,16 +31,16 @@ public  class  Lift  implements  ILift {
 ​
     @Override
     public  void  setState ( int  state ) {
-        this . state  =  state ;
+        this.state  =  state ;
     }
 ​
     //執行關門動作
     @Override
     public  void  close () {
-        switch ( this . state ) {
+        switch ( this.state ) {
             case  OPENING_STATE :
-                System . out . println ( "電梯關門了。。。" ); //只有開門狀態可以關閉電梯門，可以對應電梯狀態表來看
-                this . setState ( CLOSING_STATE ); //關門之後電梯就是關閉狀態了
+                System.out.println ( "電梯關門了。。。" ); //只有開門狀態可以關閉電梯門，可以對應電梯狀態表來看
+                this.setState ( CLOSING_STATE ); //關門之後電梯就是關閉狀態了
                 break ;
             case  CLOSING_STATE :
                 //do nothing //已經是關門狀態，不能關門
@@ -57,20 +57,20 @@ public  class  Lift  implements  ILift {
     //執行開門動作
     @Override
     public  void  open () {
-        switch ( this . state ) {
+        switch ( this.state ) {
             case  OPENING_STATE : //門已經開了，不能再開門了
                 //do nothing
                 break ;
             case  CLOSING_STATE : //關門狀態，門打開:
-                System . out . println ( "電梯門打開了。。。" );
-                this . setState ( OPENING_STATE );
+                System.out.println ( "電梯門打開了。。。" );
+                this.setState ( OPENING_STATE );
                 break ;
             case  RUNNING_STATE :
                 //do nothing 運行時電梯不能開門
                 break ;
             case  STOPPING_STATE :
-                System . out . println ( "電梯門開了。。。" ); //電梯停了，可以開門了
-                this . setState ( OPENING_STATE );
+                System.out.println ( "電梯門開了。。。" ); //電梯停了，可以開門了
+                this.setState ( OPENING_STATE );
                 break ;
         }
     }
@@ -78,20 +78,20 @@ public  class  Lift  implements  ILift {
     //執行運行動作
     @Override
     public  void  run () {
-        switch ( this . state ) {
+        switch ( this.state ) {
             case  OPENING_STATE : //電梯不能開著門就走
                 //do nothing
                 break ;
             case  CLOSING_STATE : //門關了，可以運行了
-                System . out . println ( "電梯開始運行了。。。" );
-                this . setState ( RUNNING_STATE ); //現在是運行狀態
+                System.out.println ( "電梯開始運行了。。。" );
+                this.setState ( RUNNING_STATE ); //現在是運行狀態
                 break ;
             case  RUNNING_STATE :
                 //do nothing 已經是運行狀態了
                 break ;
             case  STOPPING_STATE :
-                System . out . println ( "電梯開始運行了。。。" );
-                this . setState ( RUNNING_STATE );
+                System.out.println ( "電梯開始運行了。。。" );
+                this.setState ( RUNNING_STATE );
                 break ;
         }
     }
@@ -99,17 +99,17 @@ public  class  Lift  implements  ILift {
     //執行停止動作
     @Override
     public  void  stop () {
-        switch ( this . state ) {
+        switch ( this.state ) {
             case  OPENING_STATE : //開門的電梯已經是是停止的了(正常情況下)
                 //do nothing
                 break ;
             case  CLOSING_STATE : //關門時才可以停止
-                System . out . println ( "電梯停止了。。。" );
-                this . setState ( STOPPING_STATE );
+                System.out.println ( "電梯停止了。。。" );
+                this.setState ( STOPPING_STATE );
                 break ;
             case  RUNNING_STATE : //運行時當然可以停止了
-                System . out . println ( "電梯停止了。。。" );
-                this . setState ( STOPPING_STATE );
+                System.out.println ( "電梯停止了。。。" );
+                this.setState ( STOPPING_STATE );
                 break ;
             case  STOPPING_STATE :
                 //do nothing
@@ -121,11 +121,11 @@ public  class  Lift  implements  ILift {
 public  class  Client {
     public  static  void  main ( String [] args ) {
         Lift  lift  =  new  Lift ();
-        lift . setState ( ILift . STOPPING_STATE ); //電梯是停止的
-        lift . open (); //開門
-        lift . close (); //關門
-        lift . run (); //運行
-        lift . stop (); //停止
+        lift.setState ( ILift.STOPPING_STATE ); //電梯是停止的
+        lift.open (); //開門
+        lift.close (); //關門
+        lift.run (); //運行
+        lift.stop (); //停止
     }
 }
 ```
@@ -162,7 +162,7 @@ public  abstract  class  LiftState {
     protected  Context  context ;
 ​
     public  void  setContext ( Context  context ) {
-        this . context  =  context ;
+        this.context  =  context ;
     }
 ​
     //電梯開門動作
@@ -184,15 +184,15 @@ public  class  OpenningState  extends  LiftState {
     //開啟當然可以關閉了，我就想測試一下電梯門開關功能
     @Override
     public  void  open () {
-        System . out . println ( "電梯門開啟..." );
+        System.out.println ( "電梯門開啟..." );
     }
 ​
     @Override
     public  void  close () {
         //狀態修改
-        super . context . setLiftState ( Context . closeingState );
+        super.context.setLiftState ( Context.closeingState );
         //動作委託為CloseState來執行，也就是委託給了ClosingState子類執行這個動作
-        super . context . getLiftState (). close ();
+        super.context.getLiftState (). close ();
     }
 ​
     //電梯門不能開著就跑，這裡什麼也不做
@@ -226,14 +226,14 @@ public  class  RunningState  extends  LiftState {
     //這是在運行狀態下要實現的方法
     @Override
     public  void  run () {
-        System . out . println ( "電梯正在運行..." );
+        System.out.println ( "電梯正在運行..." );
     }
 ​
     //這個事絕對是合理的，光運行不停止還有誰敢做這個電梯？！估計只有上帝了
     @Override
     public  void  stop () {
-        super . context . setLiftState ( Context . stoppingState );
-        super . context . stop ();
+        super.context.setLiftState ( Context.stoppingState );
+        super.context.stop ();
     }
 }
 ​
@@ -244,32 +244,32 @@ public  class  StoppingState  extends  LiftState {
     @Override
     public  void  open () {
         //狀態修改
-        super . context . setLiftState ( Context . openningState );
+        super.context.setLiftState ( Context.openningState );
         //動作委託為CloseState來執行，也就是委託給了ClosingState子類執行這個動作
-        super . context . getLiftState (). open ();
+        super.context.getLiftState (). open ();
     }
 ​
     @Override
     public  void  close () { //雖然可以關門，但這個動作不歸我執行
         //狀態修改
-        super . context . setLiftState ( Context . closeingState );
+        super.context.setLiftState ( Context.closeingState );
         //動作委託為CloseState來執行，也就是委託給了ClosingState子類執行這個動作
-        super . context . getLiftState (). close ();
+        super.context.getLiftState (). close ();
     }
 ​
     //停止狀態再跑起來，正常的很
     @Override
     public  void  run () {
         //狀態修改
-        super . context . setLiftState ( Context . runningState );
+        super.context.setLiftState ( Context.runningState );
         //動作委託為CloseState來執行，也就是委託給了ClosingState子類執行這個動作
-        super . context . getLiftState (). run ();
+        super.context.getLiftState (). run ();
     }
 ​
     //停止狀態是怎麼發生的呢？當然是停止方法執行了
     @Override
     public  void  stop () {
-        System . out . println ( "電梯停止了..." );
+        System.out.println ( "電梯停止了..." );
     }
 }
 ​
@@ -279,29 +279,29 @@ public  class  ClosingState  extends  LiftState {
     @Override
     //電梯門關閉，這是關閉狀態要實現的動作
     public  void  close () {
-        System . out . println ( "電梯門關閉..." );
+        System.out.println ( "電梯門關閉..." );
     }
 ​
     //電梯門關了再打開，逗你玩呢，那這個允許呀
     @Override
     public  void  open () {
-        super . context . setLiftState ( Context . openningState );
-        super . context . open ();
+        super.context.setLiftState ( Context.openningState );
+        super.context.open ();
     }
 ​
 ​
     //電梯門關了就跑，這是再正常不過了
     @Override
     public  void  run () {
-        super . context . setLiftState ( Context . runningState );
-        super . context . run ();
+        super.context.setLiftState ( Context.runningState );
+        super.context.run ();
     }
 ​
     //電梯門關著，我就不按樓層
     @Override
     public  void  stop () {
-        super . context . setLiftState ( Context . stoppingState );
-        super . context . stop ();
+        super.context.setLiftState ( Context.stoppingState );
+        super.context.stop ();
     }
 }
 ​
@@ -318,30 +318,30 @@ public  class  Context {
     private  LiftState  liftState ;
 ​
     public  LiftState  getLiftState () {
-        return  this . liftState ;
+        return  this.liftState ;
     }
 ​
     public  void  setLiftState ( LiftState  liftState ) {
         //當前環境改變
-        this . liftState  =  liftState ;
+        this.liftState  =  liftState ;
         //把當前的環境通知到各個實現類中
-        this . liftState . setContext ( this );
+        this.liftState.setContext ( this );
     }
 ​
     public  void  open () {
-        this . liftState . open ();
+        this.liftState.open ();
     }
 ​
     public  void  close () {
-        this . liftState . close ();
+        this.liftState.close ();
     }
 ​
     public  void  run () {
-        this . liftState . run ();
+        this.liftState.run ();
     }
 ​
     public  void  stop () {
-        this . liftState . stop ();
+        this.liftState.stop ();
     }
 }
 ​
@@ -349,12 +349,12 @@ public  class  Context {
 public  class  Client {
     public  static  void  main ( String [] args ) {
         Context  context  =  new  Context ();
-        context . setLiftState ( new  ClosingState ());
+        context.setLiftState ( new  ClosingState ());
 ​
-        context . open ();
-        context . close ();
-        context . run ();
-        context . stop ();
+        context.open ();
+        context.close ();
+        context.run ();
+        context.stop ();
     }
 }
 ```

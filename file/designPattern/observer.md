@@ -38,11 +38,11 @@ public  class  WeixinUser  implements  Observer {
     private  String  name ;
 ​
     public  WeixinUser ( String  name ) {
-        this . name  =  name ;
+        this.name  =  name ;
     }
     @Override
     public  void  update ( String  message ) {
-        System . out . println ( name  +  "-"  +  message );
+        System.out.println ( name  +  "-"  +  message );
     }
 }
 ```
@@ -72,18 +72,18 @@ public  class  SubscriptionSubject  implements  Subject {
 ​
     @Override
     public  void  attach ( Observer  observer ) {
-        weixinUserlist . add ( observer );
+        weixinUserlist.add ( observer );
     }
 ​
     @Override
     public  void  detach ( Observer  observer ) {
-        weixinUserlist . remove ( observer );
+        weixinUserlist.remove ( observer );
     }
 ​
     @Override
     public  void  notify ( String  message ) {
         for ( Observer  observer : weixinUserlist ) {
-            observer . update ( message );
+            observer.update ( message );
         }
     }
 }
@@ -100,11 +100,11 @@ public  class  Client {
         WeixinUser  user2 = new  WeixinUser ( "豬悟能" );
         WeixinUser  user3 = new  WeixinUser ( "沙悟淨" );
         //訂閱公眾號
-        mSubscriptionSubject . attach ( user1 );
-        mSubscriptionSubject . attach ( user2 );
-        mSubscriptionSubject . attach ( user3 );
+        mSubscriptionSubject.attach ( user1 );
+        mSubscriptionSubject.attach ( user2 );
+        mSubscriptionSubject.attach ( user3 );
         //公眾號更新發出消息給訂閱的微信用戶
-        mSubscriptionSubject . notify ( "傳智黑馬的專欄更新了" );
+        mSubscriptionSubject.notify ( "傳智黑馬的專欄更新了" );
     }
 }
 ```
@@ -150,11 +150,11 @@ public  class  Thief  extends  Observable {
     private  String  name ;
 ​
     public  Thief ( String  name ) {
-        this . name  =  name ;
+        this.name  =  name ;
     }
     
     public  void  setName ( String  name ) {
-        this . name  =  name ;
+        this.name  =  name ;
     }
 ​
     public  String  getName () {
@@ -162,9 +162,9 @@ public  class  Thief  extends  Observable {
     }
 ​
     public  void  steal () {
-        System . out . println ( "小偷：我偷東西了，有沒有人來抓我！！！" );
-        super . setChanged (); //changed = true
-        super . notifyObservers ();
+        System.out.println ( "小偷：我偷東西了，有沒有人來抓我！！！" );
+        super.setChanged (); //changed = true
+        super.notifyObservers ();
     }
 }
 ​
@@ -179,10 +179,10 @@ public  class  Policemen  implements  Observer {
     private  String  name ;
 ​
     public  Policemen ( String  name ) {
-        this . name  =  name ;
+        this.name  =  name ;
     }
     public  void  setName ( String  name ) {
-        this . name  =  name ;
+        this.name  =  name ;
     }
 ​
     public  String  getName () {
@@ -191,7 +191,7 @@ public  class  Policemen  implements  Observer {
 ​
     @Override
     public  void  update ( Observable  o , Object  arg ) {
-        System . out . println ( "警察："  + (( Thief ) o ). getName () +  "，我已經盯你很久了，你可以保持沉默，但你所說的將成為呈堂證供！！！" );
+        System.out.println ( "警察："  + (( Thief ) o ). getName () +  "，我已經盯你很久了，你可以保持沉默，但你所說的將成為呈堂證供！！！" );
     }
 }
 ```
@@ -204,9 +204,9 @@ public  class  Client {
         //創建警察對象
         Policemen  p  =  new  Policemen ( "小李" );
         //讓警察盯著小偷
-        t . addObserver ( p );
+        t.addObserver ( p );
         //小偷偷東西
-        t . steal ();
+        t.steal ();
     }
 }
 ```

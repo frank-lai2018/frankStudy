@@ -327,3 +327,13 @@ public  class  Agent {
 [責任鏈模式 (Chain of Responsibility Pattern)](designPattern/chainOfResponsibility.md )
 
 [觀察者模式 (Observer Pattern)](designPattern/observer.md )
+
+[仲介者模式 (Mediator Pattern)](designPattern/mediator.md )
+
+[迭代器模式 (Iterator Pattern)](designPattern/iterator.md )
+
+[訪問者模式 (Visitor Pattern)](designPattern/visitor.md )
+
+[備忘錄模式 (Memoto Pattern)](designPattern/memoto.md )
+
+[解譯器模式 (Interpreter Pattern)](designPattern/interpreter.md )

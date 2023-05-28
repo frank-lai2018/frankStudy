@@ -40,24 +40,24 @@ public  abstract  class  AbstractClass {
     
     public  final  void  cookProcess () {
         //第一步：倒油
-        this . pourOil ();
+        this.pourOil ();
         //第二步：熱油
-        this . heatOil ();
+        this.heatOil ();
         //第三步：倒蔬菜
-        this . pourVegetable ();
+        this.pourVegetable ();
         //第四步：倒調味料
-        this . pourSauce ();
+        this.pourSauce ();
         //第五步：翻炒
-        this . fry ();
+        this.fry ();
     }
 ​
     public  void  pourOil () {
-        System . out . println ( "倒油" );
+        System.out.println ( "倒油" );
     }
 ​
     //第二步：熱油是一樣的，所以直接實現
     public  void  heatOil () {
-        System . out . println ( "熱油" );
+        System.out.println ( "熱油" );
     }
 ​
     //第三步：倒蔬菜是不一樣的（一個下包菜，一個是下菜心）
@@ -69,7 +69,7 @@ public  abstract  class  AbstractClass {
 ​
     //第五步：翻炒是一樣的，所以直接實現
     public  void  fry (){
-        System . out . println ( "炒啊炒啊炒到熟啊" );
+        System.out.println ( "炒啊炒啊炒到熟啊" );
     }
 }
 ​
@@ -77,24 +77,24 @@ public  class  ConcreteClass_BaoCai  extends  AbstractClass {
 ​
     @Override
     public  void  pourVegetable () {
-        System . out . println ( "下鍋的蔬菜是包菜" );
+        System.out.println ( "下鍋的蔬菜是包菜" );
     }
 ​
     @Override
     public  void  pourSauce () {
-        System . out . println ( "下鍋的醬料是辣椒" );
+        System.out.println ( "下鍋的醬料是辣椒" );
     }
 }
 ​
 public  class  ConcreteClass_CaiXin  extends  AbstractClass {
     @Override
     public  void  pourVegetable () {
-        System . out . println ( "下鍋的蔬菜是菜心" );
+        System.out.println ( "下鍋的蔬菜是菜心" );
     }
 ​
     @Override
     public  void  pourSauce () {
-        System . out . println ( "下鍋的醬料是蒜蓉" );
+        System.out.println ( "下鍋的醬料是蒜蓉" );
     }
 }
 ​
@@ -102,11 +102,11 @@ public  class  Client {
     public  static  void  main ( String [] args ) {
         //炒手撕包菜
         ConcreteClass_BaoCai  baoCai  =  new  ConcreteClass_BaoCai ();
-        baoCai . cookProcess ();
+        baoCai.cookProcess ();
 ​
         //炒蒜蓉菜心
         ConcreteClass_CaiXin  caiXin  =  new  ConcreteClass_CaiXin ();
-        caiXin . cookProcess ();
+        caiXin.cookProcess ();
     }
 }
 ```
@@ -143,13 +143,13 @@ public  abstract  class  InputStream  implements  Closeable {
     public  abstract  int  read () throws  IOException ;
 ​
     public  int  read ( byte  b []) throws  IOException {
-        return  read ( b , 0 , b . length );
+        return  read ( b , 0 , b.length );
     }
 ​
     public  int  read ( byte  b [], int  off , int  len ) throws  IOException {
         if ( b  ==  null ) {
             throw  new  NullPointerException ();
-        } else  if ( off  <  0  ||  len  <  0  ||  len  >  b . length  -  off ) {
+        } else  if ( off  <  0  ||  len  <  0  ||  len  >  b.length  -  off ) {
             throw  new  IndexOutOfBoundsException ();
         } else  if ( len  ==  0 ) {
             return  0 ;

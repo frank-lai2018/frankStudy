@@ -35,7 +35,7 @@ public  abstract  class  AbstractBox {
     public  abstract  String  getShape ();
 ​
     public  void  display ( String  color ) {
-        System . out . println ( "方塊形狀："  +  this . getShape () +  " 顏色："  +  color );
+        System.out.println ( "方塊形狀："  +  this.getShape () +  " 顏色："  +  color );
     }
 }
 ```
@@ -80,13 +80,13 @@ public  class  BoxFactory {
         AbstractBox  iBox  =  new  IBox ();
         AbstractBox  lBox  =  new  LBox ();
         AbstractBox  oBox  =  new  OBox ();
-        map . put ( "I" , iBox );
-        map . put ( "L" , lBox );
-        map . put ( "O" , oBox );
+        map.put ( "I" , iBox );
+        map.put ( "L" , lBox );
+        map.put ( "O" , oBox );
     }
 ​
     public  static  final  BoxFactory  getInstance () {
-        return  SingletonHolder . INSTANCE ;
+        return  SingletonHolder.INSTANCE ;
     }
 ​
     private  static  class  SingletonHolder {
@@ -94,7 +94,7 @@ public  class  BoxFactory {
     }
 ​
     public  AbstractBox  getBox ( String  key ) {
-        return  map . get ( key );
+        return  map.get ( key );
     }
 }
 ```
@@ -123,12 +123,12 @@ public  class  Demo {
         Integer  i1  =  127 ;
         Integer  i2  =  127 ;
 ​
-        System . out . println ( "i1和i2對像是否是同一個對象？"  + ( i1  ==  i2 ));
+        System.out.println ( "i1和i2對像是否是同一個對象？"  + ( i1  ==  i2 ));
 ​
         Integer  i3  =  128 ;
         Integer  i4  =  128 ;
 ​
-        System . out . println ( "i3和i4對像是否是同一個對象？"  + ( i3  ==  i4 ));
+        System.out.println ( "i3和i4對像是否是同一個對象？"  + ( i3  ==  i4 ));
     }
 }
 ```
@@ -141,12 +141,12 @@ public  class  Demo {
 
 public  class  Demo {
     public  static  void  main ( String [] args ) {
-        Integer  i1  =  Integer . valueOf (( int ) 127 );
-        Integer  i2  Integer . valueOf (( int ) 127 );
-        System . out . println (( String ) new  StringBuilder (). append (( String ) "i1\u548ci2\u5bf9\u8c61\u662f\u5426\u662f\u540c\u4e00\u4e2a\u5bf9\u8c61\uff1f" ). append (( boolean )( i1  ==  i2 )). toString ());
-        Integer  i3  =  Integer . valueOf (( int ) 128 );
-        Integer  i4  =  Integer . valueOf (( int ) 128 );
-        System . out . println (( String ) new  StringBuilder (). append (( String ) "i3\u548ci4\u5bf9\u8c61\u662f\u5426\u662f\u540c\u4e00\u4e2a\u5bf9\u8c61\uff1f" ). append (( boolean )( i3  ==  i4 )). toString ());
+        Integer  i1  =  Integer.valueOf (( int ) 127 );
+        Integer  i2  Integer.valueOf (( int ) 127 );
+        System.out.println (( String ) new  StringBuilder (). append (( String ) "i1\u548ci2\u5bf9\u8c61\u662f\u5426\u662f\u540c\u4e00\u4e2a\u5bf9\u8c61\uff1f" ). append (( boolean )( i1  ==  i2 )). toString ());
+        Integer  i3  =  Integer.valueOf (( int ) 128 );
+        Integer  i4  =  Integer.valueOf (( int ) 128 );
+        System.out.println (( String ) new  StringBuilder (). append (( String ) "i3\u548ci4\u5bf9\u8c61\u662f\u5426\u662f\u540c\u4e00\u4e2a\u5bf9\u8c61\uff1f" ). append (( boolean )( i3  ==  i4 )). toString ());
     }
 }
 ```
@@ -156,8 +156,8 @@ public  class  Demo {
 public  final  class  Integer  extends  Number  implements  Comparable < Integer > {
     
     public  static  Integer  valueOf ( int  i ) {
-        if ( i  >=  IntegerCache . low  &&  i  <=  IntegerCache . high )
-            return  IntegerCache . cache [ i  + ( - IntegerCache . low )];
+        if ( i  >=  IntegerCache.low  &&  i  <=  IntegerCache.high )
+            return  IntegerCache.cache [ i  + ( - IntegerCache.low )];
         return  new  Integer ( i );
     }
     
@@ -169,23 +169,23 @@ public  final  class  Integer  extends  Number  implements  Comparable < Integer
         static {
             int  h  =  127 ;
             String  integerCacheHighPropValue  =
-                sun . misc . VM . getSavedProperty ( "java.lang.Integer.IntegerCache.high" );
+                sun.misc.VM.getSavedProperty ( "java.lang.Integer.IntegerCache.high" );
             if ( integerCacheHighPropValue  !=  null ) {
                 try {
                     int  i  =  parseInt ( integerCacheHighPropValue );
-                    i  =  Math . max ( i , 127 );
+                    i  =  Math.max ( i , 127 );
                     // Maximum array size is Integer.MAX_VALUE
-                    h  =  Math . min ( i , Integer . MAX_VALUE  - ( - low ) - 1 );
+                    h  =  Math.min ( i , Integer.MAX_VALUE  - ( - low ) - 1 );
                 } catch ( NumberFormatException  nfe ) {
                 }
             }
             high  =  h ;
             cache  =  new  Integer [( high  -  low ) +  1 ];
             int  j  =  low ;
-            for ( int  k  =  0 ; k  <  cache . length ; k ++ )
+            for ( int  k  =  0 ; k  <  cache.length ; k ++ )
                 cache [ k ] =  new  Integer ( j ++ );
             // range [-128, 127] must be interned (JLS7 5.1.7)
-            assert  IntegerCache . high  >=  127 ;
+            assert  IntegerCache.high  >=  127 ;
         }
 ​
         private  IntegerCache () {}

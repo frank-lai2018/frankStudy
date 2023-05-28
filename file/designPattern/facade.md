@@ -31,33 +31,33 @@
 //燈類
 public  class  Light {
     public  void  on () {
-        System . out . println ( "打開了燈...." );
+        System.out.println ( "打開了燈...." );
     }
 ​
     public  void  off () {
-        System . out . println ( "關閉了燈...." );
+        System.out.println ( "關閉了燈...." );
     }
 }
 ​
 //電視類
 public  class  TV {
     public  void  on () {
-        System . out . println ( "打開了電視...." );
+        System.out.println ( "打開了電視...." );
     }
 ​
     public  void  off () {
-        System . out . println ( "關閉了電視...." );
+        System.out.println ( "關閉了電視...." );
     }
 }
 ​
 //控制類
 public  class  AirCondition {
     public  void  on () {
-        System . out . println ( "打開了空調...." );
+        System.out.println ( "打開了空調...." );
     }
 ​
     public  void  off () {
-        System . out . println ( "關閉了空調...." );
+        System.out.println ( "關閉了空調...." );
     }
 }
 ​
@@ -75,29 +75,29 @@ public  class  SmartAppliancesFacade {
     }
 ​
     public  void  say ( String  message ) {
-        if ( message . contains ( "打開" )) {
+        if ( message.contains ( "打開" )) {
             on ();
-        } else  if ( message . contains ( "關閉" )) {
+        } else  if ( message.contains ( "關閉" )) {
             off ();
         } else {
-            System . out . println ( "我還聽不懂你說的！！！" );
+            System.out.println ( "我還聽不懂你說的！！！" );
         }
     }
 ​
     //起床後一鍵開電器
     private  void  on () {
-        System . out . println ( "起床了" );
-        light . on ();
-        tv . on ();
-        airCondition . on ();
+        System.out.println ( "起床了" );
+        light.on ();
+        tv.on ();
+        airCondition.on ();
     }
 ​
     //睡覺一鍵關電器
     private  void  off () {
-        System . out . println ( "睡覺了" );
-        light . off ();
-        tv . off ();
-        airCondition . off ();
+        System.out.println ( "睡覺了" );
+        light.off ();
+        tv.off ();
+        airCondition.off ();
     }
 }
 ​
@@ -107,8 +107,8 @@ public  class  Client {
         //創建外觀對象
         SmartAppliancesFacade  facade  =  new  SmartAppliancesFacade ();
         //客戶端直接與外觀對象進行交互
-        facade . say ( "打開家電" );
-        facade . say ( "關閉家電" );
+        facade.say ( "打開家電" );
+        facade.say ( "關閉家電" );
     }
 }
 ```

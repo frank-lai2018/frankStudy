@@ -29,7 +29,7 @@ public  interface  SellTickets {
 public  class  TrainStation  implements  SellTickets {
 ​
     public  void  sell () {
-        System . out . println ( "火車站賣票" );
+        System.out.println ( "火車站賣票" );
     }
 }
 ​
@@ -39,8 +39,8 @@ public  class  ProxyPoint  implements  SellTickets {
     private  TrainStation  station  =  new  TrainStation ();
 ​
     public  void  sell () {
-        System . out . println ( "代理點收取一些服務費用" );
-        station . sell ();
+        System.out.println ( "代理點收取一些服務費用" );
+        station.sell ();
     }
 }
 ​
@@ -48,7 +48,7 @@ public  class  ProxyPoint  implements  SellTickets {
 public  class  Client {
     public  static  void  main ( String [] args ) {
         ProxyPoint  pp  =  new  ProxyPoint ();
-        pp . sell ();
+        pp.sell ();
     }
 }
 ```
@@ -68,7 +68,7 @@ public  interface  SellTickets {
 public  class  TrainStation  implements  SellTickets {
 ​
     public  void  sell () {
-        System . out . println ( "火車站賣票" );
+        System.out.println ( "火車站賣票" );
     }
 }
 ​
@@ -85,8 +85,8 @@ public  class  ProxyFactory {
                 Class<?>[] interfaces ： 真實對象所實現的接口，代理模式真實對象和代理對象實現相同的接口
                 InvocationHandler h ： 代理對象的調用處理程序
          */
-        SellTickets  sellTickets  = ( SellTickets ) Proxy . newProxyInstance ( station . getClass (). getClassLoader (),
-                station . getClass (). getInterfaces (),
+        SellTickets  sellTickets  = ( SellTickets ) Proxy.newProxyInstance ( station.getClass (). getClassLoader (),
+                station.getClass (). getInterfaces (),
                 new  InvocationHandler () {
                     /*
                         InvocationHandler中invoke方法參數說明：
@@ -96,9 +96,9 @@ public  class  ProxyFactory {
                      */
                     public  Object  invoke ( Object  proxy , Method  method , Object [] args ) throws  Throwable {
 ​
-                        System . out . println ( "代理點收取一些服務費用(JDK動態代理方式)" );
+                        System.out.println ( "代理點收取一些服務費用(JDK動態代理方式)" );
                         //執行真實對象
-                        Object  result  =  method . invoke ( station , args );
+                        Object  result  =  method.invoke ( station , args );
                         return  result ;
                     }
                 });
@@ -112,8 +112,8 @@ public  class  Client {
         //獲取代理對象
         ProxyFactory  factory  =  new  ProxyFactory ();
         
-        SellTickets  proxyObject  =  factory . getProxyObject ();
-        proxyObject . sell ();
+        SellTickets  proxyObject  =  factory.getProxyObject ();
+        proxyObject.sell ();
     }
 }
 ```
@@ -125,13 +125,13 @@ public  class  Client {
   - ProxyFactory不是代理模式中所說的代理類，而代理類是程序在運行過程中動態的在內存中生成的類。通過阿里巴巴開源的Java 診斷工具（Arthas【阿爾薩斯】）查看代理類的結構：
 
 ```java
-package  com . sun . proxy ;
+package  com.sun.proxy ;
 ​
-import  com . itheima . proxy . dynamic . jdk . SellTickets ;
-import  java . lang . reflect . InvocationHandler ;
-import  java . lang . reflect . Method ;
-import  java . lang . reflect . Proxy ;
-import  java . lang . reflect . UndeclaredThrowableException ;
+import  com.itheima.proxy.dynamic.jdk.SellTickets ;
+import  java.lang.reflect.InvocationHandler ;
+import  java.lang.reflect.Method ;
+import  java.lang.reflect.Proxy ;
+import  java.lang.reflect.UndeclaredThrowableException ;
 ​
 public  final  class  $Proxy0  extends  Proxy  implements  SellTickets {
     private  static  Method  m1 ;
@@ -145,23 +145,23 @@ public  final  class  $Proxy0  extends  Proxy  implements  SellTickets {
 ​
     static {
         try {
-            m1  =  Class . forName ( "java.lang.Object" ). getMethod ( "equals" , Class . forName ( "java.lang.Object" ));
-            m2  =  Class . forName ( "java.lang.Object" ). getMethod ( "toString" , new  Class [ 0 ]);
-            m3  =  Class . forName ( "com.itheima.proxy.dynamic.jdk.SellTickets" ). getMethod ( "sell" , new  Class [ 0 ]);
-            m0  =  Class . forName ( "java.lang.Object" ). getMethod ( "hashCode" , new  Class [ 0 ]);
+            m1  =  Class.forName ( "java.lang.Object" ). getMethod ( "equals" , Class.forName ( "java.lang.Object" ));
+            m2  =  Class.forName ( "java.lang.Object" ). getMethod ( "toString" , new  Class [ 0 ]);
+            m3  =  Class.forName ( "com.itheima.proxy.dynamic.jdk.SellTickets" ). getMethod ( "sell" , new  Class [ 0 ]);
+            m0  =  Class.forName ( "java.lang.Object" ). getMethod ( "hashCode" , new  Class [ 0 ]);
             return ;
         }
         catch ( NoSuchMethodException  noSuchMethodException ) {
-            throw  new  NoSuchMethodError ( noSuchMethodException . getMessage ());
+            throw  new  NoSuchMethodError ( noSuchMethodException.getMessage ());
         }
         catch ( ClassNotFoundException  classNotFoundException ) {
-            throw  new  NoClassDefFoundError ( classNotFoundException . getMessage ());
+            throw  new  NoClassDefFoundError ( classNotFoundException.getMessage ());
         }
     }
 ​
     public  final  boolean  equals ( Object  object ) {
         try {
-            return ( Boolean ) this . h . invoke ( this , m1 , new  Object []{ object });
+            return ( Boolean ) this.h.invoke ( this , m1 , new  Object []{ object });
         }
         catch ( Error  |  RuntimeException  throwable ) {
             throw  throwable ;
@@ -173,7 +173,7 @@ public  final  class  $Proxy0  extends  Proxy  implements  SellTickets {
 ​
     public  final  String  toString () {
         try {
-            return ( String ) this . h . invoke ( this , m2 , null );
+            return ( String ) this.h.invoke ( this , m2 , null );
         }
         catch ( Error  |  RuntimeException  throwable ) {
             throw  throwable ;
@@ -185,7 +185,7 @@ public  final  class  $Proxy0  extends  Proxy  implements  SellTickets {
 ​
     public  final  int  hashCode () {
         try {
-            return ( Integer ) this . h . invoke ( this , m0 , null );
+            return ( Integer ) this.h.invoke ( this , m0 , null );
         }
         catch ( Error  |  RuntimeException  throwable ) {
             throw  throwable ;
@@ -197,7 +197,7 @@ public  final  class  $Proxy0  extends  Proxy  implements  SellTickets {
 ​
     public  final  void  sell () {
         try {
-            this . h . invoke ( this , m3 , null );
+            this.h.invoke ( this , m3 , null );
             return ;
         }
         catch ( Error  |  RuntimeException  throwable ) {
@@ -229,20 +229,20 @@ public  final  class  $Proxy0  extends  Proxy  implements  SellTickets {
     }
 ​
     static {
-        m3  =  Class . forName ( "com.itheima.proxy.dynamic.jdk.SellTickets" ). getMethod ( "sell" , new  Class [ 0 ]);
+        m3  =  Class.forName ( "com.itheima.proxy.dynamic.jdk.SellTickets" ). getMethod ( "sell" , new  Class [ 0 ]);
     }
 ​
     public  final  void  sell () {
-        this . h . invoke ( this , m3 , null );
+        this.h.invoke ( this , m3 , null );
     }
 }
 ​
 //Java提供的動態代理相關類
-public  class  Proxy  implements  java . io . Serializable {
+public  class  Proxy  implements  java.io.Serializable {
     protected  InvocationHandler  h ;
      
     protected  Proxy ( InvocationHandler  h ) {
-        this . h  =  h ;
+        this.h  =  h ;
     }
 }
 ​
@@ -252,14 +252,14 @@ public  class  ProxyFactory {
     private  TrainStation  station  =  new  TrainStation ();
 ​
     public  SellTickets  getProxyObject () {
-        SellTickets  sellTickets  = ( SellTickets ) Proxy . newProxyInstance ( station . getClass (). getClassLoader (),
-                station . getClass (). getInterfaces (),
+        SellTickets  sellTickets  = ( SellTickets ) Proxy.newProxyInstance ( station.getClass (). getClassLoader (),
+                station.getClass (). getInterfaces (),
                 new  InvocationHandler () {
                     
                     public  Object  invoke ( Object  proxy , Method  method , Object [] args ) throws  Throwable {
 ​
-                        System . out . println ( "代理點收取一些服務費用(JDK動態代理方式)" );
-                        Object  result  =  method . invoke ( station , args );
+                        System.out.println ( "代理點收取一些服務費用(JDK動態代理方式)" );
+                        Object  result  =  method.invoke ( station , args );
                         return  result ;
                     }
                 });
@@ -273,8 +273,8 @@ public  class  Client {
     public  static  void  main ( String [] args ) {
         //獲取代理對象
         ProxyFactory  factory  =  new  ProxyFactory ();
-        SellTickets  proxyObject  =  factory . getProxyObject ();
-        proxyObject . sell ();
+        SellTickets  proxyObject  =  factory.getProxyObject ();
+        proxyObject.sell ();
     }
 }
 ```
@@ -311,7 +311,7 @@ public  class  Client {
 public  class  TrainStation {
 ​
     public  void  sell () {
-        System . out . println ( "火車站賣票" );
+        System.out.println ( "火車站賣票" );
     }
 }
 ​
@@ -324,11 +324,11 @@ public  class  ProxyFactory  implements  MethodInterceptor {
         //創建Enhancer對象，類似於JDK動態代理的Proxy類，下一步就是設置幾個參數
         Enhancer  enhancer  = new  Enhancer ();
         //設置父類的字節碼對象
-        enhancer . setSuperclass ( target . getClass ());
+        enhancer.setSuperclass ( target.getClass ());
         //設置回調函數
-        enhancer . setCallback ( this );
+        enhancer.setCallback ( this );
         //創建代理對象
-        TrainStation  obj  = ( TrainStation ) enhancer . create ();
+        TrainStation  obj  = ( TrainStation ) enhancer.create ();
         return  obj ;
     }
 ​
@@ -340,8 +340,8 @@ public  class  ProxyFactory  implements  MethodInterceptor {
             methodProxy ：代理對像中的方法的method實例
      */
     public  TrainStation  intercept ( Object  o , Method  method , Object [] args , MethodProxy  methodProxy ) throws  Throwable {
-        System . out . println ( "代理點收取一些服務費用(CGLIB動態代理方式)" );
-        TrainStation  result  = ( TrainStation ) methodProxy . invokeSuper ( o , args );
+        System.out.println ( "代理點收取一些服務費用(CGLIB動態代理方式)" );
+        TrainStation  result  = ( TrainStation ) methodProxy.invokeSuper ( o , args );
         return  result ;
     }
 }
@@ -352,9 +352,9 @@ public  class  Client {
         //創建代理工廠對象
         ProxyFactory  factory  =  new  ProxyFactory ();
         //獲取代理對象
-        TrainStation  proxyObject  =  factory . getProxyObject ();
+        TrainStation  proxyObject  =  factory.getProxyObject ();
 ​
-        proxyObject . sell ();
+        proxyObject.sell ();
     }
 }
 ```

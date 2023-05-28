@@ -30,13 +30,13 @@ Realizetype（具體的原型類）：
 public  class  Realizetype  implements  Cloneable {
 ​
     public  Realizetype () {
-        System . out . println ( "具體的原型對象創建完成！" );
+        System.out.println ( "具體的原型對象創建完成！" );
     }
 ​
     @Override
     protected  Realizetype  clone () throws  CloneNotSupportedException {
-        System . out . println ( "具體原型複製成功！" );
-        return ( Realizetype ) super . clone ();
+        System.out.println ( "具體原型複製成功！" );
+        return ( Realizetype ) super.clone ();
     }
 }
 ```
@@ -47,9 +47,9 @@ PrototypeTest（測試訪問類）：
 public  class  PrototypeTest {
     public  static  void  main ( String [] args ) throws  CloneNotSupportedException {
         Realizetype  r1  =  new  Realizetype ();
-        Realizetype  r2  =  r1 . clone ();
+        Realizetype  r2  =  r1.clone ();
 ​
-        System . out . println ( "對象r1和r2是同一個對象？"  + ( r1  ==  r2 ));
+        System.out.println ( "對象r1和r2是同一個對象？"  + ( r1  ==  r2 ));
     }
 }
 ```
@@ -70,20 +70,20 @@ public  class  Citation  implements  Cloneable {
     private  String  name ;
 ​
     public  void  setName ( String  name ) {
-        this . name  =  name ;
+        this.name  =  name ;
     }
 ​
     public  String  getName () {
-        return ( this . name );
+        return ( this.name );
     }
 ​
     public  void  show () {
-        System . out . println ( name  +  "同學：在2020學年第一學期中表現優秀，被評為三好學生。特發此狀！" );
+        System.out.println ( name  +  "同學：在2020學年第一學期中表現優秀，被評為三好學生。特發此狀！" );
     }
 ​
     @Override
     public  Citation  clone () throws  CloneNotSupportedException {
-        return ( Citation ) super . clone ();
+        return ( Citation ) super.clone ();
     }
 }
 ​
@@ -91,15 +91,15 @@ public  class  Citation  implements  Cloneable {
 public  class  CitationTest {
     public  static  void  main ( String [] args ) throws  CloneNotSupportedException {
         Citation  c1  =  new  Citation ();
-        c1 . setName ( "張三" );
+        c1.setName ( "張三" );
 ​
         //複製獎狀
-        Citation  c2  =  c1 . clone ();
+        Citation  c2  =  c1.clone ();
         //將獎狀的名字修改李四
-        c2 . setName ( "李四" );
+        c2.setName ( "李四" );
 ​
-        c1 . show ();
-        c2 . show ();
+        c1.show ();
+        c2.show ();
     }
 }
 ```
@@ -122,16 +122,16 @@ public  class  Citation  implements  Cloneable {
     }
 ​
     public  void  setStu ( Student  stu ) {
-        this . stu  =  stu ;
+        this.stu  =  stu ;
     }
 ​
     void  show () {
-        System . out . println ( stu . getName () +  "同學：在2020學年第一學期中表現優秀，被評為三好學生。特發此狀！" );
+        System.out.println ( stu.getName () +  "同學：在2020學年第一學期中表現優秀，被評為三好學生。特發此狀！" );
     }
 ​
     @Override
     public  Citation  clone () throws  CloneNotSupportedException {
-        return ( Citation ) super . clone ();
+        return ( Citation ) super.clone ();
     }
 }
 ​
@@ -141,8 +141,8 @@ public  class  Student {
     private  String  address ;
 ​
     public  Student ( String  name , String  address ) {
-        this . name  =  name ;
-        this . address  =  address ;
+        this.name  =  name ;
+        this.address  =  address ;
     }
 ​
     public  Student () {
@@ -153,7 +153,7 @@ public  class  Student {
     }
 ​
     public  void  setName ( String  name ) {
-        this . name  =  name ;
+        this.name  =  name ;
     }
 ​
     public  String  getAddress () {
@@ -161,7 +161,7 @@ public  class  Student {
     }
 ​
     public  void  setAddress ( String  address ) {
-        this . address  =  address ;
+        this.address  =  address ;
     }
 }
 ​
@@ -171,19 +171,19 @@ public  class  CitationTest {
 ​
         Citation  c1  =  new  Citation ();
         Student  stu  =  new  Student ( "張三" , "西安" );
-        c1 . setStu ( stu );
+        c1.setStu ( stu );
 ​
         //複製獎狀
-        Citation  c2  =  c1 . clone ();
+        Citation  c2  =  c1.clone ();
         //獲取c2獎狀所屬學生對象
-        Student  stu1  =  c2 . getStu ();
-        stu1 . setName ( "李四" );
+        Student  stu1  =  c2.getStu ();
+        stu1.setName ( "李四" );
 ​
         //判斷stu對象和stu1對像是否是同一個對象
-        System . out . println ( "stu和stu1是同一個對象？"  + ( stu  ==  stu1 ));
+        System.out.println ( "stu和stu1是同一個對象？"  + ( stu  ==  stu1 ));
 ​
-        c1 . show ();
-        c2 . show ();
+        c1.show ();
+        c2.show ();
     }
 }
 ```
@@ -201,27 +201,27 @@ public  class  CitationTest1 {
     public  static  void  main ( String [] args ) throws  Exception {
         Citation  c1  =  new  Citation ();
         Student  stu  =  new  Student ( "張三" , "西安" );
-        c1 . setStu ( stu );
+        c1.setStu ( stu );
 ​
         //創建對象輸出流對象
         ObjectOutputStream  oos  =  new  ObjectOutputStream ( new  FileOutputStream ( "C:\\Users\\Think\\Desktop\\b.txt" ));
         //將c1對象寫出到文件中
-        oos . writeObject ( c1 );
-        oos . close ();
+        oos.writeObject ( c1 );
+        oos.close ();
 ​
         //創建對像出入流對象
         ObjectInputStream  ois  =  new  ObjectInputStream ( new  FileInputStream ( "C:\\Users\\Think\\Desktop\\b.txt" ));
         //讀取對象
-        Citation  c2  = ( Citation ) ois . readObject ();
+        Citation  c2  = ( Citation ) ois.readObject ();
         //獲取c2獎狀所屬學生對象
-        Student  stu1  =  c2 . getStu ();
-        stu1 . setName ( "李四" );
+        Student  stu1  =  c2.getStu ();
+        stu1.setName ( "李四" );
 ​
         //判斷stu對象和stu1對像是否是同一個對象
-        System . out . println ( "stu和stu1是同一個對象？"  + ( stu  ==  stu1 ));
+        System.out.println ( "stu和stu1是同一個對象？"  + ( stu  ==  stu1 ));
 ​
-        c1 . show ();
-        c2 . show ();
+        c1.show ();
+        c2.show ();
     }
 }
 ```
