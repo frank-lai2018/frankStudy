@@ -11,8 +11,10 @@ import org.apache.tomcat.util.codec.binary.Base64;
 public static String genAesSecret() {
     try {
         KeyGenerator kg = KeyGenerator.getInstance("AES");
-        //下面调用方法的参数决定了生成密钥的长度，可以修改为128, 192或256
+
+        //下面調用方法的参數決定了生成密鑰的長度，可以修改為128, 192或256
         kg.init(128);
+
         SecretKey sk = kg.generateKey();
         byte[] b = sk.getEncoded();
         String secret = Base64.encodeBase64String(b);
