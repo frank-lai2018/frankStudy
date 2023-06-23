@@ -265,12 +265,14 @@ isFinite(-1) // true
 
 ## String 字串型別
 
-### 任何植跟字串相加，接變為字串相加
+### 1.任何植跟字串相加，接變為字串相加
 
     Ex: undefined +'A' ===> undefinedA
     Ex: null +'A' ===> nullA
     Ex: 0 +'A' ===> 0A
     Ex: NaN +'A' ===> NaNA
+
+### 2.
 
 ## Boolean
 
