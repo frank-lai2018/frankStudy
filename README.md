@@ -42,7 +42,7 @@
 |        |  |  |  |
 | ---------- | --- |--- |--- |
 |[指令](file/command.md )|[ubuntu](file/ubuntu.md )
-|||
+|[網路問題](file/network.md )||
 
 
 ### 7.版控
