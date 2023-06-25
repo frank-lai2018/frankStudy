@@ -35,7 +35,7 @@
 
 |        |  |  |  |
 | ---------- | --- |--- |--- |
-|[lucene](file/lucene.md )||||
+|[lucene](file/lucene.md )|[solr](file/searchEngine/solr/solr.md)|||
 
 ### 6.linux 相關
 
@@ -71,5 +71,5 @@
 |[maven](file/maven.md )|[gradle](file/gradle.md )|[eclipse](file/eclipse.md )|[vsCode](file/VSCode.md )|
 |[gulp](file/gulp.md )|[apache](file/apache.md )|[nvm](file/nvm.md )|[eclipse 插件安裝](file/eclipsePlugins.md )|
 ||[webpack](file/webpack.md )|[自訂工具類](file/utils.md)|[自訂工具類](file/encryptionAndDecryption.md)
-|[design pattern](file/designPattern.md)|[資料結構與算法](file/)|[密碼學](file/)|[solr](file/searchEngine/solr/solr.md)|
+|[design pattern](file/designPattern.md)|[資料結構與算法](file/)|[密碼學](file/)||
 
