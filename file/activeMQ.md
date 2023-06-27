@@ -61,3 +61,53 @@
   - 適用於中小型項目。
 
 ![063](activemq/imgs/1.png)
+
+# 安裝
+
+## 下載
+https://activemq.apache.org/activemq-5016004-release
+![063](activemq/imgs/7.png)
+
+
+## 啟動、關閉
+```
+#查看有無開啟
+ps -ef|grep activemq|grep -v grep
+
+#查看port
+netstat -anp|grep 61616
+
+#
+lsof -i:61616
+
+#將log寫入LOG檔
+./activemq start > /opt/module/apache-activemq-5.16.4/log
+```
+
+![063](activemq/imgs/5.png)
+![063](activemq/imgs/6.png)
+
+## 開啟後台
+
+### 對外開放port號
+
+```
+#開啟 8161 port
+firewall-cmd --zone=public --add-port=8161/tcp --permanent
+
+#重啟防火牆
+systemctl restart network
+```
+![063](activemq/imgs/8.png)
+
+### 修改conf/jetty.xml
+
+```xml
+
+    <bean id="jettyPort" class="org.apache.activemq.web.WebConsolePort" init-method="start">
+             <!-- the default port number for the web console -->
+        <property name="host" value="192.168.47.129"/>
+        <property name="port" value="8161"/>
+    </bean>
+
+```

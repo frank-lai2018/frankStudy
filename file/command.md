@@ -66,3 +66,4 @@ firewall-cmd --permanent --list-port
 ```
 systemctl restart network
 ```
+
