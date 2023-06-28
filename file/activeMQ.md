@@ -94,6 +94,7 @@ lsof -i:61616
 ```
 #開啟 8161 port
 firewall-cmd --zone=public --add-port=8161/tcp --permanent
+firewall-cmd --zone=public --add-port=61616/tcp --permanent
 
 #重啟防火牆
 systemctl restart network
@@ -111,3 +112,163 @@ systemctl restart network
     </bean>
 
 ```
+
+## JMS編碼結構
+
+![063](activemq/imgs/12.png)
+
+### Activemq遵循了JMS規範，總體的流程分為以下幾步：
+
+  * 1.創建ConnectionFactory
+  * 2.使用ConnectionFactory創建一個Connection
+  * 3.使用Connection創建一個Session
+  * 4.使用Session創建消息的生產者(Message Producer)和消息的消費者(MessageConsumer)
+  * 5.生產者往Destination發送消息
+  * 6.消費者從Destination消費消息
+### Destination分成兩個部分
+
+![063](activemq/imgs/9.png)
+
+* 1.隊列(Queue)
+  ![063](activemq/imgs/13.png)
+* 2.主題(Topic)
+  ![063](activemq/imgs/14.png)
+
+## 使用JAVA放入消息，處理消息(queue)
+
+## 消息生產者
+
+```
+package com.frank.activemq.queue;
+
+import javax.jms.Connection;
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import javax.jms.MessageProducer;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+
+import org.apache.activemq.ActiveMQConnectionFactory;
+
+public class JmsProduce {
+	
+	public static final String ACTIVEMQ_URL = "tcp://192.168.47.129:61616";
+	public static final String QUEUE_NAME = "queue01";
+	
+	public static void main(String[] args) throws JMSException {
+		//1.創建連接工廠，按照給定的URL地址，採用默認用戶名和密碼
+		ActiveMQConnectionFactory actuActiveMQConnectionFactory = new ActiveMQConnectionFactory(ACTIVEMQ_URL);
+		
+		//2.通過連接工廠，獲得連接connection並開啟訪問
+		Connection connection = actuActiveMQConnectionFactory.createConnection();
+		connection.start();
+		
+		//3.創建session
+		//兩個參數，第一個叫事務/第二個叫簽收
+		Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+		
+		
+		//4.創建目的地(具體是對列還是主題topic)
+//		Destination destination = session.createQueue(QUEUE_NAME);
+		Queue queue = session.createQueue(QUEUE_NAME);
+		
+		//5.創建消息的生產者
+		MessageProducer messageProducer = session.createProducer(queue);
+		
+		//6.通過使用 MessageProducer 生產3條消息發送到MQ隊列裡面
+		for(int i = 1 ;i<=3;i++) {
+			
+			//7.創建消息
+			TextMessage textMessage = session.createTextMessage("msg----"+i);//理解為一個字串
+			
+			//8.通過MessageProducer發送給MQ
+			messageProducer.send(textMessage);
+		}
+		
+		//9.關閉資源
+		messageProducer.close();
+		session.close();
+		connection.close();
+		
+		System.out.println("消息發布完成");
+	}
+}
+
+```
+
+ ![063](activemq/imgs/10.png)
+
+
+## 消息消費者
+
+```java
+package com.frank.activemq.queue;
+
+import javax.jms.Connection;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageConsumer;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+
+import org.apache.activemq.ActiveMQConnectionFactory;
+
+public class JmsConsumer {
+	
+	public static final String ACTIVEMQ_URL = "tcp://192.168.47.129:61616";
+	public static final String QUEUE_NAME = "queue01";
+
+	public static void main(String[] args) throws JMSException {
+		//1.創建連接工廠，按照給定的URL地址，採用默認用戶名和密碼
+		ActiveMQConnectionFactory actuActiveMQConnectionFactory = new ActiveMQConnectionFactory(ACTIVEMQ_URL);
+		
+		//2.通過連接工廠，獲得連接connection並開啟訪問
+		Connection connection = actuActiveMQConnectionFactory.createConnection();
+		connection.start();
+		
+		//3.創建session
+		//兩個參數，第一個叫事務/第二個叫簽收
+		Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+		
+		
+		//4.創建目的地(具體是對列還是主題topic)
+//		Destination destination = session.createQueue(QUEUE_NAME);
+		Queue queue = session.createQueue(QUEUE_NAME);
+		
+		//5.創建消費者
+		MessageConsumer messageConsumer = session.createConsumer(queue);
+		
+		while(true) {
+			
+			TextMessage textMessage = (TextMessage) messageConsumer.receive();//一直等
+			if(null != textMessage) {
+				System.out.println("***消費者接收到消息:"+textMessage.getText());
+			}else{
+				break;
+			}
+		}
+		
+		messageConsumer.close();
+		session.close();
+		connection.close();
+		
+	}
+}
+
+```
+
+ ![063](activemq/imgs/11.png)
+
+ ## 控制台說明
+
+* Number Of Pending Messages=等待消費的消息，這個是未出隊列的數量，公式=總接收數-總出隊列數。
+* Number Of Consumers=消費者數量，消費者端的消費者數量。
+* Messages Enqueued=進隊消息數，進隊列的總消息量，包括出隊列的。這個數只增不減。
+* Messages Dequeued=出隊消息數，可以理解為是消費者消費掉的數量。
+
+- 總結：
+  - 當有一個消息進入這個隊列時，等待消費的消息是1，進入隊列的消息是1。
+  - 當消息消費後，等待消費的消息是0，進入隊列的消息是1，出隊列的消息是1。
+  - 當再來一條消息時，等待消費的消息是1，進入隊列的消息就是2。
