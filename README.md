@@ -27,7 +27,7 @@
 ### 4.消息中間件
 |        |  |  |  |
 | ---------- | --- |--- |--- |
-|[activeMQ](file/activeMQ.md )|||
+|[JMS](file/jms.md )|[activeMQ](file/activeMQ.md )||
 
 
 ### 4.資料庫相關
@@ -76,5 +76,5 @@
 |[maven](file/maven.md )|[gradle](file/gradle.md )|[eclipse](file/eclipse.md )|[vsCode](file/VSCode.md )|
 |[gulp](file/gulp.md )|[apache](file/apache.md )|[nvm](file/nvm.md )|[eclipse 插件安裝](file/eclipsePlugins.md )|
 ||[webpack](file/webpack.md )|[自訂工具類](file/utils.md)|[自訂工具類](file/encryptionAndDecryption.md)
-|[design pattern](file/designPattern.md)|[資料結構與算法](file/)|[密碼學](file/)||
+|[design pattern](file/designPattern.md)|[資料結構與算法](file/)|[密碼學](file/)|[問題集](file/problemSet.md)|
 
