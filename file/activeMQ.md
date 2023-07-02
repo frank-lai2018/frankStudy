@@ -593,3 +593,1061 @@ public class EmbedBroker {
 ### 測試驗證
 
 - 和Linux上的ActiveMQ是一樣的,Broker相當於一個Mini版本的ActiveMQ
+
+# Spring整合ActiveMQ
+
+## pom
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.frank.avtivemq</groupId>
+	<artifactId>activemq_spring</artifactId>
+	<version>1.0-SNAPSHOT</version>
+	<packaging>war</packaging>
+	<name>activemq_demo Maven Webapp</name>
+	<!-- FIXME change it to the project's website -->
+	<url>http://www.example.com</url>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
+	</properties>
+	<dependencies>
+		<!--activemq所需要的jar包-->
+		<dependency>
+			<groupId>org.apache.activemq</groupId>
+			<artifactId>activemq-all</artifactId>
+			<version>5.12.0</version>
+		</dependency>
+		<!--  activemq 和 spring 整合的基礎包 -->
+		<dependency>
+			<groupId>org.apache.xbean</groupId>
+			<artifactId>xbean-spring</artifactId>
+			<version>3.16</version>
+		</dependency>
+		<!--  嵌入式activemq的broker所需要的依賴包   -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.10.1</version>
+		</dependency>
+		<!-- activemq連接池 -->
+		<dependency>
+			<groupId>org.apache.activemq</groupId>
+			<artifactId>activemq-pool</artifactId>
+			<version>5.12.0</version>
+		</dependency>
+		<!-- spring支持jms的包 -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jms</artifactId>
+			<version>5.2.1.RELEASE</version>
+		</dependency>
+		<!--spring相關依賴包-->
+		<dependency>
+			<groupId>org.apache.xbean</groupId>
+			<artifactId>xbean-spring</artifactId>
+			<version>4.15</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-aop</artifactId>
+			<version>4.3.23.RELEASE</version>
+		</dependency>
+		<!-- Spring核心依賴 -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-core</artifactId>
+			<version>4.3.23.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>4.3.23.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-aop</artifactId>
+			<version>4.3.23.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>4.3.23.RELEASE</version>
+		</dependency>
+	</dependencies>
+	<build>
+		<finalName>activemq_spring</finalName>
+		<pluginManagement>
+			<!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
+			<plugins>
+				<plugin>
+					<artifactId>maven-clean-plugin</artifactId>
+					<version>3.1.0</version>
+				</plugin>
+				<!-- see http://maven.apache.org/ref/current/maven-core/default-bindings.html#Plugin_bindings_for_war_packaging -->
+				<plugin>
+					<artifactId>maven-resources-plugin</artifactId>
+					<version>3.0.2</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.8.0</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>2.22.1</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-war-plugin</artifactId>
+					<version>3.2.2</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-install-plugin</artifactId>
+					<version>2.5.2</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-deploy-plugin</artifactId>
+					<version>2.8.2</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>
+
+
+```
+
+## Spring配置文件(applicationContext.xml)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+          http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+     http://www.springframework.org/schema/aop/spring-aop.xsd
+     http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<!-- 開啟包的自動掃描 -->
+	<context:component-scan
+		base-package="com.frank.activemq" />
+
+	<!-- 配置生產者 -->
+	<bean id="jmsFactory"
+		class="org.apache.activemq.pool.PooledConnectionFactory"
+		destroy-method="stop">
+		<property name="connectionFactory">
+			<bean class="org.apache.activemq.ActiveMQConnectionFactory">
+				<property name="brokerURL"
+					value="tcp://192.168.47.129:61616"></property>
+			</bean>
+		</property>
+		<property name="maxConnections" value="100"></property>
+	</bean>
+
+
+	<!-- 這個是對列的目的地,點對點的Queue -->
+	<bean id="destinationQueue"
+		class="org.apache.activemq.command.ActiveMQQueue">
+		<!-- 通過構造注入Queue名 -->
+		<constructor-arg index="0" value="spring-active-queue" />
+	</bean>
+
+	<!-- 這個是隊列目的地, 發布訂閱的主題Topic -->
+	<bean id="destinationTopic"
+		class="org.apache.activemq.command.ActiveMQTopic">
+		<constructor-arg index="0" value="spring-active-topic" />
+	</bean>
+
+	<!-- Spring提供的JMS工具類,他可以進行消息發送,接收等 -->
+	<bean id="jmsTemplate"
+		class="org.springframework.jms.core.JmsTemplate">
+		<!-- 傳入連接工廠 -->
+		<property name="connectionFactory" ref="jmsFactory" />
+		<!-- 傳入目的地看要傳入Queue或者Topic -->
+		<property name="defaultDestination" ref="destinationQueue" />
+		<!-- 消息自動轉換器 -->
+		<property name="messageConverter">
+			<bean
+				class="org.springframework.jms.support.converter.SimpleMessageConverter" />
+		</property>
+	</bean>
+	
+	<!--  配置Jms消息監聽器  -->
+    <bean id="defaultMessageListenerContainer" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+        <!--  Jms連接的工廠     -->
+        <property name="connectionFactory" ref="jmsFactory"/>
+        <!--   設置默認的監聽目的地     -->
+        <property name="destination" ref="destinationTopic"/>
+        <!--  指定自己實現了MessageListener的類     -->
+        <property name="messageListener" ref="myMessageListener"/>
+    </bean>
+
+	<!--<bean id = "myMessageListener" class="com.frank.activemq.MyMessageListener"></bean>-->
+</beans>
+```
+
+## Queue隊列
+
+### 生產者
+
+```java
+package com.frank.activemq;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.stereotype.Service;
+
+@Service
+public class SpringMQ_Produce {
+
+	@Autowired
+	private JmsTemplate jsmTemplate;
+	
+	public static void main(String[] args) {
+		ApplicationContext ctx = new ClassPathXmlApplicationContext("applicationContext.xml");
+		
+		SpringMQ_Produce produce = (SpringMQ_Produce) ctx.getBean("springMQ_Produce");
+		
+		produce.jsmTemplate.send(session -> {
+			return session.createTextMessage("****Spring和activeMQ的整合case33333*****");
+		});
+		
+		System.out.println("send task OK....");
+		
+		//關閉Spring
+//		((ConfigurableApplicationContext)ctx).close();
+	}
+}
+
+```
+
+### 消費者
+
+```java
+package com.frank.activemq;
+
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.TextMessage;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.stereotype.Service;
+
+@Service
+public class SpringMQ_Consumer {
+
+	@Autowired
+	private JmsTemplate jmsTemplate;
+	
+	public static void main(String[] args) throws JMSException {
+		ApplicationContext ctx = new ClassPathXmlApplicationContext("applicationContext.xml");
+		
+		SpringMQ_Consumer consumer = (SpringMQ_Consumer) ctx.getBean("springMQ_Consumer");
+		
+		TextMessage textMessage = (TextMessage)consumer.jmsTemplate.receive();
+//		
+//		System.out.println("消費者得到消息...."+textMessage.getText());
+		consumer.jmsTemplate.setReceiveTimeout(3000);
+//		consumer.jmsTemplate.set
+		String returnValue = (String) consumer.jmsTemplate.receiveAndConvert();
+		System.out.println("消費者得到消息11...."+returnValue);
+		
+		//關閉Spring
+//		((ConfigurableApplicationContext)ctx).close();
+	}
+}
+
+```
+
+## Topic 主題
+
+### receive方式
+
+- 只需要改spring 配置文件 applicationContext.xml，把傳入目的地(defaultDestination)改成Topic即可，如下
+
+```java
+
+	<!-- Spring提供的JMS工具類,他可以進行消息發送,接收等 -->
+	<bean id="jmsTemplate"
+		class="org.springframework.jms.core.JmsTemplate">
+		<!-- 傳入連接工廠 -->
+		<property name="connectionFactory" ref="jmsFactory" />
+		<!-- 傳入目的地看要傳入Queue或者Topic -->
+		<property name="defaultDestination" ref="destinationTopic" />
+		<!-- 消息自動轉換器 -->
+		<property name="messageConverter">
+			<bean
+				class="org.springframework.jms.support.converter.SimpleMessageConverter" />
+		</property>
+	</bean>
+```
+
+### 使用監聽方式
+
+- 在Spring裡面實現消費者不啟動，直接通過配置監聽完成
+
+- 在配置文件裡applicationContext.xml，加入以下訊息
+
+```xml
+	<!--  配置Jms消息監聽器  -->
+    <bean id="defaultMessageListenerContainer" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+        <!--  Jms連接的工廠     -->
+        <property name="connectionFactory" ref="jmsFactory"/>
+        <!--   設置默認的監聽目的地     -->
+        <property name="destination" ref="destinationTopic"/>
+        <!--  指定自己實現了MessageListener的類     -->
+        <property name="messageListener" ref="myMessageListener"/>
+    </bean>
+```
+
+- 創建實作MessageListener的myMessageListener類
+
+```java
+package com.frank.activemq;
+
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageListener;
+import javax.jms.TextMessage;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyMessageListener implements MessageListener{
+
+	@Override
+	public void onMessage(Message message) {
+		if(null != message && message instanceof TextMessage) {
+			TextMessage textMessage = (TextMessage) message;
+			try {
+				System.out.println("監聽器3333:"+textMessage.getText());
+			} catch (JMSException e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+
+}
+
+```
+
+- 執行結果
+
+
+ ![063](activemq/imgs/25.png)
+
+ 消費者配置了自動監聽，就相當於在spring裡面後台運行，有消息就運行我們實現監聽類裡面的方法
+
+
+ # SpringBoot整合ActiveMQ
+
+- 新建父組件 POM
+- 名稱:activemq
+- POM
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.frank</groupId>
+	<artifactId>activemq</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+	<modules>
+		<module>springboot_activemq_api</module>
+		<module>springboot_activemq_queue_produce</module>
+		<module>springboot_activemq_queue_consumer</module>
+		<module>springboot_activemq_topic_produce</module>
+		<module>springboot_activemq_topic_consumer</module>
+	</modules>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
+		<junit.version>4.12</junit.version>
+		<log4j.version>1.2.17</log4j.version>
+		<lombok.version>1.16.18</lombok.version>
+	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-parent</artifactId>
+				<version>2.7.13</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>mysql</groupId>
+				<artifactId>mysql-connector-java</artifactId>
+				<version>5.0.4</version>
+			</dependency>
+			<dependency>
+				<groupId>com.alibaba</groupId>
+				<artifactId>druid</artifactId>
+				<version>1.0.31</version>
+			</dependency>
+			<dependency>
+				<groupId>org.mybatis.spring.boot</groupId>
+				<artifactId>mybatis-spring-boot-starter</artifactId>
+				<version>1.3.0</version>
+			</dependency>
+			<dependency>
+				<groupId>ch.qos.logback</groupId>
+				<artifactId>logback-core</artifactId>
+				<version>1.2.3</version>
+			</dependency>
+			<dependency>
+				<groupId>junit</groupId>
+				<artifactId>junit</artifactId>
+				<version>${junit.version}</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>log4j</groupId>
+				<artifactId>log4j</artifactId>
+				<version>${log4j.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+	<build>
+		<finalName>activemq</finalName>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+			</resource>
+		</resources>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<configuration>
+					<delimiters>
+						<delimit>$</delimit>
+					</delimiters>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>
+```
+## 新建共用API
+
+- name:springboot_activemq_api
+- POM
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.frank</groupId>
+    <artifactId>activemq</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+  <artifactId>springboot_activemq_api</artifactId>
+</project>
+```
+- 建立共用DTO
+
+```java
+package com.frank.activemq.dto;
+
+import java.io.Serializable;
+
+public class Message implements Serializable{
+
+	private static final long serialVersionUID = -5292603378214046021L;
+	private String id;
+	private String msg;
+	
+	
+	
+	public Message(String id, String msg) {
+		super();
+		this.id = id;
+		this.msg = msg;
+	}
+
+
+
+	public String getId() {
+		return id;
+	}
+
+
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+
+
+	public String getMsg() {
+		return msg;
+	}
+
+
+
+	public void setMsg(String msg) {
+		this.msg = msg;
+	}
+
+
+
+	@Override
+	public String toString() {
+		return "Message [id=" + id + ", msg=" + msg + "]";
+	}
+	
+	
+}
+
+```
+
+## Queue 隊列
+
+### 隊列生產者
+
+####  建立maven module
+- name:springboot_activemq_queue_produce
+
+#### POM
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.frank</groupId>
+		<artifactId>activemq</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+	<artifactId>springboot_activemq_queue_produce</artifactId>
+	<dependencies>
+		<dependency>
+			<groupId>com.frank</groupId>
+			<artifactId>springboot_activemq_api</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-activemq</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>
+```
+
+#### 配置yml
+
+```yml
+server: 
+  port: 8081
+
+spring: 
+  activemq:
+    broker-url: tcp://192.168.47.129:61616 #MQ服務器地址
+    user: admin
+    password: admin
+  
+  jms: 
+    pub-sub-domain: false # false = Queue(默認)，true = Topic
+
+
+
+```
+
+#### 配置bean
+
+- 類似於Spring的ApplicationContext.xml文件
+- 開啟JMS註解 @EnableJms
+
+```java
+package com.frank.activemq.config;
+
+import javax.jms.Queue;
+
+import org.apache.activemq.command.ActiveMQQueue;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.jms.annotation.EnableJms;
+import org.springframework.stereotype.Component;
+
+@Component
+@EnableJms//開啟JMS註解
+public class ConfigBean {
+	
+//	@Value("${frank.myqueue}")
+	private String myQueue="boot-activemq-queue";
+	
+	@Bean
+	public ActiveMQQueue queue() {
+		return new ActiveMQQueue(this.myQueue);
+	}
+}
+
+```
+
+#### Queue_Producer
+
+```java
+package com.frank.activemq.produce;
+
+import javax.jms.Queue;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.core.JmsMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import com.frank.activemq.dto.Message;
+
+@Component
+public class Queue_Produce {
+
+	@Autowired
+	private JmsMessagingTemplate jsmMessagingTemplate;
+	
+	@Autowired
+	private Queue queue;
+	
+	private int count=1;
+	
+	public void produceMsg() {
+		
+		//轉換+發送
+		jsmMessagingTemplate.convertAndSend(queue,"TESTTEST");
+		jsmMessagingTemplate.convertAndSend(queue,new Message("001", "Object..."));
+		System.out.println("  produceMessage  send   ok   ");
+	}
+	
+	//間隔時間3秒鐘定投
+	@Scheduled(fixedDelay = 3000)
+	public void produceMsgScheduled() {
+		jsmMessagingTemplate.convertAndSend(queue,new Message("@Scheduled00"+count, "Object..."));
+//		jsmMessagingTemplate.convertAndSend(queue,"TESTTEST"+count);
+		count++;
+		System.out.println("  produceMsgScheduled  send   ok ....  ");
+	}
+}
+
+```
+
+#### 主啟動類
+
+```java
+package com.frank.activemq;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
+@SpringBootApplication
+@EnableScheduling
+public class Queue_Produce_App {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Queue_Produce_App.class, args);
+	}
+
+}
+
+```
+
+
+### 隊列消費者
+
+####  建立maven module
+- name:springboot_activemq_queue_consumer
+
+#### POM
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.frank</groupId>
+		<artifactId>activemq</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+	<artifactId>springboot_activemq_queue_consumer</artifactId>
+	<dependencies>
+		<dependency>
+			<groupId>com.frank</groupId>
+			<artifactId>springboot_activemq_api</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-activemq</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>
+```
+
+#### 配置yml
+
+- 如果接收的消息是ObjectMessage，需要在yml配置packages.trust-all = true
+
+```yml
+server: 
+  port: 8083
+
+spring: 
+  activemq:
+    broker-url: tcp://192.168.47.129:61616 #MQ服務器地址
+    user: admin
+    password: admin
+    packages:
+      trust-all: true #傳遞物件需要打開他
+     # trusted:
+     # - com.frank.activemq.dto.Message
+
+      
+  jms: 
+    pub-sub-domain: false # false = Queue(默認)，true = Topic
+
+
+
+```
+
+#### Queue_Consumer
+
+- 設置springboot的消息監聽註解 @JmsListener(destination = "boot-activemq-queue")
+- 監聽過後會隨著springboot一起啟動,有消息就執行加了該註解的方法
+
+```java
+package com.frank.activemq.consumer;
+
+import javax.jms.JMSException;
+import javax.jms.ObjectMessage;
+import javax.jms.TextMessage;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.annotation.JmsListener;
+import org.springframework.jms.core.JmsMessagingTemplate;
+import org.springframework.stereotype.Component;
+
+
+
+@Component
+public class Queue_Consumer {
+	
+	@JmsListener(destination = "boot-activemq-queue")
+	public void receive(ObjectMessage objectmessage) throws JMSException {
+			System.out.println("textMessage:"+objectmessage.getObject());
+//			System.out.println("textMessage:"+message.getBody(Message.class));
+	}
+}
+
+```
+
+## Topic 主題訂閱發佈
+
+### Topic生產者
+
+####  建立maven module
+- name:springboot_activemq_topic_produce
+
+#### POM
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.frank</groupId>
+		<artifactId>activemq</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+	<artifactId>springboot_activemq_topic_produce</artifactId>
+	<dependencies>
+		<dependency>
+			<groupId>com.frank</groupId>
+			<artifactId>springboot_activemq_api</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-activemq</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>
+```
+
+#### 配置yml
+
+```yml
+server: 
+  port: 5501
+
+spring: 
+  activemq:
+    broker-url: tcp://192.168.47.129:61616 #MQ服務器地址
+    user: admin
+    password: admin
+  
+  jms: 
+    pub-sub-domain: true # false = Queue(默認)，true = Topic
+
+
+
+```
+
+#### 配置Bean
+
+```java
+package com.frank.activemq.config;
+
+import javax.jms.Topic;
+
+import org.apache.activemq.command.ActiveMQTopic;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.jms.annotation.EnableJms;
+import org.springframework.stereotype.Component;
+
+@Component
+@EnableJms//開啟JMS註解
+public class ConfigBean {
+	
+	private String myTopic="boot-activemq-topic";
+	
+	@Bean
+	public Topic topic() {
+		return new ActiveMQTopic(this.myTopic);
+	}
+}
+
+```
+
+#### Topic_Producer
+
+```java
+package com.frank.activemq.produce;
+
+import javax.jms.Queue;
+import javax.jms.Topic;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.core.JmsMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+
+@Component
+public class Topic_Produce {
+
+	@Autowired
+	private JmsMessagingTemplate jsmMessagingTemplate;
+	
+	@Autowired
+	private Topic topic;
+	
+	private int count=1;
+	
+	
+	//間隔時間3秒鐘定投
+	@Scheduled(fixedDelay = 3000)
+	public void produceMsgScheduled() {
+		jsmMessagingTemplate.convertAndSend(topic,"test_topic_"+count);
+//		jsmMessagingTemplate.convertAndSend(queue,"TESTTEST"+count);
+		count++;
+		System.out.println("  produceMsgScheduled  send   ok ....  ");
+	}
+}
+
+```
+
+#### 主啟動類
+
+```java
+package com.frank.activemq;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
+@SpringBootApplication
+@EnableScheduling
+public class Topic_Produce_App {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Topic_Produce_App.class, args);
+	}
+
+}
+
+```
+- 先啟動消費者,後啟動生產者
+
+### Topic消費者
+
+####  建立maven module
+- name:springboot_activemq_topic_consumer
+
+#### POM
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.frank</groupId>
+		<artifactId>activemq</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+	<artifactId>springboot_activemq_topic_consumer</artifactId>
+	<dependencies>
+		<dependency>
+			<groupId>com.frank</groupId>
+			<artifactId>springboot_activemq_api</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-activemq</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>
+```
+
+#### 配置yml
+
+```yml
+server: 
+  port: 55666
+
+spring: 
+  activemq:
+    broker-url: tcp://192.168.47.129:61616 #MQ服務器地址
+    user: admin
+    password: admin
+    packages:
+      trust-all: true #傳遞物件需要打開他
+
+      
+  jms: 
+    pub-sub-domain: true # false = Queue(默認)，true = Topic
+
+
+
+```
+
+#### Topic_Consumer
+
+```java
+package com.frank.activemq.consumer;
+
+import javax.jms.JMSException;
+import javax.jms.ObjectMessage;
+import javax.jms.TextMessage;
+
+import org.springframework.jms.annotation.JmsListener;
+import org.springframework.stereotype.Component;
+
+
+
+@Component
+public class Topic_Consumer {
+	
+	@JmsListener(destination = "boot-activemq-topic")
+	public void receive(TextMessage textmessage) throws JMSException {
+			System.out.println("textMessage:"+textmessage.getText());
+//			System.out.println("textMessage:"+message.getBody(Message.class));
+	}
+}
+
+```
+
+#### 主啟動類
+
+```java
+package com.frank.activemq;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Topic_Consumer_App5555 {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Topic_Consumer_App5555.class, args);
+	}
+
+}
+
+```
+
+####  建立maven module
+- name:springboot_activemq_topic_consumer
+
+#### POM
+
+```xml
+```
+
+#### 配置yml
+
+#### Topic_Consumer
+
+#### 主啟動類
