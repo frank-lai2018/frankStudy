@@ -1651,3 +1651,86 @@ public class Topic_Consumer_App5555 {
 #### Topic_Consumer
 
 #### 主啟動類
+
+# ActiveMQ的傳輸協議
+
+## 官網
+
+## 是什麼
+
+- ActiveMQ支持的client-broker通訊協議有：TVP、NIO、UDP、SSL、Http(s)、VM。
+- 其中配置Transport Connector的文件在ActiveMQ安裝目錄的conf/activemq.xml中的<transportConnectors>標籤之內。
+
+![063](activemq/imgs/27.png)
+
+- 在上文給出的配置信息中，
+URI描述信息的頭部都是採用協議名稱：例如
+  - 描述amqp協議的監聽端口時，採用的URI描述格式為“amqp://······”；
+  - 描述Stomp協議的監聽端口時，採用URI描述格式為“stomp://······”；
+  - 唯獨在進行openwire協議描述時，URI頭卻採用的“tcp://······”。這是因為ActiveMQ中默認的消息協議就是openwire
+
+## ActiveMQ支援協議
+
+### 1.Transmission Control Protocol(TCP)默認
+
+- 1.這是默認的Broker配置，TCP的Client監聽端口61616
+- 2.在網絡傳輸數據前，必須要先序列化數據，消息是通過一個叫wire protocol的來序列化成字節流。
+- 3.TCP連接的URI形式如：tcp://domainName:port?key=value&key=value，後面的參數是可選的。
+- 4.TCP傳輸的的優點：
+  - (4.1)TCP協議傳輸可靠性高，穩定性強
+  - (4.2)高效率：字節流方式傳遞，效率很高
+  - (4.3)有效性、可用性：應用廣泛，支持任何平台
+- 5.關於Transport協議的可選配置參數可以參考官網http://activemq.apache.org/configuring-version-5-transports.html
+
+### 2.New I/O API Protocol(NIO)(生產環境用)
+
+- 1.NIO協議和TCP協議類似，但NIO更側重於底層的訪問操作。它允許開發人員對同一資源可有更多的client調用和服務器端有更多的負載。
+- 2.適合使用NIO協議的場景：
+  - (2.1)可能有大量的Client去連接到Broker上，一般情況下，大量的Client去連接Broker是被操作系統的線程所限制的。因此，NIO的實現比TCP需要更少的線程去運行，所以建議使用NIO協議。
+  - (2.2)可能對於Broker有一個很遲鈍的網絡傳輸，NIO比TCP提供更好的性能。
+- 3.NIO連接的URI形式：nio://domainName:port?key=value&key=value
+- 4.關於Transport協議的可選配置參數可以參考官網http://activemq.apache.org/configuring-version-5-transports.html
+
+### 3.AMQP協議
+
+
+- Advanced Message Queuing Protocol，一個提供統一消息服務的應用層標準高級消息隊列協議，是應用層協議的一個開放標準，為面向消息的中間件設計。基於此協議的客戶端與消息中間件可傳遞消息，並不受客戶端/中間件不同產品，不同開發語言等條件限制。
+
+### 4.Stomp協議
+
+- STOP，Streaming Text Orientation Message Protocol，是流文本定向消息協議，是一種為MOM(Message Oriented Middleware，面向消息中間件)設計的簡單文本協議。
+
+### 5.Secure Sockets Layer Protocol(SSL)
+
+### 6.MQTT協議
+
+- MQTT(Message Queuing Telemetry Transport，消息隊列遙測傳輸)是IBM開發的一個即時通訊協議，有可能成為物聯網的重要組成部分。該協議支持所有平台，幾乎可以把所有聯網物品和外部連接起來，被用來當作傳感器和致動器(比如通過Twitter讓房屋聯網)的通信協議。
+
+### 7.WS協議(websocket)
+
+## 設定
+
+### 修改activemq.xml
+
+```xml
+<transportConnectors>
+      <transportConnector name="nio" uri="nio://0.0.0.0:61618?trace=true" />
+</transportConnectors>
+```
+
+- 如果你不特別指定ActiveMQ的網絡監聽端口，那麼這些端口都講使用BIO網絡IO模型
+- 所以為了首先提高單節點的網絡吞吐性能，我們需要明確指定ActiveMQ網絡IO模型。
+- 如下所示：URI格式頭以“nio”開頭，表示這個端口使用以TCP協議為基礎的NIO網絡IO模型。
+![063](activemq/imgs/28.png)
+
+- 生產和消費兩端協議代碼修改
+
+```java
+private static final String ACTIVEMQ_URL = "nio://192.168.47.129:61618";
+```
+
+- 使用auto關鍵字
+  - 使用"+"符號來為端口設置多種特性
+  - 如果我們既需要使用某一個端口支持NIO網絡模型,又需要它支持多個協議
+  - 參考https://activemq.apache.org/auto 配置
+![063](activemq/imgs/29.png)
