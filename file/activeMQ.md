@@ -1734,3 +1734,346 @@ private static final String ACTIVEMQ_URL = "nio://192.168.47.129:61618";
   - 如果我們既需要使用某一個端口支持NIO網絡模型,又需要它支持多個協議
   - 參考https://activemq.apache.org/auto 配置
 ![063](activemq/imgs/29.png)
+
+# ActiveMQ的消息存儲和持久化
+
+* 官網 http://activemq.apache.org/persistence
+
+- 為了避免意外宕機以後丟失信息，需要做到重啟後可以恢復消息隊列，消息系統一半都會採用持久化機制。
+ActiveMQ的消息持久化機制有JDBC，AMQ，KahaDB和LevelDB，無論使用哪種持久化方式，消息的存儲邏輯都是一致的。
+ 
+- 就是在發送者將消息發送出去後，消息中心首先將消息存儲到本地數據文件、內存數據庫或者遠程數據庫等。再試圖將消息發給接收者，成功則將消息從存儲中刪除，失敗則繼續嘗試嘗試發送。
+
+- 消息中心啟動以後，要先檢查指定的存儲位置是否有未成功發送的消息，如果有，則會先把存儲位置中的消息發出去。
+
+## 種類
+
+### AMQ Mesage Store
+
+- AMQ是一種文件存儲形式，它具有寫入速度快和容易恢復的特點。消息存儲再一個個文件中文件的默認大小為32M，當一個文件中的消息已經全部被消費，那麼這個文件將被標識為可刪除，在下一個清除階段，這個文件被刪除。 AMQ適用於ActiveMQ5.3之前的版本
+
+- 基於文件的存儲方式，是以前的默認消息存儲，現在不用了
+
+### KahaDB消息存儲(默認)
+
+- 基於日誌文件，從ActiveMQ5.4開始默認的持久化插件
+- 官網 https://activemq.apache.org/kahadb
+
+```xml
+ <broker brokerName="broker">
+		<persistenceAdapter>
+            <kahaDB directory="${activemq.data}/kahadb"/>
+        </persistenceAdapter>
+ </broker>
+```
+#### 參數
+
+- 1.   director: KahaDB存放的路徑，默認值activemq-data
+- 2.   indexWriteBatchSize: 批量寫入磁盤的索引page數量,默認值為1000
+- 3.   indexCacheSize: 內存中緩存索引page的數量,默認值10000
+- 4.   enableIndexWriteAsync: 是否異步寫出索引,默認false
+- 5.   journalMaxFileLength: 設置每個消息data log的大小，默認是32MB
+- 6.   enableJournalDiskSyncs: 設置是否保證每個沒有事務的內容，被同步寫入磁盤，JMS持久化的時候需要，默認為true
+- 7.   cleanupInterval: 在檢查到不再使用的消息後,在具體刪除消息前的時間,默認30000
+- 8.   checkpointInterval: checkpoint的間隔時間，默認是5000
+- 9.   ignoreMissingJournalfiles: 是否忽略丟失的消息日誌文件，默認false
+- 10.  checkForCorruptJournalFiles: 在啟動的時候，將會驗證消息文件是否損壞，默認false
+- 11.  checksumJournalFiles: 是否為每個消息日誌文件提供checksum,默認false
+- 12.  archiveDataLogs: 是否移動文件到特定的路徑，而不是刪除它們，默認false
+- 13.  directoryArchive: 定義消息已經被消費過後，移動data log到的路徑，默認null
+- 14.  databaseLockedWaitDelay: 獲得數據庫鎖的等待時間(used by shared master/slave),默認10000。用於之後主從復制的時候配置
+- 15.  maxAsyncJobs: 設置最大的可以存儲的異步消息隊列，默認值10000，可以和concurrent MessageProducers設置成一樣的值。
+- 16.  concurrentStoreAndDispatchTransactions:是否分發消息到客戶端，同時事務存儲消息，默認true
+- 17.  concurrentStoreAndDispatchTopics: 是否分發Topic消息到客戶端，同時進行存儲，默認true
+- 18.  concurrentStoreAndDispatchQueues: 是否分發queue消息到客戶端，同時進行存儲，默認true
+
+![063](activemq/imgs/30.png)
+
+- KahaDB是目前默認的存儲方式，可用於任何場景，提高了性能和恢復能力。
+- 消息存儲使用一個事務日誌和僅僅用一個索引文件來存儲它所有的地址。
+- KahaDB是一個專門針對消息持久化的解決方案，它對典型的消息使用模型進行了優化。
+- 數據被追加到data logs中。當不再需要log文件中的數據的時候，log文件會被丟棄。
+
+
+- KahaDB在消息保存的目錄中有4類文件和一個lock，跟ActiveMQ的其他幾種文件存儲引擎相比，這就非常簡潔了。
+
+消息存儲使用一個事務日誌和僅僅用一個索引文件來存儲它所有的地址。
+
+
+#### kahadb消息4類文件
+
+- kahadb在消息保存目錄中有4類文件（我剛剛重啟了服務，所以只有3個，少了一個db.free文件）和一個lock。
+
+- db-<Number>.log：KahaDB存儲消息到預定義大小的數據記錄文件中，文件名為db-<Number>.log。當前文件已滿時，一個新的文件會隨之創建，number的數值隨之遞增。如每32M一個文件，文件名按照數字進行編號。當不再有引用到的數據文件中的任何消息時，文件會被刪除或歸檔，由後續的清理機制來清除文件。
+
+- db.data：包含了持久化的BTree索引，索引了消息數據記錄中的消息，它是消息的索引文件，本質上是B-Tree（B樹），使用B-Tree作為索引指向db-<Number>.log裡存儲的消息。
+
+- db.free：當前db.data文件裡，哪些頁面是空閒的，文件具體內容是所有空閒頁的ID，方便後續建索引的時候，先從空閒頁開始建立，保證索引的連續性，沒有碎片。
+
+- db.redo：用來進行消息恢復，如果KahaDB消息存儲在強制退出後啟動，用於恢復B-Tree索引。
+
+- lock：文件鎖，表示當前獲得KahaDB讀寫權限的Broker。
+
+- 這裡的log和data類似於MySQL數據庫裡的數據和索引，可以類比來理解。
+
+![063](activemq/imgs/31.png)
+
+### JDBC消息儲存
+
+- 官網 http://activemq.apache.org/persistence
+
+#### 設定
+
+- 1.添加mysql數據庫的驅動包到lib文件夾
+![063](activemq/imgs/32.png)
+- 2.配置 apache-activemq-5.16.4/conf/activemq.xml
+
+```xml
+        <persistenceAdapter>
+            <jdbcPersistenceAdapter dataSource="#mysql-ds"/>
+        </persistenceAdapter>
+
+
+       <bean id="mysql-ds" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+          <property name="driverClassName" value="com.mysql.cj.jdbc.Driver"/>
+          <property name="url" value="jdbc:mysql://192.168.47.1:3306/activemq?relaxAutoCommit=true"/>
+          <property name="username" value="root"/>
+          <property name="password" value="1234"/>
+          <property name="poolPreparedStatements" value="true"/>
+        </bean>
+
+```
+![063](activemq/imgs/33.png)
+
+#### 建庫SQL和創表說明
+
+- 1.建一個名為activemq的數據庫
+- 2.會建立三張表
+  - ACTIVEMQ_MSGS
+    - ID：自增的數據庫主鍵
+    - CONTAINER：消息的Destination
+    - MSGID_PROD：消息發送者的主鍵
+    - MSG_SEQ：是發送消息的順序，MSGID_PROD+MSG_SEQ可以組成JMS的MessageID
+    - EXPIRATION：消息的過期時間，存儲的是從1970-01-01到現在的毫秒數
+    - MSG：消息本體的Java序列化對象的二進制數據
+    - PRIORITY：優先級，從0-9，數值越大優先級越高
+  - ACTIVEMQ_ACKS:用於儲存訂閱關係，如果是持久化Topic，訂閱者和服務器的訂閱關係在這個表保存，儲存持久訂閱的信息和最後一個持久訂閱接收的消息
+    - CONTAINER:消息的Destination
+    - SUB_DEST:如果是使用Static集群，這個字段會有集群其他系統的信息
+    - CLIENT_ID:每個訂閱者都必須有一個唯一的客戶端ID用以區分
+    - SUB_NAME:訂閱者名稱
+    - SELECTOR:選擇器，可以選擇只消費滿足條件的消息，條件可以用字定義屬性實現，可以支持多屬性AND和OR操作
+    - LAST_ACKED_ID:記錄消費過的消息ID
+  - ACTIVEMQ_LOCK
+    - 表ACTIVEMQ_LOCK在集群環境中才有用，只有一個Broker可以獲得消息，其他的只能作為備份等待Master Broker不可用，才可能成為下一個Master Broker。這個表用於紀錄哪個Broker是當前的Master Broker
+
+
+- 必需開啟持久化
+```java
+messageProducer.setDeliveryMode(DeliveryMode.PERSISTENT);
+```
+
+#### 資料庫運行情況
+
+- 在點對點類型中
+  - 當DeliveryMode設置為NON_PERSISTENCE時，消息被保存在內存中
+  - 當DeliveryMode設置為PERSISTENCE時，消息保存在broker的相應的文件或者數據庫中。
+
+  - 而且點對點類型中消息一旦被Consumer消費，就從數據中刪除
+
+#### 如果使用root帳號
+
+- 1.一般生產環境不會使用Root帳號，root帳號允許遠端連線
+
+- 2.執行以下指令，使root帳號可以遠端連線
+
+```sql
+use mysql;
+update user set host='%' where user='root';
+
+select host from user
+```
+
+#### 小結
+
+- 如果是queue
+  - 在沒有消費者消費的情況下會將消息保存到activemq_msgs表中，只要有任意一個消費者消費了，就會刪除消費過的消息
+
+- 如果是topic，
+  - 一般是先啟動消費訂閱者然後再生產的情況下會將持久訂閱者永久保存到qctivemq_acks，而消息則永久保存在activemq_msgs，
+  - 在acks表中的訂閱者有一個last_ack_id對應了activemq_msgs中的id字段，這樣就知道訂閱者最後收到的消息是哪一條。
+
+### LevelDB消息儲存
+
+- 官網 http://activemq.apache.org/leveldb-store
+
+- 這種文件系統是從ActiveMQ5.8之後引進的，它和KahaDB非常相似，也是基於文件的本地數據庫存儲形式，但是它提供比KahaDB更快的持久性。
+- 但它不使用自定義B-Tree實現來索引獨寫日誌，而是使用基於LevelDB的索引
+ 
+- 默認配置如下：
+
+```xml
+<persistenceAdapter>
+      <levelDB directory="activemq-data"/>
+</persistenceAdapter>
+```
+
+### JDBC Message Store with ActiveMQ Journal
+
+- 這種方式克服了JDBC Store的不足，JDBC每次消息過來，都需要去寫庫讀庫。
+- ActiveMQ Journal，使用高速緩存寫入技術，大大提高了性能。
+
+- 當消費者的速度能夠及時跟上生產者消息的生產速度時，journal文件能夠大大減少需要寫入到DB中的消息。
+- 舉個例子：
+  - 生產者生產了1000條消息，這1000條消息會保存到journal文件，如果消費者的消費速度很快的情況下，在journal文件還沒有同步到DB之前，消費者已經消費了90%的以上消息，那麼這個時候只需要同步剩餘的10%的消息到DB。如果消費者的速度很慢，這個時候journal文件可以使消息以批量方式寫到DB
+
+
+- 以前是實時寫入mysql，在使用了journal後，數據會被journal處理，如果在一定時間內journal處理（消費）完了，就不寫入mysql，如果沒消費完，就寫入mysql，起到一個緩存的作用
+
+#### 配置
+- 將原本的持久化機制註解，添加以下設置
+
+```xml
+    <!--    <persistenceAdapter>
+            <kahaDB directory="${activemq.data}/kahadb"/>
+        </persistenceAdapter> -->
+<!--        <persistenceAdapter>
+            <jdbcPersistenceAdapter dataSource="#mysql-ds"/>
+        </persistenceAdapter> -->
+
+      <persistenceFactory>
+            <journalPersistenceAdapterFactory
+                                journalLogFiles="4"
+                                journalLogFileSize="32768"
+                                useJournal="true"
+                                useQuickJournal="true"
+                                dataSource="#mysql-ds"
+                                dataDirectory="../activemq-data"/>
+        </persistenceFactory>
+
+```
+
+## ActiveMQ持久化機制小總結
+
+- 持久化消息主要指的是：
+  - MQ所在服務器宕機了消息不會丟試的機制。
+
+- 持久化機制演變的過程：
+  - 從最初的AMQ Message Store方案到ActiveMQ V4版本退出的High Performance Journal（高性能事務支持）附件，並且同步推出了關於關係型數據庫的存儲方案。 ActiveMQ5.3版本又推出了對KahaDB的支持（5.4版本後被作為默認的持久化方案），後來ActiveMQ 5.8版本開始支持LevelDB，到現在5.9提供了標準的Zookeeper+LevelDB集群化方案。
+
+- ActiveMQ消息持久化機制有：
+  - AMQ              基於日誌文件
+  - KahaDB          基於日誌文件，從ActiveMQ5.4開始默認使用
+  - JDBC              基於第三方數據庫
+  - Replicated LevelDB Store 從5.9開始提供了LevelDB和Zookeeper的數據複製方法，用於Master-slave方式的首選數據複製方案。
+
+# 配置ActiveMQ集群
+
+## 配置Zookeeper 
+
+- 配置3台Zookeeper集群
+
+## 集群部屬規劃
+
+| 主機 | Zookeeper集群端口 | AMQ集群bind端口 | AMQ消息tcp端 | 管理控制台端口 | AMQ節點安裝目錄|
+| ---------- | --- |--- |--- |--- |--- |
+|192.168.47.129| 2191 |bind="tcp://192.168.47.129:63631"|61616|8161|/mq_cluster/mq_node01|
+|192.168.47.130| 2191 |bind="tcp://192.168.47.130:63631"|61616|8161|/mq_cluster/mq_node02|
+|192.168.47.131| 2191 |bind="tcp://192.168.47.131:63631"|61616|8161|/mq_cluster/mq_node03|
+
+## 創建3台MQ集群目錄
+
+- 分別在3台主機上創建 /opt/module/mq_cluster/mq_node1、/opt/module/mq_cluster/mq_node2、/opt/module/mq_cluster/mq_node3
+- 複製apache-activemq-5.16.4，到以上3個目錄下
+
+```
+mkdir -p /opt/module/mq_cluster/mq_node
+cp -r /mnt/hgfs/fileShare/apache-activemq-5.16.4 /opt/module/mq_cluster/mq_node3
+```
+
+### 修改管理控制台端口和IP
+
+- 修改/opt/module/mq_cluster/mq_node1/conf/jetty.xml
+  - 1.調整host 改成各自主機IP
+  - 2.調整端口 port 改成 8181
+
+![063](activemq/imgs/34.png)
+![063](activemq/imgs/35.png)
+![063](activemq/imgs/36.png)
+
+
+### ActiveMQ集群配置
+
+#### BrokerName配置
+
+- 3台機器activemq.xml配置文件裡面的BrokerName要全部一致
+
+![063](activemq/imgs/37.png)
+
+#### 持久化配置
+
+```xml
+  <persistenceAdapter>
+    <replicatedLevelDB
+      directory="${activemq.data}/leveldb"
+      replicas="3"
+      bind="tcp://192.168.47.129:61616"
+      zkAddress="192.168.47.129:2181,192.168.47.130:2181,192.168.47.131:2181"
+      zkPassword="password" <!--有密碼再設-->
+      zkPath="/activemq/leveldb-stores"
+      hostname="192.168.47.129"
+      />
+  </persistenceAdapter>
+```
+
+![063](activemq/imgs/38.png)
+![063](activemq/imgs/39.png)
+![063](activemq/imgs/40.png)
+
+### 修改各個節點的消息端口
+
+- 修改activemq.xml port號
+
+![063](activemq/imgs/41.png)
+
+### 啟動
+
+- 1.先啟動zookeeper
+- 2.再依順序啟動activeMQ
+
+### 驗證
+
+- 登入zooleeper zkCli.sh 輸入以下指令，驗證
+  
+```
+ls /activemq/leveldb-stores
+
+get /activemq/leveldb-stores/00000000003
+
+get /activemq/leveldb-stores/00000000004
+
+get /activemq/leveldb-stores/00000000005
+
+```
+- elected 裡有值代表master，沒有的代表Slave
+
+![063](activemq/imgs/42.png)
+
+### 程式裡需要配置
+
+- 集群需要使用(failover:(tcp://192.168.10.130:61616,tcp://192.168.10.132:61616,tcp://192.168.10.133:61616))配置多個ActiveMQ
+
+### 小結
+
+- ActiveMQ的客戶端只能訪問Master的Broker，其他處於Slave的Broker不能訪問，所以客戶端連接的Broker應該使用failover協議（失敗轉移）
+ 
+- 當一個ActiveMQ節點掛掉或者一個Zookeeper節點掛點，ActiveMQ服務依然正常運轉，如果僅剩一個ActiveMQ節點，由於不能選舉Master，所以ActiveMQ不能正常運行。
+ 
+- 同樣的，
+如果zookeeper僅剩一個活動節點，不管ActiveMQ各節點存活，ActiveMQ也不能正常提供服務。
+（ActiveMQ集群的高可用依賴於Zookeeper集群的高可用）
+
+
+
+
+
