@@ -2074,6 +2074,138 @@ get /activemq/leveldb-stores/00000000005
 （ActiveMQ集群的高可用依賴於Zookeeper集群的高可用）
 
 
+# 設置消息重複投遞
+
+## 官網
+
+- https://activemq.apache.org/delay-and-schedule-message-delivery.html
+
+## 步驟
+- 1.先設定  activemq.xml 打開schedulerSupport  = true
+
+![063](activemq/imgs/43.png)
+
+- 2.重啟Active MQ
+
+- 3.程式開發
+
+```java
+		long delay = 2*1000; //一開始延遲投遞的時間
+		long preiod = 10*1000; //之後重複投遞的時間間隔
+		int repeat = 5; //重複投遞次數 
+
+		textMessage.setLongProperty(ScheduledMessage.AMQ_SCHEDULED_DELAY, delay);
+		textMessage.setLongProperty(ScheduledMessage.AMQ_SCHEDULED_PERIOD, preiod);
+		textMessage.setIntProperty(ScheduledMessage.AMQ_SCHEDULED_REPEAT, repeat);
+```
+
+完整
+```java
+package com.frank.activemq.queue;
+
+import javax.jms.Connection;
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import javax.jms.MapMessage;
+import javax.jms.MessageProducer;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+
+import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.ScheduledMessage;
+
+public class JmsProduce_DelayAndSchedule {
+	
+//	public static final String ACTIVEMQ_URL = "tcp://192.168.47.129:61616";
+//	public static final String ACTIVEMQ_URL = "tcp://localhost:61616";
+	public static final String ACTIVEMQ_URL = "nio://192.168.47.129:61618";
+	public static final String QUEUE_NAME = "queue032";
+	
+	public static void main(String[] args) throws JMSException {
+		//1.創建連接工廠，按照給定的URL地址，採用默認用戶名和密碼
+		ActiveMQConnectionFactory actuActiveMQConnectionFactory = new ActiveMQConnectionFactory(ACTIVEMQ_URL);
+		
+		//2.通過連接工廠，獲得連接connection並開啟訪問
+		Connection connection = actuActiveMQConnectionFactory.createConnection();
+		connection.start();
+		
+		//3.創建session
+		//兩個參數，第一個叫事務/第二個叫簽收
+		Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+		
+		
+		//4.創建目的地(具體是對列還是主題topic)
+//		Destination destination = session.createQueue(QUEUE_NAME);
+		Queue queue = session.createQueue(QUEUE_NAME);
+		
+		//5.創建消息的生產者
+		MessageProducer messageProducer = session.createProducer(queue);
+		
+		long delay = 2*1000; //一開始延遲投遞的時間
+		long preiod = 10*1000; //之後重複投遞的時間間隔
+		int repeat = 5; //重複投遞次數 
+		
+		//6.通過使用 MessageProducer 生產3條消息發送到MQ隊列裡面
+		for(int i = 1 ;i<=1;i++) {
+			
+			//7.創建消息
+			TextMessage textMessage = session.createTextMessage("msg----"+i);//理解為一個字串
+			
+			//設置消息屬性
+			textMessage.setLongProperty(ScheduledMessage.AMQ_SCHEDULED_DELAY, delay);
+			textMessage.setLongProperty(ScheduledMessage.AMQ_SCHEDULED_PERIOD, preiod);
+			textMessage.setIntProperty(ScheduledMessage.AMQ_SCHEDULED_REPEAT, repeat);
+			
+			//8.通過MessageProducer發送給MQ
+			messageProducer.send(textMessage);
+			
+			//設置mapMessage
+			MapMessage mapMessage = session.createMapMessage();
+			mapMessage.setString("type", "VIP");
+			mapMessage.setStringProperty("attribute", "test");//設置消息屬性
+			messageProducer.send(mapMessage);
+		}
+		
+		//9.關閉資源
+		messageProducer.close();
+		session.close();
+		connection.close();
+		
+		System.out.println("消息發布完成");
+	}
+}
+
+```
+
+### 參數說明
+
+|Property name|type|description|
+|--|--|--|
+|AMQ_SCHEDULED_DELAY|long|一開始延遲投遞的時間|
+|AMQ_SCHEDULED_PERIOD|long|投遞開始後，重複投遞的時間間隔|
+|AMQ_SCHEDULED_REPEAT|int|重複投遞次數|
+|AMQ_SCHEDULED_CRON|String|Cron表達式|
+
+# 死信隊列ＤＬＱ
+
+－官網　https://activemq.apache.org/message-redelivery-and-dlq-handling
+
+－ ActiveMQ中引入了"死信隊列"(Dead Letter Queue)的概念。即一條消息再被重發了多次後(默認為重發6次redeliveryCounter==6)，將會被ActiveMQ移入"死信隊列"。開發人員可以在這個Queue中查看處裡出錯的消息，進行人工干預
+
+
+
+![063](activemq/imgs/44.png)
+
+
+# 如何防止消息重複調用
+
+- 網路延遲傳輸中，會造成進行MQ重試中，在重試過程中，可能會造成重複消費
+- 如果消息是做資料庫的插入操作，給這個消息做一個唯一主鍵，那麼就算出現重複消費的情況，就會導致主鍵衝突，避免資料庫出現髒數據
+
+- 如果上面兩種情況還不行，準備一個第三服務方來做消費紀錄。以redis為例，給消息分配一個全局ID，只要消費過該消息，將<id,message>以K-V形式寫入redis，讓消費者再開始消費前，先去redis中查詢有沒有消費紀錄即可
+
+
 
 
 
