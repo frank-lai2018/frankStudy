@@ -690,7 +690,7 @@ public class WebSecurityConfig {
 
 - 總結：新替代方案中Spring Security 就不需要再去繼承WebSecurityConfigurerAdapter，然後重寫 configure()方法了，直接通過 filterChain() 方法就能使用 HttpSecurity 來配置相關信息。
 
-# 自訂義登入頁面
+# 自定義登入頁面
 
 * 引入模板依賴
   
@@ -714,6 +714,7 @@ public class WebSecurityConfig {
 		</dependency>
 ```
 
+- application.properties配置Thymeleaf
 ```properties
 # Thymeleaf配置
  # 關閉緩存
@@ -743,7 +744,14 @@ public class LoginController {
 
 ```
 
-* 在templates中定義登入介面
+* 在templates中定義登入介面login.html
+  - 需要注意的是：
+
+    - 登錄表單 method 必須為 post，action 的請求路徑可以定義為 /doLogin
+
+    - 用戶名的 name 屬性為 username，用戶名可以指定為除username外的其他名稱
+
+    - 密碼的 name 屬性為 password，密碼可以指定為除password外的其他名稱
 
 ```html
 <!DOCTYPE html>
@@ -785,7 +793,13 @@ public class LoginController {
 </html>
 ```
 
-* 配置頁面
+* 配置頁面， Spring Security 配置類繼承WebSecurityConfigurerAdapter
+
+- 注意：successForwardUrl 、defaultSuccessUrl 這兩個方法都可以實現成功之後跳轉，其中：
+
+  - successForwardUrl 默認使用 forward跳轉 注意:不會跳轉到之前請求路徑
+
+  - defaultSuccessUrl 默認使用 redirect 跳轉 注意:如果之前請求路徑,會有優先跳轉之前請求路徑,可以傳入第二個參數進行修改
   
 ```java
 package com.frank.config;
