@@ -11,46 +11,45 @@
 * AuthenticationManager組要用來做認證的，認證成功後會將訊息保存到Authentication，而Authentication會保存到當前執行續(ThreadLocal)的SecurityContextHolder中，實際上當請求處裡完SecurityContextHolder會清空，下次請求來再從session拿出來保存在SecurityContextHolder中，之後再controller或service層想獲取認證訊息，直接從SecurityContextHolder中獲取即可
 * 授權時當請求訪問資源時，會先經過AccessDecisionManager，AccessDecisionManager會將當前用戶所擁有的角色封裝成ConfigAttribute，再經由AccessDecisionVoter比較跟資源的角色匹不匹配
 
+### Authentication(認證)
+
+* 在Spring Security中，用戶的認證訊息主要由Authentication的實現類來保存
+
+#### Authentication保存認證以及認證成功的信息，其接口定義為：
+
+```java
+public interface Authentication extends Principal, Serializable {
+
+	Collection<? extends GrantedAuthority> getAuthorities();
+
+	Object getDetails();
+
+	Object getPrincipal();
+
+	boolean isAuthenticated();
+
+	void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException;
+
+}
+
+```
+
+* getAuthorities 用來獲取用戶權限
+* getCredentials 用來獲取用戶憑證，如密碼
+* getdetails 用來獲取用戶攜帶的詳細信息，可能是當前請求的類等
+* getPrincipal 用來獲取當前用戶，例如是一個用戶名或者一個用戶物件
+* isAuthenticated 當前用戶是否認證成功
+* 當用戶使用用戶名/密碼登錄或使用Remember-me登陸時，都會對應一個不同的Authentication實例
+
 ### AuthenticationManager(認證)
 
 * Spring Security中的認證工作主要由AuthenticationManager接口來負責
 
 ```java
-/**
- * Processes an {@link Authentication} request.
- *
- * @author Ben Alex
- */
 public interface AuthenticationManager {
-
-	/**
-	 * Attempts to authenticate the passed {@link Authentication} object, returning a
-	 * fully populated <code>Authentication</code> object (including granted authorities)
-	 * if successful.
-	 * <p>
-	 * An <code>AuthenticationManager</code> must honour the following contract concerning
-	 * exceptions:
-	 * <ul>
-	 * <li>A {@link DisabledException} must be thrown if an account is disabled and the
-	 * <code>AuthenticationManager</code> can test for this state.</li>
-	 * <li>A {@link LockedException} must be thrown if an account is locked and the
-	 * <code>AuthenticationManager</code> can test for account locking.</li>
-	 * <li>A {@link BadCredentialsException} must be thrown if incorrect credentials are
-	 * presented. Whilst the above exceptions are optional, an
-	 * <code>AuthenticationManager</code> must <B>always</B> test credentials.</li>
-	 * </ul>
-	 * Exceptions should be tested for and if applicable thrown in the order expressed
-	 * above (i.e. if an account is disabled or locked, the authentication request is
-	 * immediately rejected and the credentials testing process is not performed). This
-	 * prevents credentials being tested against disabled or locked accounts.
-	 * @param authentication the authentication request object
-	 * @return a fully authenticated object including credentials
-	 * @throws AuthenticationException if authentication fails
-	 */
 	Authentication authenticate(Authentication authentication) throws AuthenticationException;
 
 }
-
 ```
 
 #### <font color="#f00">AuthenticationManager</font> 是一個接口，定義了<font color="#f00">authenticate</font>方法，在系統中來進行身分認證的方法：
@@ -87,35 +86,7 @@ public interface AuthenticationProvider {
 
 ```
 
-### Authentication(認證)
 
-* 在Spring Security中，用戶的認證訊息主要由Authentication的實現類來保存
-
-#### Authentication保存認證以及認證成功的信息，其接口定義為：
-
-```java
-public interface Authentication extends Principal, Serializable {
-
-	Collection<? extends GrantedAuthority> getAuthorities();
-
-	Object getDetails();
-
-	Object getPrincipal();
-
-	boolean isAuthenticated();
-
-	void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException;
-
-}
-
-```
-
-* getAuthorities 用來獲取用戶權限
-* getCredentials 用來獲取用戶憑證，如密碼
-* getdetails 用來獲取用戶攜帶的詳細信息，可能是當前請求的類等
-* getPrincipal 用來獲取當前用戶，例如是一個用戶名或者一個用戶物件
-* isAuthenticated 當前用戶是否認證成功
-* 當用戶使用用戶名/密碼登錄或使用Remember-me登陸時，都會對應一個不同的Authentication實例
 
 ### SecurityContextHolder(用來獲取認證成功後的訊息)
 
@@ -200,7 +171,7 @@ public class ApplicationConfig extends AsyncConfigurerSupport{
 ![012](imgs/9.png)
 
 * FilterChainProxy做為一個Spring Security頂層管理者，將艇依管理spring security filter
-* spring security本身將通過Spring框架提供的DelegatingFilterProxy 整合到原生過濾器鏈中
+* spring security FilterChainProxy本身將通過Spring框架提供的DelegatingFilterProxy 整合到原生過濾器鏈中
 
 # SpringSecurity默認提供的過濾器
 
