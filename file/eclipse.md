@@ -1,5 +1,16 @@
 # 1.更改自動decompile地方
 
+## 安裝JD compile
+
+- 去官網下載https://github.com/java-decompiler/jd-eclipse/releases/tag/v2.0.0  zip 檔案
+- 解壓縮檔案，去eclipse安裝此元件
+
+![035](images/pic073.png)
+![035](images/pic074.png)
+![035](images/pic075.png)
+
+
+## 設定
 ![035](images/pic035.png)
 
 ![056](images/pic056.png)
