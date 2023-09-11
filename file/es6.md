@@ -1,3 +1,34 @@
+# var
+
+## var的作用域
+  -  var的作用域是「函式作用域」，也就是在 function 內宣告的 var，要在該 function 才有作用，會以該 function 範圍為界線，在 function 外面的區域就無法取用了！
+
+```javascript
+function count() {
+      var price = 100;
+      console.log(price); //出現100，function內的var變數只會存在在function內
+}
+console.log(price); //出現錯誤，無法存取price
+```
+## var的缺點
+- 在一些區塊語句（if、else、 for、 while等）裡面用 var 宣告的變數，是會洩漏到全域中的！這樣就有可能會導致一些副作用，可能會彼此影響，或是在工程師交接中增加維護難度。
+以下兩個範例：
+
+```javascript
+var price = 20;
+if (true) {
+      var price = 30;
+}
+console.log(price) // 出現 30，區域變數覆蓋全域變數
+```
+
+```javascript
+for (var i = 0; i<10 ; i++) {
+      …
+}
+console.log(i) // 出現 10，循環變數洩漏為全域變數
+```
+
 # 1.let
 
 a.宣告
@@ -69,7 +100,8 @@ b.變數的賦值
 
 # 2.const
 
-
+- 宣告時就要同時賦值，不然會報錯！
+- 賦值後就不能被更動了！
 
 1.作用：<br/>
    * 定義一個常量<br/>
