@@ -16,7 +16,49 @@ maven
 
 ```
 
-Http Post request (json)
+
+# application/x-www-form-urlencoded (form data傳送方式) POST
+
+```
+public static String getContent(String url, Map<String, String> mapdata) {
+        CloseableHttpResponse response = null;
+        CloseableHttpClient httpClient = HttpClients.createDefault();
+        // 創建httppost
+        HttpPost httpPost = new HttpPost(url);
+        try {
+            // 設置提交方式
+            httpPost.addHeader("Content-type", "application/x-www-form-urlencoded; charset=utf-8");
+            // 添加參數
+            List<NameValuePair> nameValuePairs = new ArrayList<>();
+            if (mapdata.size() != 0) {
+                // 將mapdata中的key存在set集合中，通過迭代器取出所有的key，再獲取每一個鍵對應的值
+                Set keySet = mapdata.keySet();
+                Iterator it = keySet.iterator();
+                while (it.hasNext()) {
+                    String k = it.next().toString();// key
+                    String v = mapdata.get(k);// value
+                    nameValuePairs.add(new BasicNameValuePair(k, v));
+                }
+            }
+            httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs, "UTF-8"));
+            // 執行http請求
+            response = httpClient.execute(httpPost);
+            // 獲得http響應體
+            HttpEntity entity = response.getEntity();
+            if (entity != null) {
+                // 響應的結果
+                String content = EntityUtils.toString(entity, "UTF-8");
+                return content;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "獲取數據錯誤";
+    }
+```
+
+
+# Http Post request (json)
 
 ``` java
     private static final String CONTENT_TYPE = "Content-Type";
