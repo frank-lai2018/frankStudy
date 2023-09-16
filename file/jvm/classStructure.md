@@ -799,3 +799,1633 @@ SourceFile: "Demo3_2.java"
 ![034](imgs/78.png)
 ![034](imgs/79.png)
 ![034](imgs/80.png)
+
+## 2.5 條件判斷指令
+
+||||
+|--|--|--|
+|指令|助記符|含義|
+|0x99| ifeq |判斷是否 == 0 |
+|0x9a| ifne |判斷是否 != 0 |
+|0x9b| iflt |判斷是否 < 0  |
+|0x9c| ifge |判斷是否 >= 0 |
+|0x9d| ifgt |判斷是否 > 0  |
+|0x9e| ifle |判斷是否 <= 0 |
+|0x9f| if_icmpeq |兩個int是否 ==|
+|0xa0| if_icmpne |兩個int是否 !=|
+|0xa1| if_icmplt |兩個int是否 <|
+|0xa2| if_icmpge |兩個int是否 >=|
+|0xa3| if_icmpgt |兩個int是否 >|
+|0xa4| if_icmple |兩個int是否 <=|
+|0xa5| if_acmpeq |兩個引用是否 ==|
+|0xa6| if_acmpne |兩個引用是否 !=|
+|0xc6| ifnull |判斷是否 == null|
+|0xc7| ifnonnull |判斷是否 != null|
+
+- 幾點說明：
+  - byte，short，char 都會按 int 比較，因為操作數棧都是 4 字節
+  - goto 用來進行跳轉到指定行號的字節碼
+
+
+```java
+package jvm;
+
+public class Demo3_3 {
+	public static void main(String[] args) {
+		int a = 0;
+		if (a == 0) {
+			a = 10;
+		} else {
+			a = 20;
+		}
+	}
+}
+
+```
+
+```
+    0: iconst_0
+    1: istore_1
+    2: iload_1
+    3: ifne          12
+    6: bipush        10
+    8: istore_1
+    9: goto          15
+    12: bipush        20
+    14: istore_1
+    15: return
+```
+
+- 以上比較指令中沒有 long，float，double 的比較，可以
+
+參考 https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html#jvms-6.5.lcmp
+
+## 2.6 循環控制指令
+- 其實循環控制還是前面介紹的那些指令，例如 while 循環：
+
+```java
+public class Demo3_4 {
+    public static void main(String[] args) {
+        int a = 0;
+        while (a < 10) {
+        a++;
+        }
+    }
+}
+```
+
+```
+0: iconst_0
+1: istore_1
+2: iload_1
+3: bipush 10
+5: if_icmpge 14
+8: iinc 1, 1
+11: goto 2
+14: return
+```
+
+- 再比如 do while 循環：
+
+```java
+public class Demo3_5 {
+    public static void main(String[] args) {
+        int a = 0;
+        do {
+            a++;    
+        } while (a < 10);
+    }
+}
+```
+```
+0: iconst_0
+1: istore_1
+2: iinc 1, 1
+5: iload_1
+6: bipush 10
+8: if_icmplt 2
+11: return
+```
+- for循環
+
+```java
+public class Demo3_6 {
+    public static void main(String[] args) {
+        for (int i = 0; i < 10; i++) {
+        }
+    }
+}
+```
+```
+0: iconst_0
+1: istore_1
+2: iload_1
+3: bipush 10
+5: if_icmpge 14
+8: iinc 1, 1
+11: goto 2
+14: return
+```
+
+- 注意
+  - 比較 while 和 for 的字節碼，你發現它們是一模一樣的，殊途也能同歸
+
+## 2.7 練習 - 判斷結果
+- 請從字節碼角度分析，下列代碼運行的結果：
+
+```java
+```
+
+```
+```
+
+## 2.8 構造方法
+
+### < cinit >()V 類的構造方法
+
+```java
+public class Demo3_8_1 {
+    static int i = 10;
+    static {
+        i = 20;
+    }
+    static {
+        i = 30;
+    }
+}
+```
+
+- 編譯器會按從上至下的順序，收集所有 static 靜態代碼塊和靜態成員賦值的代碼，合併為一個特殊的方
+法 < cinit >()V ：
+
+```
+0: bipush 10
+2: putstatic #2 // Field i:I
+5: bipush 20
+7: putstatic #2 // Field i:I
+10: bipush 30
+12: putstatic #2 // Field i:I
+15: return
+```
+- < cinit >()V 方法會在類加載的初始化階段被調用
+
+###  < init >()V 實例的構造方法
+
+```java
+package jvm;
+
+public class Demo3_8_2 {
+	private String a = "s1";
+	{
+		b = 20;
+	}
+	private int b = 10;
+	{
+		a = "s2";
+	}
+
+	public Demo3_8_2(String a, int b) {
+		this.a = a;
+		this.b = b;
+	}
+
+	public static void main(String[] args) {
+		Demo3_8_2 d = new Demo3_8_2("s3", 30);
+		System.out.println(d.a);
+		System.out.println(d.b);
+	}
+}
+
+
+```
+ - 編譯器會按從上至下的順序，收集所有 {} 代碼塊和成員變量賦值的代碼，形成新的構造方法，但原始構
+造方法內的代碼總是在最後
+
+```java
+Classfile /M:/2022-12/eclipse/workspace/JVM/jvm/target/classes/jvm/Demo3_8_2.class
+  Last modified 2023年9月16日; size 794 bytes
+  SHA-256 checksum e8c392adb4bd57d41dfe876eea1541f739112a150b7aed7791f02ae6b3ddd60a
+  Compiled from "Demo3_8_2.java"
+public class jvm.Demo3_8_2
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Demo3_8_2
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 2, methods: 2, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Demo3_8_2
+   #2 = Utf8               jvm/Demo3_8_2
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               a
+   #6 = Utf8               Ljava/lang/String;
+   #7 = Utf8               b
+   #8 = Utf8               I
+   #9 = Utf8               <init>
+  #10 = Utf8               (Ljava/lang/String;I)V
+  #11 = Utf8               Code
+  #12 = Methodref          #3.#13         // java/lang/Object."<init>":()V
+  #13 = NameAndType        #9:#14         // "<init>":()V
+  #14 = Utf8               ()V
+  #15 = String             #16            // s1
+  #16 = Utf8               s1
+  #17 = Fieldref           #1.#18         // jvm/Demo3_8_2.a:Ljava/lang/String;
+  #18 = NameAndType        #5:#6          // a:Ljava/lang/String;
+  #19 = Fieldref           #1.#20         // jvm/Demo3_8_2.b:I
+  #20 = NameAndType        #7:#8          // b:I
+  #21 = String             #22            // s2
+  #22 = Utf8               s2
+  #23 = Utf8               LineNumberTable
+  #24 = Utf8               LocalVariableTable
+  #25 = Utf8               this
+  #26 = Utf8               Ljvm/Demo3_8_2;
+  #27 = Utf8               main
+  #28 = Utf8               ([Ljava/lang/String;)V
+  #29 = String             #30            // s3
+  #30 = Utf8               s3
+  #31 = Methodref          #1.#32         // jvm/Demo3_8_2."<init>":(Ljava/lang/String;I)V
+  #32 = NameAndType        #9:#10         // "<init>":(Ljava/lang/String;I)V
+  #33 = Fieldref           #34.#36        // java/lang/System.out:Ljava/io/PrintStream;
+  #34 = Class              #35            // java/lang/System
+  #35 = Utf8               java/lang/System
+  #36 = NameAndType        #37:#38        // out:Ljava/io/PrintStream;
+  #37 = Utf8               out
+  #38 = Utf8               Ljava/io/PrintStream;
+  #39 = Methodref          #40.#42        // java/io/PrintStream.println:(Ljava/lang/String;)V
+  #40 = Class              #41            // java/io/PrintStream
+  #41 = Utf8               java/io/PrintStream
+  #42 = NameAndType        #43:#44        // println:(Ljava/lang/String;)V
+  #43 = Utf8               println
+  #44 = Utf8               (Ljava/lang/String;)V
+  #45 = Methodref          #40.#46        // java/io/PrintStream.println:(I)V
+  #46 = NameAndType        #43:#47        // println:(I)V
+  #47 = Utf8               (I)V
+  #48 = Utf8               args
+  #49 = Utf8               [Ljava/lang/String;
+  #50 = Utf8               d
+  #51 = Utf8               SourceFile
+  #52 = Utf8               Demo3_8_2.java
+{
+  public jvm.Demo3_8_2(java.lang.String, int);
+    descriptor: (Ljava/lang/String;I)V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=2, locals=3, args_size=3
+         0: aload_0
+         1: invokespecial #12                 // Method java/lang/Object."<init>":()V
+         4: aload_0
+         5: ldc           #15                 // String s1
+         7: putfield      #17                 // Field a:Ljava/lang/String;
+        10: aload_0
+        11: bipush        20
+        13: putfield      #19                 // Field b:I
+        16: aload_0
+        17: bipush        10
+        19: putfield      #19                 // Field b:I
+        22: aload_0
+        23: ldc           #21                 // String s2
+        25: putfield      #17                 // Field a:Ljava/lang/String;
+        28: aload_0
+        29: aload_1
+        30: putfield      #17                 // Field a:Ljava/lang/String;
+        33: aload_0
+        34: iload_2
+        35: putfield      #19                 // Field b:I
+        38: return
+      LineNumberTable:
+        line 13: 0
+        line 4: 4
+        line 6: 10
+        line 8: 16
+        line 10: 22
+        line 14: 28
+        line 15: 33
+        line 16: 38
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      39     0  this   Ljvm/Demo3_8_2;
+            0      39     1     a   Ljava/lang/String;
+            0      39     2     b   I
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=4, locals=2, args_size=1
+         0: new           #1                  // class jvm/Demo3_8_2
+         3: dup
+         4: ldc           #29                 // String s3
+      LineNumberTable:
+        line 19: 0
+        line 20: 12
+        line 21: 22
+        line 22: 32
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      33     0  args   [Ljava/lang/String;
+           12      21     1     d   Ljvm/Demo3_8_2;
+}
+SourceFile: "Demo3_8_2.java"
+```
+
+## 2.9 方法調用
+
+- 看一下幾種不同的方法調用對應的字節碼指令
+
+```java
+```
+
+```java
+$ javap -v Demo3_9.class 
+Classfile /M:/2022-12/eclipse/workspace/JVM/jvm/target/classes/jvm/Demo3_9.class
+  Last modified 2023年9月16日; size 735 bytes
+  SHA-256 checksum 721f4f043c372a1cab688c20518170baac403f7c4da7f483adf7c50f3edbe50d
+  Compiled from "Demo3_9.java"
+public class jvm.Demo3_9
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Demo3_9
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 6, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Demo3_9
+   #2 = Utf8               jvm/Demo3_9
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Methodref          #3.#9          // java/lang/Object."<init>":()V
+   #9 = NameAndType        #5:#6          // "<init>":()V
+  #10 = Utf8               LineNumberTable
+  #11 = Utf8               LocalVariableTable
+  #12 = Utf8               this
+  #13 = Utf8               Ljvm/Demo3_9;
+  #14 = Utf8               test1
+  #15 = Utf8               test2
+  #16 = Utf8               test3
+  #17 = Utf8               test4
+  #18 = Utf8               main
+  #19 = Utf8               ([Ljava/lang/String;)V
+  #20 = Methodref          #1.#9          // jvm/Demo3_9."<init>":()V
+  #21 = Methodref          #1.#22         // jvm/Demo3_9.test1:()V
+  #22 = NameAndType        #14:#6         // test1:()V
+  #23 = Methodref          #1.#24         // jvm/Demo3_9.test2:()V
+  #24 = NameAndType        #15:#6         // test2:()V
+  #25 = Methodref          #1.#26         // jvm/Demo3_9.test3:()V
+  #26 = NameAndType        #16:#6         // test3:()V
+  #27 = Methodref          #1.#28         // jvm/Demo3_9.test4:()V
+  #28 = NameAndType        #17:#6         // test4:()V
+  #29 = Utf8               args
+  #30 = Utf8               [Ljava/lang/String;
+  #31 = Utf8               d
+  #32 = Utf8               SourceFile
+  #33 = Utf8               Demo3_9.java
+{
+  public jvm.Demo3_9();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 4: 0
+        line 5: 4
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ljvm/Demo3_9;
+
+  public void test3();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=0, locals=1, args_size=1
+         0: return
+      LineNumberTable:
+        line 14: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       1     0  this   Ljvm/Demo3_9;
+
+  public static void test4();
+    descriptor: ()V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=0, locals=0, args_size=0
+         0: return
+      LineNumberTable:
+        line 17: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=2, args_size=1
+         0: new           #1                  // class jvm/Demo3_9
+         3: dup
+         4: invokespecial #20                 // Method "<init>":()V
+         7: astore_1
+         8: aload_1
+         9: invokespecial #21                 // Method test1:()V
+        12: aload_1
+        13: invokespecial #23                 // Method test2:()V
+        16: aload_1
+        17: invokevirtual #25                 // Method test3:()V
+        20: invokestatic  #27                 // Method test4:()V
+        23: invokestatic  #27                 // Method test4:()V
+        26: return
+      LineNumberTable:
+        line 20: 0
+        line 21: 8
+        line 22: 12
+        line 23: 16
+        line 24: 20
+        line 25: 23
+        line 26: 26
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      27     0  args   [Ljava/lang/String;
+            8      19     1     d   Ljvm/Demo3_9;
+}
+SourceFile: "Demo3_9.java"
+```
+
+- new 是創建【對象】，給對象分配堆內存，執行成功會將【對象引用】壓入操作數棧
+- dup 是賦值操作數棧棧頂的內容，本例即為【對象引用】，為什麼需要兩份引用呢，一個是要配
+合 invokespecial 調用該對象的構造方法 "<init>":()V （會消耗掉棧頂一個引用），另一個要
+配合 astore_1 賦值給局部變量
+- 最終方法（final），私有方法（private），構造方法都是由 invokespecial 指令來調用，屬於靜
+態綁定
+- 普通成員方法是由 invokevirtual 調用，屬於動態綁定，即支持多態
+- 成員方法與靜態方法調用的另一個區別是，執行方法前是否需要【對象引用】
+- 比較有意思的是 d.test4(); 是通過【對象引用】調用一個靜態方法，可以看到在調用
+invokestatic 之前執行了 pop 指令，把【對象引用】從操作數棧彈掉了😂
+- 還有一個執行 invokespecial 的情況是通過 super 調用父類方法
+
+### 結論
+
+- 靜態方法(invokestatic)跟private方法(invokespecial)，及final方法(invokespecial)，在類加載時就知道實際的調用方式
+- 而一般類的方法(invokevirtual)，因為有可能被重寫，所以要運行時期多次查找才知道實際調用哪個方法，所以效能比較差
+
+## 2.10 多態的原理
+
+```java
+package jvm;
+
+/**
+ * 演示多態原理，注意加上下面的 JVM 參數，禁用指針壓縮 -XX:-UseCompressedOops
+ * -XX:-UseCompressedClassPointers
+ */
+public class Demo3_10 {
+	public static void test(Animal animal) {
+		animal.eat();
+		System.out.println(animal.toString());
+	}
+
+	public static void main(String[] args) throws IOException {
+		test(new Cat());
+		test(new Dog());
+		System.in.read();
+	}
+}
+
+abstract class Animal {
+	public abstract void eat();
+
+	@Override
+	public String toString() {
+		return "我是" + this.getClass().getSimpleName();
+	}
+}
+
+class Dog extends Animal {
+	@Override
+	public void eat() {
+		System.out.println("啃骨头");
+	}
+}
+
+class Cat extends Animal {
+	@Override
+	public void eat() {
+		System.out.println("吃鱼");
+	}
+}
+```
+
+- 1）運行代碼
+  - 停在 System.in.read() 方法上，這時運行 jps 獲取進程 id
+- 2）運行 HSDB 工具
+  - 進入 JDK 安裝目錄，執行
+
+```
+java -cp ./lib/sa-jdi.jar sun.jvm.hotspot.HSDB
+```
+![034](imgs/82.png)
+
+- s 進入圖形界面 attach 進程 id(使用jps指令獲得)
+
+![034](imgs/81.png)
+![034](imgs/83.png)
+![034](imgs/84.png)
+![034](imgs/87.png)
+
+
+- 如果遇到以下錯誤:只接去把jdk底下jre資料夾的sawindbg.dll，複製到外層jre的bin目錄即可
+- 
+![034](imgs/85.png)
+![034](imgs/86.png)
+
+
+
+
+- 3）查找某個對象
+  - 打開 Tools -> Find Object By Query
+  - 輸入 select d from jvm.Dog d 點擊 Execute 執行
+![034](imgs/88.png)
+
+-  4）查看對象內存結構
+  - 點擊超鏈接可以看到對象的內存結構，此對像沒有任何屬性，因此只有對像頭的 16 字節，前 8 字節是MarkWord，後 8 字節就是對象的 Class 指針
+  - 但目前看不到它的實際地址
+
+![034](imgs/89.png)
+
+- 5）查看對象 Class 的內存地址
+  - 可以通過 Windows -> Console 進入命令行模式，執行
+
+```
+mem 0x00000001d48e25b0 2
+```
+
+- mem 有兩個參數，參數 1 是對像地址，參數 2 是查看 2 行（即 16 字節）
+結果中第二行 0x0000000025db1508 即為 Class 的內存地址
+
+![034](imgs/90.png)
+![034](imgs/91.png)
+
+
+- 6）查看類的 vtable
+  - 方法1：Alt+R 進入 Inspector 工具，輸入剛才的 Class 內存地址，看到如下界面
+  ![034](imgs/92.png)
+  - 方法2：或者 Tools -> Class Browser 輸入 Dog 查找，可以得到相同的結果
+   ![034](imgs/93.png)
+
+
+   - 無論通過哪種方法，都可以找到 Dog Class 的 vtable 長度為 6，意思就是 Dog 類有 6 個虛方法（多態相關的，final，static 不會列入）
+  - 那麼這 6 個方法都是誰呢？從 Class 的起始地址開始算，偏移 0x1b8 就是 vtable 的起始地址，進行計算得到：
+
+```
+0x0000000025db1508
+               1b8 +
+---------------------
+0x0000000025db16C0
+```
+
+  - 通過 Windows -> Console 進入命令行模式，執行
+
+```
+mem 0x0000000025db16C0 6
+0x0000000025db16c0: 0x00000000259b1b10 
+0x0000000025db16c8: 0x00000000259b15e8 
+0x0000000025db16d0: 0x0000000025db0a98 
+0x0000000025db16d8: 0x00000000259b1540 
+0x0000000025db16e0: 0x00000000259b1678 
+0x0000000025db16e8: 0x0000000025db14b0 
+
+hsdb> 
+```
+就得到了 6 個虛方法的入口地址
+
+- 7）驗證方法地址
+  - 通過 Tools -> Class Browser 查看每個類的方法定義，比較可知
+
+![034](imgs/94.png)
+
+- 對號入座，發現
+  - eat() 方法是 Dog 類自己的
+  - toString() 方法是繼承 String 類的
+  - finalize() ，equals()，hashCode()，clone() 都是繼承 Object 類的
+- 8）小結
+  - 當執行 invokevirtual 指令時，
+    - 1. 先通過棧幀中的對象引用找到對象
+    - 2. 分析對像頭，找到對象的實際 Class
+    - 3. Class 結構中有 vtable，它在類加載的鏈接階段就已經根據方法的重寫規則生成好了
+    - 4. 查表得到方法的具體地址
+    - 5. 執行方法的字節碼
+  
+
+## 2.11 異常處理
+
+### 2.11.1 try-catch
+
+```java
+package jvm;
+
+public class Demo3_11_1 {
+	public static void main(String[] args) {
+		int i = 0;
+		try {
+			i = 10;
+		} catch (Exception e) {
+			i = 20;
+		}
+	}
+}
+
+```
+
+```java
+Classfile /M:/2022-12/eclipse/workspace/JVM/jvm/target/classes/jvm/Demo3_11_1.class
+  Last modified 2023年9月17日; size 540 bytes
+  SHA-256 checksum c2abe11ce357f52dc220ca52a681ae3e1cb7fe56fe1f7ff409b50107f1cfd141
+  Compiled from "Demo3_11_1.java"
+public class jvm.Demo3_11_1
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Demo3_11_1
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 2, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Demo3_11_1
+   #2 = Utf8               jvm/Demo3_11_1
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Methodref          #3.#9          // java/lang/Object."<init>":()V
+   #9 = NameAndType        #5:#6          // "<init>":()V
+  #10 = Utf8               LineNumberTable
+  #11 = Utf8               LocalVariableTable
+  #12 = Utf8               this
+  #13 = Utf8               Ljvm/Demo3_11_1;
+  #14 = Utf8               main
+  #15 = Utf8               ([Ljava/lang/String;)V
+  #16 = Class              #17            // java/lang/Exception
+  #17 = Utf8               java/lang/Exception
+  #18 = Utf8               args
+  #19 = Utf8               [Ljava/lang/String;
+  #20 = Utf8               i
+  #21 = Utf8               I
+  #22 = Utf8               e
+  #23 = Utf8               Ljava/lang/Exception;
+  #24 = Utf8               StackMapTable
+  #25 = Class              #19            // "[Ljava/lang/String;"
+  #26 = Utf8               SourceFile
+  #27 = Utf8               Demo3_11_1.java
+{
+  public jvm.Demo3_11_1();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 3: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ljvm/Demo3_11_1;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=1, locals=3, args_size=1
+         0: iconst_0
+         1: istore_1
+         2: bipush        10
+         4: istore_1
+         5: goto          12
+         8: astore_2
+         9: bipush        20
+        11: istore_1
+        12: return
+      Exception table:
+         from    to  target type
+             2     5     8   Class java/lang/Exception
+      LineNumberTable:
+        line 5: 0
+        line 7: 2
+        line 8: 5
+        line 9: 9
+        line 11: 12
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      13     0  args   [Ljava/lang/String;
+            2      11     1     i   I
+            9       3     2     e   Ljava/lang/Exception;
+      StackMapTable: number_of_entries = 2
+        frame_type = 255 /* full_frame */
+          offset_delta = 8
+          locals = [ class "[Ljava/lang/String;", int ]
+          stack = [ class java/lang/Exception ]
+        frame_type = 3 /* same */
+}
+SourceFile: "Demo3_11_1.java"
+```
+
+- 可以看到多出來一個 Exception table 的結構，[from, to) 是前閉後開的檢測範圍，一旦這個範圍內的字節碼執行出現異常，則通過 type 匹配異常類型，如果一致，進入 target 所指示行號
+- 8 行的字節碼指令 astore_2 是將異常對象引用存入局部變量表的 slot 2 位置
+
+### 多個 single-catch 塊的情況
+
+
+```java
+package jvm;
+
+public class Demo3_11_2 {
+	public static void main(String[] args) {
+		int i = 0;
+		try {
+			i = 10;
+		} catch (ArithmeticException e) {
+			i = 30;
+		} catch (NullPointerException e) {
+			i = 40;
+		} catch (Exception e) {
+			i = 50;
+		}
+	}
+}
+
+```
+
+```java
+Classfile /M:/2022-12/eclipse/workspace/JVM/jvm/target/classes/jvm/Demo3_11_2.class
+  Last modified 2023年9月17日; size 754 bytes
+  SHA-256 checksum a27e86fb3677c75d4b32e722d68984c591d80a834f3f1663b296ba7976463c5d
+  Compiled from "Demo3_11_2.java"
+public class jvm.Demo3_11_2
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Demo3_11_2
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 2, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Demo3_11_2
+   #2 = Utf8               jvm/Demo3_11_2
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Methodref          #3.#9          // java/lang/Object."<init>":()V
+   #9 = NameAndType        #5:#6          // "<init>":()V
+  #10 = Utf8               LineNumberTable
+  #11 = Utf8               LocalVariableTable
+  #12 = Utf8               this
+  #13 = Utf8               Ljvm/Demo3_11_2;
+  #14 = Utf8               main
+  #15 = Utf8               ([Ljava/lang/String;)V
+  #16 = Class              #17            // java/lang/ArithmeticException
+  #17 = Utf8               java/lang/ArithmeticException
+  #18 = Class              #19            // java/lang/NullPointerException
+  #19 = Utf8               java/lang/NullPointerException
+  #20 = Class              #21            // java/lang/Exception
+  #21 = Utf8               java/lang/Exception
+  #22 = Utf8               args
+  #23 = Utf8               [Ljava/lang/String;
+  #24 = Utf8               i
+  #25 = Utf8               I
+  #26 = Utf8               e
+  #27 = Utf8               Ljava/lang/ArithmeticException;
+  #28 = Utf8               Ljava/lang/NullPointerException;
+  #29 = Utf8               Ljava/lang/Exception;
+  #30 = Utf8               StackMapTable
+  #31 = Class              #23            // "[Ljava/lang/String;"
+  #32 = Utf8               SourceFile
+  #33 = Utf8               Demo3_11_2.java
+{
+  public jvm.Demo3_11_2();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 3: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ljvm/Demo3_11_2;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=1, locals=3, args_size=1
+         0: iconst_0
+         1: istore_1
+         2: bipush        10
+         4: istore_1
+         5: goto          26
+         8: astore_2
+         9: bipush        30
+        11: istore_1
+        12: goto          26
+        15: astore_2
+        16: bipush        40
+        18: istore_1
+        19: goto          26
+        22: astore_2
+        23: bipush        50
+        25: istore_1
+        26: return
+      Exception table:
+         from    to  target type
+             2     5     8   Class java/lang/ArithmeticException
+             2     5    15   Class java/lang/NullPointerException
+             2     5    22   Class java/lang/Exception
+      LineNumberTable:
+        line 5: 0
+        line 7: 2
+        line 8: 5
+        line 9: 9
+        line 10: 15
+        line 11: 16
+        line 12: 22
+        line 13: 23
+        line 15: 26
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      27     0  args   [Ljava/lang/String;
+            2      25     1     i   I
+            9       3     2     e   Ljava/lang/ArithmeticException;
+           16       3     2     e   Ljava/lang/NullPointerException;
+           23       3     2     e   Ljava/lang/Exception;
+      StackMapTable: number_of_entries = 4
+        frame_type = 255 /* full_frame */
+          offset_delta = 8
+          locals = [ class "[Ljava/lang/String;", int ]
+          stack = [ class java/lang/ArithmeticException ]
+        frame_type = 70 /* same_locals_1_stack_item */
+          stack = [ class java/lang/NullPointerException ]
+        frame_type = 70 /* same_locals_1_stack_item */
+          stack = [ class java/lang/Exception ]
+        frame_type = 3 /* same */
+}
+SourceFile: "Demo3_11_2.java"
+```
+
+- 因為異常出現時，只能進入 Exception table 中一個分支，所以局部變量表 slot 2 位置被共用
+
+### multi-catch 的情況
+
+```java
+package jvm;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+public class Demo3_11_3 {
+	public static void main(String[] args) {
+		try {
+			Method test = Demo3_11_3.class.getMethod("test");
+			test.invoke(null);
+		} catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void test() {
+		System.out.println("ok");
+	}
+}
+
+```
+
+```java
+Classfile /M:/2022-12/eclipse/workspace/JVM/jvm/target/classes/jvm/Demo3_11_3.class
+  Last modified 2023年9月17日; size 1199 bytes
+  SHA-256 checksum 5addf1b14ce0fd48cd9e3b38b94bc06b7d46c49da6f5feacaf970314ff9e8a44
+  Compiled from "Demo3_11_3.java"
+public class jvm.Demo3_11_3
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Demo3_11_3
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 3, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Demo3_11_3
+   #2 = Utf8               jvm/Demo3_11_3
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Methodref          #3.#9          // java/lang/Object."<init>":()V
+   #9 = NameAndType        #5:#6          // "<init>":()V
+  #10 = Utf8               LineNumberTable
+  #11 = Utf8               LocalVariableTable
+  #12 = Utf8               this
+  #13 = Utf8               Ljvm/Demo3_11_3;
+  #14 = Utf8               main
+  #15 = Utf8               ([Ljava/lang/String;)V
+  #16 = String             #17            // test
+  #17 = Utf8               test
+  #18 = Class              #19            // java/lang/Class
+  #19 = Utf8               java/lang/Class
+  #20 = Methodref          #18.#21        // java/lang/Class.getMethod:(Ljava/lang/String;[Ljava/lang/Clas
+s;)Ljava/lang/reflect/Method;
+  #21 = NameAndType        #22:#23        // getMethod:(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/re
+flect/Method;
+  #22 = Utf8               getMethod
+  #23 = Utf8               (Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;
+  #24 = Methodref          #25.#27        // java/lang/reflect/Method.invoke:(Ljava/lang/Object;[Ljava/lan
+g/Object;)Ljava/lang/Object;
+  #25 = Class              #26            // java/lang/reflect/Method
+  #26 = Utf8               java/lang/reflect/Method
+  #27 = NameAndType        #28:#29        // invoke:(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Obje
+ct;
+  #28 = Utf8               invoke
+  #29 = Utf8               (Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;
+  #30 = Methodref          #31.#33        // java/lang/ReflectiveOperationException.printStackTrace:()V   
+  #31 = Class              #32            // java/lang/ReflectiveOperationException
+  #32 = Utf8               java/lang/ReflectiveOperationException
+  #33 = NameAndType        #34:#6         // printStackTrace:()V
+  #34 = Utf8               printStackTrace
+  #35 = Class              #36            // java/lang/NoSuchMethodException
+  #36 = Utf8               java/lang/NoSuchMethodException
+  #37 = Class              #38            // java/lang/IllegalAccessException
+  #38 = Utf8               java/lang/IllegalAccessException
+  #39 = Class              #40            // java/lang/reflect/InvocationTargetException
+  #40 = Utf8               java/lang/reflect/InvocationTargetException
+  #41 = Utf8               args
+  #42 = Utf8               [Ljava/lang/String;
+  #43 = Utf8               Ljava/lang/reflect/Method;
+  #44 = Utf8               e
+  #45 = Utf8               Ljava/lang/ReflectiveOperationException;
+  #46 = Utf8               StackMapTable
+  #47 = Fieldref           #48.#50        // java/lang/System.out:Ljava/io/PrintStream;
+  #48 = Class              #49            // java/lang/System
+  #49 = Utf8               java/lang/System
+  #50 = NameAndType        #51:#52        // out:Ljava/io/PrintStream;
+  #51 = Utf8               out
+  #52 = Utf8               Ljava/io/PrintStream;
+  #53 = String             #54            // ok
+  #54 = Utf8               ok
+  #55 = Methodref          #56.#58        // java/io/PrintStream.println:(Ljava/lang/String;)V
+  #56 = Class              #57            // java/io/PrintStream
+  #57 = Utf8               java/io/PrintStream
+  #58 = NameAndType        #59:#60        // println:(Ljava/lang/String;)V
+  #59 = Utf8               println
+  #60 = Utf8               (Ljava/lang/String;)V
+  #61 = Utf8               SourceFile
+  #62 = Utf8               Demo3_11_3.java
+{
+  public jvm.Demo3_11_3();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 6: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ljvm/Demo3_11_3;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=3, locals=2, args_size=1
+         0: ldc           #1                  // class jvm/Demo3_11_3
+         2: ldc           #16                 // String test
+         4: iconst_0
+         5: anewarray     #18                 // class java/lang/Class
+         8: invokevirtual #20                 // Method java/lang/Class.getMethod:(Ljava/lang/String;[Ljav
+a/lang/Class;)Ljava/lang/reflect/Method;
+        11: astore_1
+        12: aload_1
+        13: aconst_null
+        14: iconst_0
+        15: anewarray     #3                  // class java/lang/Object
+        18: invokevirtual #24                 // Method java/lang/reflect/Method.invoke:(Ljava/lang/Object
+;[Ljava/lang/Object;)Ljava/lang/Object;
+        21: pop
+        22: goto          30
+        25: astore_1
+        26: aload_1
+        27: invokevirtual #30                 // Method java/lang/ReflectiveOperationException.printStackT
+race:()V
+        30: return
+      Exception table:
+         from    to  target type
+             0    22    25   Class java/lang/NoSuchMethodException
+             0    22    25   Class java/lang/IllegalAccessException
+             0    22    25   Class java/lang/reflect/InvocationTargetException
+      LineNumberTable:
+        line 9: 0
+        line 10: 12
+        line 11: 22
+        line 12: 26
+        line 14: 30
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      31     0  args   [Ljava/lang/String;
+           12      10     1  test   Ljava/lang/reflect/Method;
+           26       4     1     e   Ljava/lang/ReflectiveOperationException;
+      StackMapTable: number_of_entries = 2
+        frame_type = 89 /* same_locals_1_stack_item */
+          stack = [ class java/lang/ReflectiveOperationException ]
+        frame_type = 4 /* same */
+
+  public static void test();
+    descriptor: ()V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=0, args_size=0
+         0: getstatic     #47                 // Field java/lang/System.out:Ljava/io/PrintStream;
+         3: ldc           #53                 // String ok
+         5: invokevirtual #55                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V 
+         8: return
+      LineNumberTable:
+        line 17: 0
+        line 18: 8
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+}
+SourceFile: "Demo3_11_3.java"
+```
+
+### finally
+
+```java
+package jvm;
+
+public class Demo3_11_4 {
+	public static void main(String[] args) {
+		int i = 0;
+		try {
+			i = 10;
+		} catch (Exception e) {
+			i = 20;
+		} finally {
+			i = 30;
+		}
+	}
+}
+
+```
+
+```java
+Classfile /M:/2022-12/eclipse/workspace/JVM/jvm/target/classes/jvm/Demo3_11_4.class
+  Last modified 2023年9月17日; size 613 bytes
+  SHA-256 checksum 4ca38fde78d96a8283f76ba31f2a59ff619656e244e4983595a52cb2aa92e6cf
+  Compiled from "Demo3_11_4.java"
+public class jvm.Demo3_11_4
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Demo3_11_4
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 2, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Demo3_11_4
+   #2 = Utf8               jvm/Demo3_11_4
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Methodref          #3.#9          // java/lang/Object."<init>":()V
+   #9 = NameAndType        #5:#6          // "<init>":()V
+  #10 = Utf8               LineNumberTable
+  #11 = Utf8               LocalVariableTable
+  #12 = Utf8               this
+  #13 = Utf8               Ljvm/Demo3_11_4;
+  #14 = Utf8               main
+  #15 = Utf8               ([Ljava/lang/String;)V
+  #16 = Class              #17            // java/lang/Exception
+  #17 = Utf8               java/lang/Exception
+  #18 = Utf8               args
+  #19 = Utf8               [Ljava/lang/String;
+  #20 = Utf8               i
+  #21 = Utf8               I
+  #22 = Utf8               e
+  #23 = Utf8               Ljava/lang/Exception;
+  #24 = Utf8               StackMapTable
+  #25 = Class              #19            // "[Ljava/lang/String;"
+  #26 = Class              #27            // java/lang/Throwable
+  #27 = Utf8               java/lang/Throwable
+  #28 = Utf8               SourceFile
+  #29 = Utf8               Demo3_11_4.java
+{
+  public jvm.Demo3_11_4();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 3: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ljvm/Demo3_11_4;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=1, locals=4, args_size=1
+         0: iconst_0
+         1: istore_1             // 0 -> i
+         2: bipush        10     // try ----------------------
+         4: istore_1             // 10 -> i
+         5: goto          24
+         8: astore_2             // catch Exceptin -> e
+         9: bipush        20     //
+        11: istore_1             // 20 -> i   
+        12: bipush        30     // finally
+        14: istore_1             // 30 -> i
+        15: goto          27     // return
+        18: astore_3             // catch any -> slot 3
+        19: bipush        30     // finally
+        21: istore_1             // 30 -> i
+        22: aload_3              // <- slot 3
+        23: athrow               // throw
+        24: bipush        30     // finally
+        26: istore_1             // 30 -> i
+        27: return
+      Exception table:
+         from    to  target type
+             2     5     8   Class java/lang/Exception
+             2    12    18   any // 剩余的异常类型，比如 Error
+      LineNumberTable:
+        line 5: 0
+        line 7: 2
+        line 8: 5
+        line 9: 9
+        line 11: 12
+        line 10: 18
+        line 11: 19
+        line 12: 22
+        line 11: 24
+        line 13: 27
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      28     0  args   [Ljava/lang/String;
+            2      26     1     i   I
+            9       3     2     e   Ljava/lang/Exception;
+      StackMapTable: number_of_entries = 4
+        frame_type = 73 /* same_locals_1_stack_item */
+          stack = [ class java/lang/Throwable ]
+        frame_type = 5 /* same */
+        frame_type = 2 /* same */
+}
+SourceFile: "Demo3_11_4.java"
+```
+
+- 可以看到 finally 中的代碼被複製了 3 份，分別放入 try 流程，catch 流程以及 catch 剩餘的異常類型流程
+
+## 2.12  finally 例子
+
+- 注意
+  - 不要在finally裡面寫return，寫了return 就不會把異常往外拋，異常會被吃掉不會出錯
+
+```java
+package jvm;
+
+public class Demo3_12_2 {
+	public static void main(String[] args) {
+		int result = test();
+		System.out.println(result);
+	}
+
+	public static int test() {
+		try {
+			return 10;
+		} finally {
+			return 20;
+		}
+	}
+}
+
+```
+
+```java
+Classfile /M:/2022-12/eclipse/workspace/JVM/jvm/target/classes/jvm/Demo3_12_2.class
+  Last modified 2023年9月17日; size 683 bytes
+  SHA-256 checksum 7e77d49d935e51ae90ebfb8edf8b6073c96a42fc0079120acafe9f36551a0d0d
+  Compiled from "Demo3_12_2.java"
+public class jvm.Demo3_12_2
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Demo3_12_2
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 3, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Demo3_12_2
+   #2 = Utf8               jvm/Demo3_12_2
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Methodref          #3.#9          // java/lang/Object."<init>":()V
+   #9 = NameAndType        #5:#6          // "<init>":()V
+  #10 = Utf8               LineNumberTable
+  #11 = Utf8               LocalVariableTable
+  #12 = Utf8               this
+  #13 = Utf8               Ljvm/Demo3_12_2;
+  #14 = Utf8               main
+  #15 = Utf8               ([Ljava/lang/String;)V
+  #16 = Methodref          #1.#17         // jvm/Demo3_12_2.test:()I
+  #17 = NameAndType        #18:#19        // test:()I
+  #18 = Utf8               test
+  #19 = Utf8               ()I
+  #20 = Fieldref           #21.#23        // java/lang/System.out:Ljava/io/PrintStream;
+  #21 = Class              #22            // java/lang/System
+  #22 = Utf8               java/lang/System
+  #23 = NameAndType        #24:#25        // out:Ljava/io/PrintStream;
+  #24 = Utf8               out
+  #25 = Utf8               Ljava/io/PrintStream;
+  #26 = Methodref          #27.#29        // java/io/PrintStream.println:(I)V
+  #27 = Class              #28            // java/io/PrintStream
+  #28 = Utf8               java/io/PrintStream
+  #29 = NameAndType        #30:#31        // println:(I)V
+  #30 = Utf8               println
+  #31 = Utf8               (I)V
+  #32 = Utf8               args
+  #33 = Utf8               [Ljava/lang/String;
+  #34 = Utf8               result
+  #35 = Utf8               I
+  #36 = Utf8               StackMapTable
+  #37 = Class              #38            // java/lang/Throwable
+  #38 = Utf8               java/lang/Throwable
+  #39 = Utf8               SourceFile
+  #40 = Utf8               Demo3_12_2.java
+{
+  public jvm.Demo3_12_2();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 3: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ljvm/Demo3_12_2;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=2, args_size=1
+         0: invokestatic  #16                 // Method test:()I
+         3: istore_1
+         4: getstatic     #20                 // Field java/lang/System.out:Ljava/io/PrintStream;
+         7: iload_1
+         8: invokevirtual #26                 // Method java/io/PrintStream.println:(I)V
+        11: return
+      LineNumberTable:
+        line 5: 0
+        line 6: 4
+        line 7: 11
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      12     0  args   [Ljava/lang/String;
+            4       8     1 result   I
+
+  public static int test();
+    descriptor: ()I
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=1, locals=0, args_size=0
+         0: goto          4
+         3: pop
+         4: bipush        20
+         6: ireturn
+      Exception table:
+         from    to  target type
+             0     3     3   any
+      LineNumberTable:
+        line 11: 0
+        line 12: 3
+        line 13: 4
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+      StackMapTable: number_of_entries = 2
+        frame_type = 67 /* same_locals_1_stack_item */
+          stack = [ class java/lang/Throwable ]
+        frame_type = 0 /* same */
+}
+SourceFile: "Demo3_12_2.java"
+```
+
+- 由於 finally 中的 ireturn 被插入了所有可能的流程，因此返回結果肯定以 finally 的為準
+- 至於字節碼中第 2 行，似乎沒啥用，且留個伏筆，看下個例子
+- 跟上例中的 finally 相比，發現沒有 athrow 了，這告訴我們：如果在 finally 中出現了 return，會吞掉異常😱😱😱，可以試一下下面的代碼
+
+```java
+package jvm;
+
+public class Demo3_12_1 {
+	public static void main(String[] args) {
+		int result = test();
+		System.out.println(result); //20
+	}
+
+	public static int test() {
+		try {
+			int i = 1 / 0;
+			return 10;
+		} finally {
+			return 20;
+		}
+	}
+}
+
+```
+```java
+Classfile /M:/2022-12/eclipse/workspace/JVM/jvm/target/classes/jvm/Demo3_12_1.class
+  Last modified 2023年9月17日; size 705 bytes
+  SHA-256 checksum b62740e076194b4748a360c7eaef89186060a9f6f6f33b921fe63e79d584ede2
+  Compiled from "Demo3_12_1.java"
+public class jvm.Demo3_12_1
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Demo3_12_1
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 3, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Demo3_12_1
+   #2 = Utf8               jvm/Demo3_12_1
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Methodref          #3.#9          // java/lang/Object."<init>":()V
+   #9 = NameAndType        #5:#6          // "<init>":()V
+  #10 = Utf8               LineNumberTable
+  #11 = Utf8               LocalVariableTable
+  #12 = Utf8               this
+  #13 = Utf8               Ljvm/Demo3_12_1;
+  #14 = Utf8               main
+  #15 = Utf8               ([Ljava/lang/String;)V
+  #16 = Methodref          #1.#17         // jvm/Demo3_12_1.test:()I
+  #17 = NameAndType        #18:#19        // test:()I
+  #18 = Utf8               test
+  #19 = Utf8               ()I
+  #20 = Fieldref           #21.#23        // java/lang/System.out:Ljava/io/PrintStream;
+  #21 = Class              #22            // java/lang/System
+  #22 = Utf8               java/lang/System
+  #23 = NameAndType        #24:#25        // out:Ljava/io/PrintStream;
+  #24 = Utf8               out
+  #25 = Utf8               Ljava/io/PrintStream;
+  #26 = Methodref          #27.#29        // java/io/PrintStream.println:(I)V
+  #27 = Class              #28            // java/io/PrintStream
+  #28 = Utf8               java/io/PrintStream
+  #29 = NameAndType        #30:#31        // println:(I)V
+  #30 = Utf8               println
+  #31 = Utf8               (I)V
+  #32 = Utf8               args
+  #33 = Utf8               [Ljava/lang/String;
+  #34 = Utf8               result
+  #35 = Utf8               I
+  #36 = Utf8               i
+  #37 = Utf8               StackMapTable
+  #38 = Class              #39            // java/lang/Throwable
+  #39 = Utf8               java/lang/Throwable
+  #40 = Utf8               SourceFile
+  #41 = Utf8               Demo3_12_1.java
+{
+  public jvm.Demo3_12_1();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 3: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ljvm/Demo3_12_1;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=2, args_size=1
+         0: invokestatic  #16                 // Method test:()I
+         3: istore_1
+         4: getstatic     #20                 // Field java/lang/System.out:Ljava/io/PrintStream;
+         7: iload_1
+         8: invokevirtual #26                 // Method java/io/PrintStream.println:(I)V
+        11: return
+      LineNumberTable:
+        line 5: 0
+        line 6: 4
+        line 7: 11
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      12     0  args   [Ljava/lang/String;
+            4       8     1 result   I
+
+  public static int test();
+    descriptor: ()I
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=1, args_size=0
+         0: iconst_1
+         1: iconst_0
+         2: idiv
+         3: istore_0
+         4: goto          8
+         7: pop
+         8: bipush        20
+        10: ireturn
+      Exception table:
+         from    to  target type
+             0     7     7   any
+      LineNumberTable:
+        line 11: 0
+        line 12: 4
+        line 13: 7
+        line 14: 8
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            4       3     0     i   I
+      StackMapTable: number_of_entries = 2
+        frame_type = 71 /* same_locals_1_stack_item */
+          stack = [ class java/lang/Throwable ]
+        frame_type = 0 /* same */
+}
+SourceFile: "Demo3_12_1.java"
+```
+
+
+```java
+package jvm;
+
+public class Demo3_12_2_1 {
+	public static void main(String[] args) {
+		int result = test();
+		System.out.println(result);//10
+	}
+
+	public static int test() {
+		int i = 10;
+		try {
+			return i;
+		} finally {
+			i = 20;
+		}
+	}
+}
+
+```
+```java
+Classfile /M:/2022-12/eclipse/workspace/JVM/jvm/target/classes/jvm/Demo3_12_2_1.class
+  Last modified 2023年9月17日; size 734 bytes
+  SHA-256 checksum c8e3cd6f7db57fba6e8ddefc5fd273bd8377538d7a58d6646c9e80f453637a88
+  Compiled from "Demo3_12_2_1.java"
+public class jvm.Demo3_12_2_1
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Demo3_12_2_1
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 3, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Demo3_12_2_1
+   #2 = Utf8               jvm/Demo3_12_2_1
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Methodref          #3.#9          // java/lang/Object."<init>":()V
+   #9 = NameAndType        #5:#6          // "<init>":()V
+  #10 = Utf8               LineNumberTable
+  #11 = Utf8               LocalVariableTable
+  #12 = Utf8               this
+  #13 = Utf8               Ljvm/Demo3_12_2_1;
+  #14 = Utf8               main
+  #15 = Utf8               ([Ljava/lang/String;)V
+  #16 = Methodref          #1.#17         // jvm/Demo3_12_2_1.test:()I
+  #17 = NameAndType        #18:#19        // test:()I
+  #18 = Utf8               test
+  #19 = Utf8               ()I
+  #20 = Fieldref           #21.#23        // java/lang/System.out:Ljava/io/PrintStream;
+  #21 = Class              #22            // java/lang/System
+  #22 = Utf8               java/lang/System
+  #23 = NameAndType        #24:#25        // out:Ljava/io/PrintStream;
+  #24 = Utf8               out
+  #25 = Utf8               Ljava/io/PrintStream;
+  #26 = Methodref          #27.#29        // java/io/PrintStream.println:(I)V
+  #27 = Class              #28            // java/io/PrintStream
+  #28 = Utf8               java/io/PrintStream
+  #29 = NameAndType        #30:#31        // println:(I)V
+  #30 = Utf8               println
+  #31 = Utf8               (I)V
+  #32 = Utf8               args
+  #33 = Utf8               [Ljava/lang/String;
+  #34 = Utf8               result
+  #35 = Utf8               I
+  #36 = Utf8               i
+  #37 = Utf8               StackMapTable
+  #38 = Class              #39            // java/lang/Throwable
+  #39 = Utf8               java/lang/Throwable
+  #40 = Utf8               SourceFile
+  #41 = Utf8               Demo3_12_2_1.java
+{
+  public jvm.Demo3_12_2_1();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 3: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ljvm/Demo3_12_2_1;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=2, args_size=1
+         0: invokestatic  #16                 // Method test:()I
+         3: istore_1
+         4: getstatic     #20                 // Field java/lang/System.out:Ljava/io/PrintStream;
+         7: iload_1
+         8: invokevirtual #26                 // Method java/io/PrintStream.println:(I)V
+        11: return
+      LineNumberTable:
+        line 5: 0
+        line 6: 4
+        line 7: 11
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      12     0  args   [Ljava/lang/String;
+            4       8     1 result   I
+
+  public static int test();
+    descriptor: ()I
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=1, locals=3, args_size=0
+         0: bipush        10
+         2: istore_0
+         3: iload_0
+         4: istore_2
+         5: bipush        20
+         7: istore_0
+         8: iload_2
+         9: ireturn
+        10: astore_1
+        11: bipush        20
+        13: istore_0
+        14: aload_1
+        15: athrow
+      Exception table:
+         from    to  target type
+             3     5    10   any
+      LineNumberTable:
+        line 10: 0
+        line 12: 3
+        line 14: 5
+        line 12: 8
+        line 13: 10
+        line 14: 11
+        line 15: 14
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            3      13     0     i   I
+      StackMapTable: number_of_entries = 1
+        frame_type = 255 /* full_frame */
+          offset_delta = 10
+          locals = [ int ]
+          stack = [ class java/lang/Throwable ]
+}
+SourceFile: "Demo3_12_2_1.java"
+```
