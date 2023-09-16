@@ -582,3 +582,7 @@ ByteBuffer 對像被垃圾回收，那麼就會由 ReferenceHandler 線程通過
 # 垃圾回收GC
 
 [GC](jvm/GC.md )
+
+# 類文件結構
+
+[class](jvm/classStructure.md )
