@@ -483,7 +483,8 @@ ClassFile {
 https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
 
 
-#　2. 字節碼指令
+# 2. 字節碼指令
+
 ## 2.1 入門
 - 接著上一節，研究一下兩組字節碼指令，一個是
   - public cn.itcast.jvm.t5.HelloWorld(); 構造方法的字節碼指令
@@ -2429,3 +2430,1924 @@ Constant pool:
 }
 SourceFile: "Demo3_12_2_1.java"
 ```
+
+## 2.13 synchronized
+
+```java
+public class Demo3_13 {
+  public static void main(String[] args) {
+    Object lock = new Object();
+    synchronized (lock) {
+      System.out.println("ok");
+    }
+  }
+}
+```
+
+```java
+public static void main(java.lang.String[]);
+  descriptor: ([Ljava/lang/String;)V
+  flags: ACC_PUBLIC, ACC_STATIC
+  Code:
+    stack=2, locals=4, args_size=1
+      0: new #2 // new Object
+      3: dup
+      4: invokespecial #1 // invokespecial <init>:()V
+      7: astore_1 // lock引用 -> lock
+      8: aload_1 // <- lock （synchronized开始）
+      9: dup
+      10: astore_2 // lock引用 -> slot 2
+      11: monitorenter // monitorenter(lock引用)
+      12: getstatic #3 // <- System.out
+      15: ldc #4 // <- "ok"
+      17: invokevirtual #5 // invokevirtual println:
+      (Ljava/lang/String;)V
+      20: aload_2 // <- slot 2(lock引用)
+      21: monitorexit // monitorexit(lock引用)
+      22: goto 30
+      25: astore_3 // any -> slot 3
+      26: aload_2 // <- slot 2(lock引用)
+      27: monitorexit // monitorexit(lock引用)
+      28: aload_3
+      29: athrow
+      30: return
+  Exception table:
+    from to target type
+      12 22 25     any
+      25 28 25     any
+  LineNumberTable: ...
+  LocalVariableTable:
+    Start Length Slot Name Signature
+        0     31    0 args [Ljava/lang/String;
+        8     23    1 lock Ljava/lang/Object;
+  StackMapTable: ...
+MethodParameters: ...
+```
+
+- 方法級別的 synchronized 不會在字節碼指令中有所體現
+
+
+# 3. 編譯期處理
+
+- 所謂的 語法糖，其實就是指 java 編譯器把 *.java 源碼編譯為 *.class 字節碼的過程中，自動生成和轉換的一些代碼，主要是為了減輕程序員的負擔，算是 java 編譯器給我們的一個額外福利（給糖吃嘛）
+
+- 注意，以下代碼的分析，借助了 javap 工具，idea 的反編譯功能，idea 插件 jclasslib 等工具。另外，編譯器轉換的結果直接就是 class 字節碼，只是為了便於閱讀，給出了 幾乎等價 的 java 源碼方式，並不是編譯器還會轉換出中間的 java 源碼，切記。
+
+## 3.1 默認構造器
+
+```java
+public class Candy1 {
+}
+```
+
+- 編譯成class後的代碼：
+
+```java
+public class Candy1 {
+  // 這個無參構造是編譯器幫助我們加上的
+  public Candy1() {
+    super(); // 即調用父類 Object 的無參構造方法，即調用 java/lang/Object.
+    "<init>":()V
+  }
+}
+```
+
+## 3.2 自動拆裝箱
+- 這個特性是 JDK 5 開始加入的， 代碼片段1 ：
+
+```java
+package jvm;
+
+public class Candy2 {
+	public static void main(String[] args) {
+		Integer x = 1;
+		int y = x;
+	}
+}
+
+```
+
+- 這段代碼在 JDK 5 之前是無法編譯通過的，必須改寫為 代碼片段2 :
+
+```java
+package jvm;
+
+public class Candy2 {
+	public static void main(String[] args) {
+		Integer x = Integer.valueOf(1);
+		int y = x.intValue();
+	}
+}
+
+```
+
+- 顯然之前版本的代碼太麻煩了，需要在基本類型和包裝類型之間來迴轉換（尤其是集合類中操作的都是包裝類型），因此這些轉換的事情在 JDK 5 以後都由編譯器在編譯階段完成。即 代碼片段1 都會在編譯階段被轉換為 代碼片段2
+
+## 3.3 泛型集合取值
+
+- 泛型也是在 JDK 5 開始加入的特性，但 java 在編譯泛型代碼後會執行 泛型擦除 的動作，即泛型信息在編譯為字節碼之後就丟失了，實際的類型都當做了 Object 類型來處理：
+
+```java
+package jvm;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Candy3 {
+	public static void main(String[] args) {
+		List<Integer> list = new ArrayList<>();
+		list.add(10); // 實際調用的是 List.add(Object e)
+		Integer x = list.get(0); // 實際調用的是 Object obj = List.get(int index);
+	}
+}
+
+```
+
+- 所以在取值時，編譯器真正生成的字節碼中，還要額外做一個類型轉換的操作：
+
+```java
+// 需要將 Object 轉為 Integer
+Integer x = (Integer)list.get(0);
+```
+
+- 如果前面的 x 變量類型修改為 int 基本類型那麼最終生成的字節碼是：
+
+```java
+// 需要將 Object 轉為 Integer, 並執行拆箱操作
+int x = ((Integer)list.get(0)).intValue();
+```
+
+- 還好這些麻煩事都不用自己做。
+- 擦除的是字節碼上的泛型信息，可以看到 LocalVariableTypeTable 仍然保留了方法參數泛型的信息
+
+```java
+public class jvm.Candy3
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // jvm/Candy3
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 2, attributes: 1
+Constant pool:
+   #1 = Class              #2             // jvm/Candy3
+   #2 = Utf8               jvm/Candy3
+   ----
+  #44 = Utf8               Candy3.java
+{
+  public jvm.Candy3();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 6: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   Ljvm/Candy3;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=3, args_size=1
+         0: new           #16                 // class java/util/ArrayList
+         3: dup
+         4: invokespecial #18                 // Method java/util/ArrayList."<init>":()V
+         7: astore_1
+         8: aload_1
+         9: bipush        10
+        11: invokestatic  #19                 // Method java/lang/Integer.valueOf:(I)Ljava/lang/Integer;  
+        14: invokeinterface #25,  2           // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z 
+        19: pop
+        20: aload_1
+        21: iconst_0
+        22: invokeinterface #31,  2           // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object; 
+        27: checkcast     #20                 // class java/lang/Integer
+        30: astore_2
+        31: return
+      LineNumberTable:
+        line 8: 0
+        line 9: 8
+        line 10: 20
+        line 11: 31
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      32     0  args   [Ljava/lang/String;
+            8      24     1  list   Ljava/util/List;
+           31       1     2     x   Ljava/lang/Integer;
+      LocalVariableTypeTable:
+        Start  Length  Slot  Name   Signature
+            8      24     1  list   Ljava/util/List<Ljava/lang/Integer;>;
+}
+SourceFile: "Candy3.java"
+```
+
+- 使用反射，仍然能夠獲得這些信息：
+
+```java
+public Set<Integer> test(List<String> list, Map<Integer, Object> map) {
+}
+```
+
+```java
+Method test = Candy3.class.getMethod("test", List.class, Map.class);
+Type[] types = test.getGenericParameterTypes();
+for (Type type : types) {
+  if (type instanceof ParameterizedType) {
+      ParameterizedType parameterizedType = (ParameterizedType) type;
+      System.out.println("原始类型 - " + parameterizedType.getRawType());
+      Type[] arguments = parameterizedType.getActualTypeArguments();
+      for (int i = 0; i < arguments.length; i++) {
+        System.out.printf("泛型参数[%d] - %s\n", i, arguments[i]);
+      }
+  }
+}
+```
+
+輸出:
+
+```
+原始類型 - interface java.util.List
+泛型參數[0] - class java.lang.String
+原始類型 - interface java.util.Map
+泛型參數[0] - class java.lang.Integer
+泛型參數[1] - class java.lang.Object
+```
+
+## 3.4可變參數
+
+- 可變參數也是 JDK 5 開始加入的新特性：
+例如：
+
+```java
+public class Candy4 {
+  public static void foo(String... args) {
+    String[] array = args; // 直接赋值
+    System.out.println(array);
+  }
+  public static void main(String[] args) {
+    foo("hello", "world");
+  }
+}
+```
+
+- 可變參數 String... args 其實是一個 String[] args ，從代碼中的賦值語句中就可以看出來。同樣 java 編譯器會在編譯期間將上述代碼變換為：
+
+```java
+public class Candy4 {
+  public static void foo(String[] args) {
+    String[] array = args; // 直接赋值
+    System.out.println(array);
+  }
+  public static void main(String[] args) {
+    foo(new String[]{"hello", "world"});
+  }
+}
+```
+- 注意
+  - 如果調用了 foo() 則等價代碼為 foo(new String[]{}) ，創建了一個空的數組，而不會傳遞null 進去
+
+## 3.5 foreach 循環
+- 仍是 JDK 5 開始引入的語法糖，數組的循環：
+
+```java
+public class Candy5_1 {
+  public static void main(String[] args) {
+    int[] array = {1, 2, 3, 4, 5}; // 數組賦初值的簡化寫法也是語法糖哦
+    for (int e : array) {
+      System.out.println(e);
+    }
+  }
+}
+```
+
+- 會被編譯器轉換為：
+
+```java
+public class Candy5_1 {
+  public Candy5_1() {
+  }
+  public static void main(String[] args) {
+    int[] array = new int[]{1, 2, 3, 4, 5};
+    for(int i = 0; i < array.length; ++i) {
+      int e = array[i];
+      System.out.println(e);
+    }
+  }
+}
+```
+
+- 而集合的循環：
+
+```java
+public class Candy5_2 {
+  public static void main(String[] args) {
+    List<Integer> list = Arrays.asList(1,2,3,4,5);
+    for (Integer i : list) {
+      System.out.println(i);
+    }
+  }
+}
+```
+
+- 實際被編譯器轉換為對迭代器的調用：
+
+```java
+public class Candy5_2 {
+  public Candy5_2() {
+  }
+  public static void main(String[] args) {
+    List<Integer> list = Arrays.asList(1, 2, 3, 4, 5);
+    Iterator iter = list.iterator();
+    while(iter.hasNext()) {
+      Integer e = (Integer)iter.next();
+      System.out.println(e);
+    }
+  }
+}
+```
+
+
+- 注意
+  - foreach 循環寫法，能夠配合數組，以及所有實現了 Iterable 接口的集合類一起使用，其中Iterable 用來獲取集合的迭代器（ Iterator ）
+
+
+## 3.6 switch 字符串
+- 從 JDK 7 開始，switch 可以作用於字符串和枚舉類，這個功能其實也是語法糖，例如：
+
+```java
+public class Candy6_1 {
+  public static void choose(String str) {
+    switch (str) {
+    case "hello": {
+      System.out.println("h");
+      break;
+      }
+    case "world": {
+      System.out.println("w");
+      break;
+     }
+    }
+  }
+}
+```
+
+- 注意
+  - switch 配合 String 和枚舉使用時，變量不能為null，原因分析完語法糖轉換後的代碼應當自然清楚會被編譯器轉換為：
+
+```java
+package jvm;
+
+public class Candy6_1 {
+	public Candy6_1() {
+	}
+
+	public static void choose(String str) {
+		byte x = -1;
+		switch (str.hashCode()) {
+		case 99162322: // hello 的 hashCode
+			if (str.equals("hello")) {
+				x = 0;
+			}
+			break;
+		case 113318802: // world 的 hashCode
+			if (str.equals("world")) {
+				x = 1;
+			}
+		}
+		switch (x) {
+		case 0:
+			System.out.println("h");
+			break;
+		case 1:
+			System.out.println("w");
+		}
+	}
+}
+
+```
+- 可以看到，執行了兩遍 switch，第一遍是根據字符串的 hashCode 和 equals 將字符串的轉換為相應byte 類型，第二遍才是利用 byte 執行進行比較。
+- 為什麼第一遍時必須既比較 hashCode，又利用 equals 比較呢？ hashCode 是為了提高效率，減少可能的比較；而 equals 是為了防止 hashCode 衝突，例如 BM 和 C. 這兩個字符串的hashCode值都是2123 ，如果有如下代碼：
+  
+```java
+public class Candy6_2 {
+  public static void choose(String str) {
+    switch (str) {
+      case "BM": {
+        System.out.println("h");
+        break;
+      }
+      case "C.": {
+        System.out.println("w");
+        break;
+      }
+    }
+  }
+}
+```
+
+- 會被編譯器轉換為：
+
+```java
+package jvm;
+
+public class Candy6_2 {
+	public Candy6_2() {
+	}
+
+	public static void choose(String str) {
+		byte x = -1;
+		switch (str.hashCode()) {
+		case 2123: // hashCode 值可能相同，需要进一步用 equals 比较
+			if (str.equals("C.")) {
+				x = 1;
+			} else if (str.equals("BM")) {
+				x = 0;
+			}
+		default:
+			switch (x) {
+			case 0:
+				System.out.println("h");
+				break;
+			case 1:
+				System.out.println("w");
+			}
+		}
+	}
+}
+
+```
+
+
+## 3.7 switch 枚舉
+- switch 枚舉的例子，原始代碼：
+
+
+```java
+enum Sex {
+  MALE, FEMALE
+}
+```
+
+```java
+package jvm;
+
+public class Candy7 {
+	public static void foo(Sex sex) {
+		switch (sex) {
+		case MALE:
+			System.out.println("男");
+			break;
+		case FEMALE:
+			System.out.println("女");
+			break;
+		}
+	}
+}
+
+```
+
+- 轉換後代碼：
+
+```java
+package jvm;
+
+public class Candy7 {
+	/**
+	 * 定義一個合成類（僅 jvm 使用，對我們不可見） 用來映射枚舉的 ordinal 與數組元素的關係 枚舉的 ordinal 表示枚舉對象的序號，從 0
+	 * 開始 即 MALE 的 ordinal()=0，FEMALE 的 ordinal()=1
+	 */
+	static class $MAP {
+		// 數組大小即為枚舉元素個數，裡面存儲case用來對比的數字
+		static int[] map = new int[2];
+		static {
+			map[Sex.MALE.ordinal()] = 1;
+			map[Sex.FEMALE.ordinal()] = 2;
+		}
+	}
+
+	public static void foo(Sex sex) {
+		int x = $MAP.map[sex.ordinal()];
+		switch (x) {
+		case 1:
+			System.out.println("男");
+			break;
+		case 2:
+			System.out.println("女");
+			break;
+		}
+	}
+}
+```
+
+
+## 3.8 枚舉類
+- JDK 7 新增了枚舉類，以前面的性別枚舉為例：
+
+```java
+enum Sex {
+ MALE, FEMALE
+}
+```
+- 轉換後代碼：
+
+```java
+package jvm;
+
+public final class Sex extends Enum<Sex> {
+	public static final Sex MALE;
+	public static final Sex FEMALE;
+	private static final Sex[] $VALUES;
+	static {
+		MALE = new Sex("MALE", 0);
+		FEMALE = new Sex("FEMALE", 1);
+		$VALUES = new Sex[] { MALE, FEMALE };
+	}
+
+	/**
+	 * Sole constructor. Programmers cannot invoke this constructor. It is for use
+	 * by code emitted by the compiler in response to enum type declarations.
+	 *
+	 * @param name    - The name of this enum constant, which is the identifier used
+	 *                to declare it.
+	 * @param ordinal - The ordinal of this enumeration constant (its position in
+	 *                the enum declaration, where the initial constant is assigned
+	 */
+	private Sex(String name, int ordinal) {
+		super(name, ordinal);
+	}
+
+	public static Sex[] values() {
+		return $VALUES.clone();
+	}
+
+	public static Sex valueOf(String name) {
+		return Enum.valueOf(Sex.class, name);
+	}
+}
+
+```
+
+## 3.9 try-with-resources
+
+- JDK 7 開始新增了對需要關閉的資源處理的特殊語法try-with-resources`：
+
+```java
+try(資源變量 = 創建資源對象){
+} catch( ) {
+}
+```
+
+- 其中資源對象需要實現 AutoCloseable 接口，例如 InputStream 、OutputStream 、
+Connection 、Statement 、ResultSet 等接口都實現了 AutoCloseable ，使用 try-withresources可以不用寫 finally 語句塊，編譯器會幫助生成關閉資源代碼，例如：
+
+```java
+package jvm;
+
+public class Candy9 {
+	public static void main(String[] args) {
+		try (InputStream is = new FileInputStream("d:\\1.txt")) {
+			System.out.println(is);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+}
+
+```
+
+- 會被轉換為：
+
+```java
+package jvm;
+
+public class Candy9 {
+	public Candy9() {
+	}
+
+	public static void main(String[] args) {
+		try {
+			InputStream is = new FileInputStream("d:\\1.txt");
+			Throwable t = null;
+			try {
+				System.out.println(is);
+			} catch (Throwable e1) {
+				// t 是我们代码出现的异常
+				t = e1;
+				throw e1;
+			} finally {
+				// 判断了资源不为空
+				if (is != null) {
+					// 如果我们代码有异常
+					if (t != null) {
+						try {
+							is.close();
+						} catch (Throwable e2) {
+							// 如果 close 出现异常，作为被压制异常添加
+							t.addSuppressed(e2);
+						}
+					} else {
+						// 如果我们代码没有异常，close 出现的异常就是最后 catch 块中的 e
+						is.close();
+					}
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+}
+
+```
+
+- 為什麼要設計一個 addSuppressed(Throwable e) （添加被壓制異常）的方法呢？是為了防止異常信息的丟失（想想 try-with-resources 生成的 fianlly 中如果拋出了異常）：
+
+```java
+package jvm;
+
+public class Test6 {
+	public static void main(String[] args) {
+		try (MyResource resource = new MyResource()) {
+			int i = 1 / 0;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}
+
+class MyResource implements AutoCloseable {
+	public void close() throws Exception {
+		throw new Exception("close 异常");
+	}
+}
+
+```
+
+輸出:
+
+```
+java.lang.ArithmeticException: / by zero
+at test.Test6.main(Test6.java:7)
+Suppressed: java.lang.Exception: close 异常
+at test.MyResource.close(Test6.java:18)
+at test.Test6.main(Test6.java:6)
+```
+
+
+- 如以上代碼所示，兩個異常信息都不會丟。
+
+## 3.10 方法重寫時的橋接方法
+- 我們都知道，方法重寫時對返回值分兩種情況：
+  - 父子類的返回值完全一致
+  - 子類返回值可以是父類返回值的子類（比較繞口，見下面的例子）
+
+
+```java
+class A {
+  public Number m() {
+    return 1;
+  }
+}
+class B extends A {
+  @Override
+  // 子類 m 方法的返回值是 Integer 是父類 m 方法返回值 Number 的子類
+  public Integer m() {
+    return 2;
+  }
+}
+```
+
+- 對於子類，java 編譯器會做如下處理：
+
+```java
+class B extends A {
+  public Integer m() {
+    return 2;
+  }
+  // 此方法才是真正重寫了父類 public Number m() 方法
+  public synthetic bridge Number m() {
+    // 調用 public Integer m()
+    return m();
+  }
+}
+```
+
+- 其中橋接方法比較特殊，僅對 java 虛擬機可見，並且與原來的 public Integer m() 沒有命名衝突，可以ㄋ用下面反射代碼來驗證：
+
+```java
+for (Method m : B.class.getDeclaredMethods()) {
+  System.out.println(m);
+}
+```
+
+會輸出
+
+```java
+public java.lang.Integer test.candy.B.m()
+public java.lang.Number test.candy.B.m()
+```
+
+## 3.11 匿名內部類
+
+```java
+package jvm;
+
+public class Candy11 {
+	public static void main(String[] args) {
+		Runnable runnable = new Runnable() {
+			@Override
+			public void run() {
+				System.out.println("ok");
+			}
+		};
+	}
+}
+
+```
+
+- 轉換後代碼：
+
+```java
+// 额外生成的类
+final class Candy11$1 implements Runnable {
+  Candy11$1() {
+  }
+  public void run() {
+    System.out.println("ok");
+  }
+}
+
+public class Candy11 {
+  public static void main(String[] args) {
+    Runnable runnable = new Candy11$1();
+  }
+}
+```
+
+- 引用局部變量的匿名內部類，源代碼：
+
+```java
+package jvm;
+
+public class Candy11 {
+	public static void test(final int x) {
+		Runnable runnable = new Runnable() {
+			@Override
+			public void run() {
+				System.out.println("ok:" + x);
+			}
+		};
+	}
+}
+
+```
+
+- 轉換後代碼：
+
+```java
+//額外生成的類
+final class Candy11$1 implements Runnable {
+	int val$x;
+
+	Candy11$1(int x) {
+		this.val$x = x;
+	}
+
+	public void run() {
+		System.out.println("ok:" + this.val$x);
+	}
+}
+
+public class Candy11 {
+	public static void test(final int x) {
+		Runnable runnable = new Candy11$1(x);
+	}
+}
+
+```
+
+
+- 注意
+  - 這同時解釋了為什麼匿名內部類引用局部變量時，局部變量必須是 final 的：因為在創建Candy11$1 對象時，將 x 的值賦值給了 Candy11$1 對象的 val$x 屬性，所以 x 不應該再發生變化了，如果變化，那麼 val$x 屬性沒有機會再跟著一起變化
+
+
+# 4. 類加載階段
+
+## 4.1 加載
+
+- 將類的字節碼載入方法區中，內部採用 C++ 的 instanceKlass 描述 java 類，它的重要 field 有：
+  - _java_mirror 即 java 的類鏡像，例如對 String 來說，就是 String.class，作用是把 klass 暴
+  露給 java 使用
+  - _super 即父類
+  - _fields 即成員變量
+  - _methods 即方法
+  - _constants 即常量池
+  - _class_loader 即類加載器
+  - _vtable 虛方法表
+  - _itable 接口方法表
+- 如果這個類還有父類沒有加載，先加載父類
+- 加載和鏈接可能是交替運行的
+
+
+- 注意
+  - instanceKlass 這樣的【元數據】是存儲在方法區（1.8 後的元空間內），但 _java_mirror
+  是存儲在堆中
+  - 可以通過前面介紹的 HSDB 工具查看
+
+
+![019](imgs/95.png)
+
+## 4.2 鏈接
+
+### 驗證
+- 驗證類是否符合 JVM規範，安全性檢查
+- 用 UE 等支持二進制的編輯器修改 HelloWorld.class 的魔數，在控制台運行
+
+```
+E:\git\jvm\out\production\jvm>java cn.itcast.jvm.t5.HelloWorld
+Error: A JNI error has occurred, please check your installation and try again
+Exception in thread "main" java.lang.ClassFormatError: Incompatible magic value
+3405691578 in class file cn/itcast/jvm/t5/HelloWorld
+at java.lang.ClassLoader.defineClass1(Native Method)
+at java.lang.ClassLoader.defineClass(ClassLoader.java:763)
+at
+java.security.SecureClassLoader.defineClass(SecureClassLoader.java:142)
+at java.net.URLClassLoader.defineClass(URLClassLoader.java:467)
+at java.net.URLClassLoader.access$100(URLClassLoader.java:73)
+at java.net.URLClassLoader$1.run(URLClassLoader.java:368)
+at java.net.URLClassLoader$1.run(URLClassLoader.java:362)
+at java.security.AccessController.doPrivileged(Native Method)
+at java.net.URLClassLoader.findClass(URLClassLoader.java:361)
+at java.lang.ClassLoader.loadClass(ClassLoader.java:424)
+at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:331)
+at java.lang.ClassLoader.loadClass(ClassLoader.java:357)
+at sun.launcher.LauncherHelper.checkAndLoadMain(LauncherHelper.java:495)
+```
+
+### 準備
+- 為 static 變量分配空間，設置默認值
+- static 變量在 JDK 7 之前存儲於 instanceKlass 末尾，從 JDK 7 開始，存儲於 _java_mirror 末尾
+- static 變量分配空間和賦值是兩個步驟，分配空間在準備階段完成，賦值在初始化階段完成
+- 如果 static 變量是 final 的基本類型，以及字符串常量，那麼編譯階段值就確定了，賦值在準備階
+段完成
+- 如果 static 變量是 final 的，但屬於引用類型，那麼賦值也會在初始化階段完成
+
+### 解析
+
+- 將常量池中的符號引用解析為直接引用
+
+```java
+package cn.itcast.jvm.t3.load;
+
+/**
+ * 解析的含義
+ */
+public class Load2 {
+	public static void main(String[] args) throws ClassNotFoundException, IOException {
+		ClassLoader classloader = Load2.class.getClassLoader();
+// loadClass 方法不會導致類的解析和初始化
+		Class<?> c = classloader.loadClass("cn.itcast.jvm.t3.load.C");
+// new C();
+		System.in.read();
+	}
+}
+
+class C {
+	D d = new D();
+}
+
+class D {
+}
+```
+
+## 4.3 初始化
+
+### <cinit>()V 方法
+
+- 初始化即調用 <cinit>()V ，虛擬機會保證這個類的『構造方法』的線程安全
+
+### 發生的時機
+- 概括得說，類初始化是【懶惰的】
+  - main 方法所在的類，總會被首先初始化
+  - 首次訪問這個類的靜態變量或靜態方法時
+  - 子類初始化，如果父類還沒初始化，會引發
+  - 子類訪問父類的靜態變量，只會觸發父類的初始化
+  - Class.forName
+  - new 會導致初始化
+- 不會導致類初始化的情況
+  - 訪問類的 static final 靜態常量（基本類型和字符串）不會觸發初始化
+  - 類對象.class 不會觸發初始化
+  - 創建該類的數組不會觸發初始化
+  - 類加載器的 loadClass 方法
+  - Class.forName 的參數 2 為 false 時
+
+```java
+class A {
+	static int a = 0;
+	static {
+		System.out.println("a init");
+	}
+}
+
+class B extends A {
+	final static double b = 5.0;
+	static boolean c = false;
+	static {
+		System.out.println("b init");
+	}
+}
+```
+
+- 驗證（實驗時請先全部註釋，每次只執行其中一個）
+
+```java
+public class Load3 {
+	static {
+		System.out.println("main init");
+	}
+
+	public static void main(String[] args) throws ClassNotFoundException {
+// 1. 靜態常量（基本類型和字符串）不會觸發初始化
+		System.out.println(B.b);
+// 2. 類對象.class 不會觸發初始化
+		System.out.println(B.class);
+// 3. 創建該類的數組不會觸發初始化
+		System.out.println(new B[0]);
+// 4. 不會初始化類 B，但會加載 B、A
+		ClassLoader cl = Thread.currentThread().getContextClassLoader();
+
+		cl.loadClass("cn.itcast.jvm.t3.B");
+//5. 不會初始化類 B，但會加載 B、A
+		ClassLoader c2 = Thread.currentThread().getContextClassLoader();
+		Class.forName("cn.itcast.jvm.t3.B", false, c2);
+//1. 首次訪問這個類的靜態變量或靜態方法時
+		System.out.println(A.a);
+//2. 子類初始化，如果父類還沒初始化，會引發
+		System.out.println(B.c);
+//3. 子類訪問父類靜態變量，只觸發父類初始化
+		System.out.println(B.a);
+//4. 會初始化類 B，並先初始化類 A
+		Class.forName("cn.itcast.jvm.t3.B");
+	}
+}
+```
+
+## 4.4練習
+
+- 從字節碼分析，使用 a，b，c 這三個常量是否會導致 E 初始化
+
+```java
+public class Load4 {
+	public static void main(String[] args) {
+		System.out.println(E.a);
+		System.out.println(E.b);
+		System.out.println(E.c);
+	}
+}
+
+class E {
+	public static final int a = 10;
+	public static final String b = "hello";
+	public static final Integer c = 20;
+}
+```
+
+- 典型應用 - 完成懶惰初始化單例模式
+
+```java
+public final class Singleton {
+	private Singleton() {
+	}
+
+// 內部類中保存單例
+	private static class LazyHolder {
+		static final Singleton INSTANCE = new Singleton();
+	}
+
+// 第一次調用 getInstance 方法，才會導致內部類加載和初始化其靜態成員
+	public static Singleton getInstance() {
+		return LazyHolder.INSTANCE;
+	}
+}
+```
+
+- 以上的實現特點是：
+  - 懶惰實例化
+  - 初始化時的線程安全是有保障的
+
+
+# 5. 類加載器
+
+- 以 JDK 8 为例：
+
+||||
+|---|---|---|
+|名稱|加載哪的類|說明|
+|Bootstrap ClassLoader |JAVA_HOME/jre/lib |無法直接訪問
+|Extension ClassLoader |JAVA_HOME/jre/lib/ext |上級為 Bootstrap，顯示為 null
+|Application ClassLoader |classpath |上級為 Extension|
+|自定義類加載器|自定義|上級為 Application|
+
+## 5.1 啟動類加載器
+- 用 Bootstrap 類加載器加載類：
+
+```java
+package cn.itcast.jvm.t3.load;
+
+public class F {
+	static {
+		System.out.println("bootstrap F init");
+	}
+}
+```
+- 執行
+
+```java
+package cn.itcast.jvm.t3.load;
+
+public class Load5_1 {
+	public static void main(String[] args) throws ClassNotFoundException {
+		Class<?> aClass = Class.forName("cn.itcast.jvm.t3.load.F");
+		System.out.println(aClass.getClassLoader());
+	}
+}
+```
+
+輸出:
+
+```
+E:\git\jvm\out\production\jvm>java -Xbootclasspath/a:.
+cn.itcast.jvm.t3.load.Load5
+bootstrap F init
+null
+```
+
+- -Xbootclasspath 表示設置 bootclasspath
+- 其中 /a:. 表示將當前目錄追加至 bootclasspath 之後
+- 可以用這個辦法替換核心類
+  - java -Xbootclasspath:<new bootclasspath>
+  - java -Xbootclasspath/a:<追加路徑>
+  - java -Xbootclasspath/p:<追加路徑>
+
+## 5.2 擴展類加載器
+
+
+
+```java
+package cn.itcast.jvm.t3.load;
+
+public class G {
+	static {
+		System.out.println("classpath G init");
+	}
+}
+```
+
+
+```java
+public class Load5_2 {
+	public static void main(String[] args) throws ClassNotFoundException {
+		Class<?> aClass = Class.forName("cn.itcast.jvm.t3.load.G");
+		System.out.println(aClass.getClassLoader());
+	}
+}
+```
+
+
+```
+classpath G init
+sun.misc.Launcher$AppClassLoader@18b4aac2
+```
+
+- 寫一個同名的類
+
+```java
+package cn.itcast.jvm.t3.load;
+
+public class G {
+	static {
+		System.out.println("ext G init");
+	}
+}
+```
+
+- 打个 jar 包
+
+```
+E:\git\jvm\out\production\jvm>jar -cvf my.jar cn/itcast/jvm/t3/load/G.class
+已添加清單
+正在添加: cn/itcast/jvm/t3/load/G.class(輸入 = 481) (輸出 = 322)(壓縮了 33%)
+```
+
+- 將 jar 包拷貝到 JAVA_HOME/jre/lib/ext
+- 重新執行 Load5_2
+- 輸出
+
+```
+ext G init
+sun.misc.Launcher$ExtClassLoader@29453f44
+```
+
+## 5.3 雙親委派模式
+- 所謂的雙親委派，就是指調用類加載器的 loadClass 方法時，查找類的規則
+- 
+- 注意
+  - 這裡的雙親，翻譯為上級似乎更為合適，因為它們並沒有繼承關係
+
+```java
+	protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+		synchronized (getClassLoadingLock(name)) {
+			// 1. 檢查該類是否已經加載
+			Class<?> c = findLoadedClass(name);
+			if (c == null) {
+				long t0 = System.nanoTime();
+				try {
+					if (parent != null) {
+						// 2. 有上級的話，委派上級 loadClass
+						c = parent.loadClass(name, false);
+					} else {
+						// 3. 如果沒有上級了（ExtClassLoader），則委派
+						BootstrapClassLoader c = findBootstrapClassOrNull(name);
+					}
+				} catch (ClassNotFoundException e) {
+				}
+				if (c == null) {
+					long t1 = System.nanoTime();
+					// 4. 每一層找不到，調用 findClass 方法（每個類加載器自己擴展）來加載
+					c = findClass(name);
+					// 5. 記錄耗時
+					sun.misc.PerfCounter.getParentDelegationTime().addTime(t1 - t0);
+					sun.misc.PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
+					sun.misc.PerfCounter.getFindClasses().increment();
+				}
+			}
+			if (resolve) {
+				resolveClass(c);
+			}
+			return c;
+		}
+	}
+```
+
+例如:
+
+```java
+public class Load5_3 {
+	public static void main(String[] args) throws ClassNotFoundException {
+		Class<?> aClass = Load5_3.class.getClassLoader().loadClass("cn.itcast.jvm.t3.load.H");
+		System.out.println(aClass.getClassLoader());
+	}
+}
+```
+
+- 執行流程為：
+  - 1. sun.misc.Launcher$AppClassLoader //1 處， 開始查看已加載的類，結果沒有
+  - 2. sun.misc.Launcher$AppClassLoader // 2 處，委派上級
+  sun.misc.Launcher$ExtClassLoader.loadClass()
+  - 3. sun.misc.Launcher$ExtClassLoader // 1 處，查看已加載的類，結果沒有
+  - 4. sun.misc.Launcher$ExtClassLoader // 3 處，沒有上級了，則委派 BootstrapClassLoader
+  查找
+  - 5. BootstrapClassLoader 是在 JAVA_HOME/jre/lib 下找 H 這個類，顯然沒有
+  - 6. sun.misc.Launcher$ExtClassLoader // 4 處，調用自己的 findClass 方法，是在
+  JAVA_HOME/jre/lib/ext 下找 H 這個類，顯然沒有，回到 sun.misc.Launcher$AppClassLoader
+  的 // 2 處
+  - 7. 繼續執行到 sun.misc.Launcher$AppClassLoader // 4 處，調用它自己的 findClass 方法，在
+  classpath 下查找，找到了
+
+
+## 5.4 線程上下文類加載器
+- 我們在使用 JDBC 時，都需要加載 Driver 驅動，不知道你注意到沒有，不寫
+
+```java
+Class.forName("com.mysql.jdbc.Driver")
+```
+
+- 也是可以讓 com.mysql.jdbc.Driver 正確加載的，你知道是怎麼做的嗎？
+- 讓我們追踪一下源碼：
+
+```java
+public class DriverManager {
+// 註冊驅動的集合
+  private final static CopyOnWriteArrayList<DriverInfo> registeredDrivers
+  = new CopyOnWriteArrayList<>();
+  // 初始化驅動
+  static {
+    loadInitialDrivers();
+    println("JDBC DriverManager initialized");
+  }
+```
+
+- 先不看別的，看看 DriverManager 的類加載器：
+
+```java
+System.out.println(DriverManager.class.getClassLoader());
+```
+
+打印 null，表示它的類加載器是 Bootstrap ClassLoader，會到 JAVA_HOME/jre/lib 下搜索類，但
+JAVA_HOME/jre/lib 下顯然沒有 mysql-connector-java-5.1.47.jar 包，這樣問題來了，在
+DriverManager 的靜態代碼塊中，怎麼能正確加載 com.mysql.jdbc.Driver 呢？
+
+繼續看 loadInitialDrivers() 方法：
+
+
+```java
+private static void loadInitialDrivers() {
+		String drivers;
+		try {
+			drivers = AccessController.doPrivileged(new PrivilegedAction<String>() {
+				public String run() {
+					return System.getProperty("jdbc.drivers");
+				}
+			});
+		} catch (Exception ex) {
+			drivers = null;
+		}
+		// 1）使用 ServiceLoader 機制加載驅動，即 SPI
+		AccessController.doPrivileged(new PrivilegedAction<Void>() {
+			public Void run() {
+				ServiceLoader<Driver> loadedDrivers = ServiceLoader.load(Driver.class);
+				Iterator<Driver> driversIterator = loadedDrivers.iterator();
+				try {
+					while (driversIterator.hasNext()) {
+						driversIterator.next();
+					}
+				} catch (Throwable t) {
+					// Do nothing
+				}
+				return null;
+			}
+		});
+		println("DriverManager.initialize: jdbc.drivers = " + drivers);
+		// 2）使用 jdbc.drivers 定義的驅動名加載驅動
+		if (drivers == null || drivers.equals("")) {
+			return;
+		}
+		String[] driversList = drivers.split(":");
+		println("number of Drivers:" + driversList.length);
+		for (String aDriver : driversList) {
+			try {
+				println("DriverManager.Initialize: loading " + aDriver);
+				// 這裡的 ClassLoader.getSystemClassLoader() 就是應用程序類加載器
+				Class.forName(aDriver, true, ClassLoader.getSystemClassLoader());
+			} catch (Exception ex) {
+				println("DriverManager.Initialize: load failed: " + ex);
+			}
+		}
+	}
+
+```
+
+- 先看 2）發現它最後是使用 Class.forName 完成類的加載和初始化，關聯的是應用程序類加載器，因此
+可以順利完成類加載
+- 再看 1）它就是大名鼎鼎的 Service Provider Interface （SPI）
+- 約定如下，在 jar 包的 META-INF/services 包下，以接口全限定名名為文件，文件內容是實現類名稱
+
+![019](imgs/96.png)
+
+
+這樣就可以使用
+
+```java
+ServiceLoader<接口類型> allImpls = ServiceLoader.load(接口類型.class);
+Iterator<接口類型> iter = allImpls.iterator();
+while(iter.hasNext()) {
+iter.next();
+}
+```
+
+- 來得到實現類，體現的是【面向接口編程+解耦】的思想，在下面一些框架中都運用了此思想：
+  - JDBC
+  - Servlet 初始化器
+  - Spring 容器
+  - Dubbo（對 SPI 進行了擴展）
+- 接著看 ServiceLoader.load 方法：
+
+```java
+public static <S> ServiceLoader<S> load(Class<S> service) {
+  // 獲取線程上下文類加載器
+  ClassLoader cl = Thread.currentThread().getContextClassLoader();
+  return ServiceLoader.load(service, cl);
+}
+```
+- 線程上下文類加載器是當前線程使用的類加載器，默認就是應用程序類加載器，它內部又是由
+Class.forName 調用了線程上下文類加載器完成類加載，具體代碼在 ServiceLoader 的內部類
+LazyIterator 中：
+
+```java
+private S nextService() {
+		if (!hasNextService())
+			throw new NoSuchElementException();
+		String cn = nextName;
+		nextName = null;
+		Class<?> c = null;
+		try {
+			c = Class.forName(cn, false, loader);
+		} catch (ClassNotFoundException x) {
+			fail(service, "Provider " + cn + " not found");
+		}
+		if (!service.isAssignableFrom(c)) {
+			fail(service, "Provider " + cn + " not a subtype");
+		}
+		try {
+			S p = service.cast(c.newInstance());
+			providers.put(cn, p);
+			return p;
+		} catch (Throwable x) {
+			fail(service, "Provider " + cn + " could not be instantiated", x);
+		}
+		throw new Error(); // This cannot happen
+	}
+```
+
+## 5.5 自定義類加載器
+- 問問自己，什麼時候需要自定義類加載器
+  - 1）想加載非 classpath 隨意路徑中的類文件
+  - 2）都是通過接口來使用實現，希望解耦時，常用在框架設計
+  - 3）這些類希望予以隔離，不同應用的同名類都可以加載，不衝突，常見於 tomcat 容器
+- 步驟：
+  - 1. 繼承 ClassLoader 父類
+  - 2. 要遵從雙親委派機制，重寫 findClass 方法
+    - 注意不是重寫 loadClass 方法，否則不會走雙親委派機制
+  - 1. 讀取類文件的字節碼
+  - 2. 調用父類的 defineClass 方法來加載類
+  - 3. 使用者調用該類加載器的 loadClass 方法
+- 示例：
+  - 準備好兩個類文件放入 E:\myclasspath，它實現了 java.util.Map 接口，可以先反編譯看一下：
+
+# 6. 運行期優化
+
+## 6.1 即時編譯
+- 分層編譯
+（TieredCompilation）
+- 先來個例子
+
+```java
+public class JIT1 {
+	public static void main(String[] args) {
+		for (int i = 0; i < 200; i++) {
+			long start = System.nanoTime();
+			for (int j = 0; j < 1000; j++) {
+				new Object();
+			}
+			long end = System.nanoTime();
+			System.out.printf("%d\t%d\n", i, (end - start));
+		}
+	}
+}
+```
+
+```
+0 96426
+1 52907
+2 44800
+3 119040
+4 65280
+5 47360
+6 45226
+7 47786
+8 48640
+9 60586
+10 42667
+11 48640
+12 70400
+13 49920
+14 49493
+15 45227
+16 45653
+17 60160
+18 58880
+19 46080
+20 47787
+21 49920
+22 54187
+23 57173
+24 50346
+25 52906
+26 50346
+27 47786
+28 49920
+29 64000
+30 49067
+31 63574
+32 63147
+33 56746
+34 49494
+35 64853
+36 107520
+37 46933
+38 51627
+39 45653
+40 103680
+41 51626
+42 60160
+43 49067
+44 45653
+45 49493
+46 51626
+47 49066
+48 47360
+49 50774
+50 70827
+51 64000
+52 72107
+53 49066
+54 46080
+55 44800
+56 46507
+57 73813
+58 61013
+59 57600
+60 83200
+61 7024204
+62 49493
+63 20907
+64 20907
+65 20053
+66 20906
+67 20907
+68 21333
+69 22187
+70 20480
+71 21760
+72 19200
+73 15360
+74 18347
+75 19627
+76 17067
+77 34134
+78 19200
+79 18347
+80 17493
+81 15360
+82 18774
+83 17067
+84 21760
+85 23467
+86 17920
+87 17920
+88 18774
+89 18773
+90 19200
+91 20053
+92 18347
+93 22187
+94 17920
+95 18774
+96 19626
+97 33280
+98 20480
+99 20480
+100 18773
+101 47786
+102 17493
+103 22614
+104 64427
+105 18347
+106 19200
+107 26027
+108 21333
+109 20480
+110 24747
+111 32426
+112 21333
+113 17920
+114 17920
+115 19200
+116 18346
+117 15360
+118 24320
+119 19200
+120 20053
+121 17920
+122 18773
+123 20053
+124 18347
+125 18347
+126 22613
+127 18773
+128 19627
+129 20053
+130 20480
+131 19627
+132 20053
+133 15360
+134 136533
+135 43093
+136 853
+137 853
+138 853
+139 853
+140 854
+141 853
+142 853
+143 853
+144 853
+145 853
+146 853
+147 854
+148 853
+149 853
+150 854
+151 853
+152 853
+153 853
+154 1280
+155 853
+156 853
+157 854
+158 853
+159 853
+160 854
+161 854
+162 853
+163 854
+164 854
+165 854
+166 854
+167 853
+168 853
+169 854
+170 853
+171 853
+172 853
+173 1280
+174 853
+175 1280
+176 853
+177 854
+178 854
+179 427
+180 853
+181 854
+182 854
+183 854
+184 853
+185 853
+186 854
+187 853
+188 853
+189 854
+190 1280
+191 853
+192 853
+193 853
+194 853
+195 854
+196 853
+197 853
+198 853
+199 854
+```
+
+- 原因是什麼呢？
+- JVM 將執行狀態分成了 5 個層次：
+  - 0 層，解釋執行（Interpreter）
+  - 1 層，使用 C1 即時編譯器編譯執行（不帶 profiling）
+  - 2 層，使用 C1 即時編譯器編譯執行（帶基本的 profiling）
+  - 3 層，使用 C1 即時編譯器編譯執行（帶完全的 profiling）
+  - 4 層，使用 C2 即時編譯器編譯執行
+```
+profiling 是指在運行過程中收集一些程序執行狀態的數據，例如【方法的調用次數】，【循環的
+回邊次數】等
+```
+
+- 即時編譯器（JIT）與解釋器的區別
+  - 解釋器是將字節碼解釋為機器碼，下次即使遇到相同的字節碼，仍會執行重複的解釋
+  - JIT 是將一些字節碼編譯為機器碼，並存入 Code Cache，下次遇到相同的代碼，直接執行，無需
+  再編譯
+  - 解釋器是將字節碼解釋為針對所有平台都通用的機器碼
+  - JIT 會根據平台類型，生成平台特定的機器碼
+
+- 對於佔據大部分的不常用的代碼，我們無需耗費時間將其編譯成機器碼，而是採取解釋執行的方式運
+行；另一方面，對於僅佔據小部分的熱點代碼，我們則可以將其編譯成機器碼，以達到理想的運行速
+度。執行效率上簡單比較一下 Interpreter < C1 < C2，總的目標是發現熱點代碼（hotspot名稱的由
+來），優化之
+
+- 剛才的一種優化手段稱之為【逃逸分析】，發現新建的對像是否逃逸。可以使用 -XX:-
+DoEscapeAnalysis 關閉逃逸分析，再運行剛才的示例觀察結果
+
+参考资料：https://docs.oracle.com/en/java/javase/12/vm/java-hotspot-virtual-machineperformance-
+enhancements.html#GUID-D2E3DC58-D18B-4A6C-8167-4A1DFB4888E4
+
+方法内联
+（Inlining）
+
+```java
+private static int square(final int i) {
+return i * i;
+}
+```
+```
+System.out.println(square(9));
+```
+
+如果發現 square 是熱點方法，並且長度不太長時，會進行內聯，所謂的內聯就是把方法內代碼拷貝、
+粘貼到調用者的位置：
+
+```java
+System.out.println(9 * 9);
+```
+
+還能夠進行常量折疊（constant folding）的優化
+
+```java
+System.out.println(81);
+```
+
+實驗:
+
+```java
+public class JIT2 {
+// -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining （解鎖隱藏參數）打印
+inlining 信息
+
+// -XX:CompileCommand=dontinline,*JIT2.square 禁止某個方法 inlining
+// -XX:+PrintCompilation 打印編譯信息
+	public static void main(String[] args) {
+		int x = 0;
+		for (int i = 0; i < 500; i++) {
+			long start = System.nanoTime();
+			for (int j = 0; j < 1000; j++) {
+				x = square(9);
+			}
+			long end = System.nanoTime();
+			System.out.printf("%d\t%d\t%d\n", i, x, (end - start));
+		}
+	}
+
+	private static int square(final int i) {
+		return i * i;
+	}
+}
+```
+
+- 字段優化
+- JMH 基準測試請參考：http://openjdk.java.net/projects/code-tools/jmh/
+- 創建 maven 工程，添加依賴如下
+
+```xml
+<dependency>
+  <groupId>org.openjdk.jmh</groupId>
+  <artifactId>jmh-core</artifactId>
+  <version>${jmh.version}</version>
+</dependency>
+<dependency>
+  <groupId>org.openjdk.jmh</groupId>
+  <artifactId>jmh-generator-annprocess</artifactId>
+  <version>${jmh.version}</version>
+  <scope>provided</scope>
+</dependency>
+```
+
+- 編寫基準測試代碼：
+
+```java
+package test;
+
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
+
+@Warmup(iterations = 2, time = 1)
+@Measurement(iterations = 5, time = 1)
+@State(Scope.Benchmark)
+public class Benchmark1 {
+	int[] elements = randomInts(1_000);
+
+	private static int[] randomInts(int size) {
+		Random random = ThreadLocalRandom.current();
+		int[] values = new int[size];
+		for (int i = 0; i < size; i++) {
+			values[i] = random.nextInt();
+		}
+		return values;
+	}
+
+	@Benchmark
+	public void test1() {
+		for (int i = 0; i < elements.length; i++) {
+			doSum(elements[i]);
+		}
+	}
+
+	@Benchmark
+	public void test2() {
+		int[] local = this.elements;
+		for (int i = 0; i < local.length; i++) {
+			doSum(local[i]);
+		}
+	}
+
+	@Benchmark
+	public void test3() {
+		for (int element : elements) {
+			doSum(element);
+		}
+	}
+
+	static int sum = 0;
+
+	@CompilerControl(CompilerControl.Mode.INLINE)
+	static void doSum(int x) {
+		sum += x;
+	}
+
+	public static void main(String[] args) throws RunnerException {
+		Options opt = new OptionsBuilder().include(Benchmark1.class.getSimpleName()).forks(1).build();
+		new Runner(opt).run();
+	}
+}
+```
+
+- 首先啟用 doSum 的方法內聯，測試結果如下（每秒吞吐量，分數越高的更好）：
+
+```
+Benchmark Mode Samples Score Score error Units
+t.Benchmark1.test1 thrpt 5 2420286.539 390747.467 ops/s
+t.Benchmark1.test2 thrpt 5 2544313.594 91304.136 ops/s
+t.Benchmark1.test3 thrpt 5 2469176.697 450570.647 ops/s
+```
+
+- 接下來禁用 doSum 方法內聯
+
+```java
+@CompilerControl(CompilerControl.Mode.DONT_INLINE)
+static void doSum(int x) {
+sum += x;
+}
+```
+
+```
+Benchmark Mode Samples Score Score error Units
+t.Benchmark1.test1 thrpt 5 296141.478 63649.220 ops/s
+t.Benchmark1.test2 thrpt 5 371262.351 83890.984 ops/s
+t.Benchmark1.test3 thrpt 5 368960.847 60163.391 ops/s
+```
+
+- 分析：
+  - 在剛才的示例中，doSum 方法是否內聯會影響 elements 成員變量讀取的優化：
+  - 如果 doSum 方法內聯了，剛才的 test1 方法會被優化成下面的樣子（偽代碼）：
+
+```java
+@Benchmark
+public void test1() {
+  // elements.length 首次讀取會緩存起來 -> int[] local
+  for (int i = 0; i < elements.length; i++) { // 後續 999 次 求長度 <- local
+    sum += elements[i]; // 1000 次取下標 i 的元素 <- local
+  }
+}
+```
+
+
+- 可以節省 1999 次 Field 讀取操作
+- 但如果 doSum 方法沒有內聯，則不會進行上面的優化
+- 練習：在內聯情況下將 elements 添加 volatile 修飾符，觀察測試結果
+
+
+## 6.2 反射優化
+
+```java
+package cn.itcast.jvm.t3.reflect;
+
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+public class Reflect1 {
+	public static void foo() {
+		System.out.println("foo...");
+	}
+
+	public static void main(String[] args) throws Exception {
+		Method foo = Reflect1.class.getMethod("foo");
+		for (int i = 0; i <= 16; i++) {
+			System.out.printf("%d\t", i);
+			foo.invoke(null);
+		}
+		System.in.read();
+	}
+}
+```
+- foo.invoke 前面 0 ~ 15 次調用使用的是 MethodAccessor 的 NativeMethodAccessorImpl 實現
+
+```java
+package sun.reflect;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import sun.reflect.misc.ReflectUtil;
+
+class NativeMethodAccessorImpl extends MethodAccessorImpl {
+	private final Method method;
+	private DelegatingMethodAccessorImpl parent;
+	private int numInvocations;
+
+	NativeMethodAccessorImpl(Method method) {
+		this.method = method;
+	}
+
+	public Object invoke(Object target, Object[] args) throws IllegalArgumentException, InvocationTargetException {
+// inflationThreshold 膨脹閾值，默認 15
+		if (++this.numInvocations > ReflectionFactory.inflationThreshold()
+				&& !ReflectUtil.isVMAnonymousClass(this.method.getDeclaringClass())) {
+// 使用 ASM 動態生成的新實現代替本地實現，速度較本地實現快 20 倍左右
+			MethodAccessorImpl generatedMethodAccessor = (MethodAccessorImpl) (new MethodAccessorGenerator())
+					.generateMethod(this.method.getDeclaringClass(), this.method.getName(),
+							this.method.getParameterTypes(), this.method.getReturnType(),
+							this.method.getExceptionTypes(), this.method.getModifiers());
+			this.parent.setDelegate(generatedMethodAccessor);
+		}
+// 調用本地實現
+		return invoke0(this.method, target, args);
+	}
+
+	void setParent(DelegatingMethodAccessorImpl parent) {
+		this.parent = parent;
+	}
+
+	private static native Object invoke0(Method method, Object target, Object[] args);
+}
+```
+
+- 當調用到第 16 次（從0開始算）時，會採用運行時生成的類代替掉最初的實現，可以通過 debug 得到
+- 類名為 sun.reflect.GeneratedMethodAccessor1
+- 可以使用阿里的 arthas 工具：
+
+```
+java -jar arthas-boot.jar
+[INFO] arthas-boot version: 3.1.1
+[INFO] Found existing java process, please choose one and hit RETURN.
+* [1]: 13065 cn.itcast.jvm.t3.reflect.Reflect1
+```
+
+- 選擇 1 回車錶示分析該進程
+
+![019](imgs/97.png)
+
+- 再輸入【jad + 類名】來進行反編譯
+
+```java
+$ jad sun.reflect.GeneratedMethodAccessor1
+ClassLoader:
++-sun.reflect.DelegatingClassLoader@15db9742
++-sun.misc.Launcher$AppClassLoader@4e0e2f2a
++-sun.misc.Launcher$ExtClassLoader@2fdb006e
+Location:
+
+
+/*
+* Decompiled with CFR 0_132.
+*
+* Could not load the following classes:
+* cn.itcast.jvm.t3.reflect.Reflect1
+*/
+package sun.reflect;
+import cn.itcast.jvm.t3.reflect.Reflect1;
+import java.lang.reflect.InvocationTargetException;
+import sun.reflect.MethodAccessorImpl;
+public class GeneratedMethodAccessor1
+extends MethodAccessorImpl {
+/*
+* Loose catch block
+* Enabled aggressive block sorting
+* Enabled unnecessary exception pruning
+* Enabled aggressive exception aggregation
+* Lifted jumps to return sites
+*/
+
+public Object invoke(Object object, Object[] arrobject) throws
+InvocationTargetException {
+// 比较奇葩的做法，如果有参数，那么抛非法参数异常
+block4 : {
+if (arrobject == null || arrobject.length == 0) break block4;
+throw new IllegalArgumentException();
+}
+try {
+// 可以看到，已经是直接调用了😱😱😱
+Reflect1.foo();
+// 因为没有返回值
+return null;
+}
+catch (Throwable throwable) {
+throw new InvocationTargetException(throwable);
+}
+catch (ClassCastException | NullPointerException runtimeException) {
+throw new IllegalArgumentException(Object.super.toString());
+}
+}
+}
+Affect(row-cnt:1) cost in 1540 ms.
+```
+
+- 注意
+  - 通過查看 ReflectionFactory 源碼可知
+  - sun.reflect.noInflation 可以用來禁用膨脹（直接生成 GeneratedMethodAccessor1，但首
+  次生成比較耗時，如果僅反射調用一次，不划算）
+  - sun.reflect.inflationThreshold 可以修改膨脹閾值
