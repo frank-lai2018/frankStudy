@@ -3291,9 +3291,9 @@ at sun.launcher.LauncherHelper.checkAndLoadMain(LauncherHelper.java:495)
 - 為 static 變量分配空間，設置默認值
 - static 變量在 JDK 7 之前存儲於 instanceKlass 末尾，從 JDK 7 開始，存儲於 _java_mirror 末尾
 - static 變量分配空間和賦值是兩個步驟，分配空間在準備階段完成，賦值在初始化階段完成
-- 如果 static 變量是 final 的基本類型，以及字符串常量，那麼編譯階段值就確定了，賦值在準備階
+- 如果 static 變量是 final 的基本類型(public static final int a = 1;)，以及字符串常量(public static final String a = "Hello";)，那麼編譯階段值就確定了，賦值在準備階
 段完成
-- 如果 static 變量是 final 的，但屬於引用類型，那麼賦值也會在初始化階段完成
+- 如果 static 變量是 final 的，但屬於引用類型(public static final Object ob = new Object();)，那麼賦值也會在初始化階段完成
 
 ### 解析
 
@@ -3322,12 +3322,29 @@ class C {
 class D {
 }
 ```
+- 使用classloader.loadClass，方法不會導致類的解析和初始化，所以此時類只是個符號，不知道其所在的記憶體位子
+
+![019](imgs/99.png)
+
+- 使用new，會導致類的解析和初始化，解析後就知道類的記憶體確切位子
+
+![019](imgs/100.png)
 
 ## 4.3 初始化
 
 ### <cinit>()V 方法
 
 - 初始化即調用 <cinit>()V ，虛擬機會保證這個類的『構造方法』的線程安全
+
+- 類中的static區塊，會在初始化中執行
+
+```
+public class Load2 {
+	static {
+		System.out.println("main init");
+	}
+}
+```
 
 ### 發生的時機
 - 概括得說，類初始化是【懶惰的】
@@ -3446,10 +3463,12 @@ public final class Singleton {
 ||||
 |---|---|---|
 |名稱|加載哪的類|說明|
-|Bootstrap ClassLoader |JAVA_HOME/jre/lib |無法直接訪問
-|Extension ClassLoader |JAVA_HOME/jre/lib/ext |上級為 Bootstrap，顯示為 null
-|Application ClassLoader |classpath |上級為 Extension|
+|Bootstrap ClassLoader(啟動類加載氣) |JAVA_HOME/jre/lib |無法直接訪問
+|Extension ClassLoader(擴展類加載氣) |JAVA_HOME/jre/lib/ext |上級為 Bootstrap，顯示為 null
+|Application ClassLoader(應用程序類加載氣) |classpath(類路徑下的所有類0) |上級為 Extension|
 |自定義類加載器|自定義|上級為 Application|
+
+- 每個加載類都有層級關係，也就是說Application ClassLoader在家載某個類時，會問自幾的上級有沒有加載過，再委託這個上級問他的上級有沒加載過，如果以就不加載，沒有才加載，這種加載模式被稱為雙親委派的類加載模式
 
 ## 5.1 啟動類加載器
 - 用 Bootstrap 類加載器加載類：
@@ -3485,12 +3504,12 @@ bootstrap F init
 null
 ```
 
-- -Xbootclasspath 表示設置 bootclasspath
+- -Xbootclasspath 表示設置 bootclasspath 設置啟動類加器得類路徑
 - 其中 /a:. 表示將當前目錄追加至 bootclasspath 之後
 - 可以用這個辦法替換核心類
   - java -Xbootclasspath:<new bootclasspath>
-  - java -Xbootclasspath/a:<追加路徑>
-  - java -Xbootclasspath/p:<追加路徑>
+  - java -Xbootclasspath/a:<追加路徑>   後追加
+  - java -Xbootclasspath/p:<追加路徑>   前追加
 
 ## 5.2 擴展類加載器
 
