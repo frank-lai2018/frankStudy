@@ -40,6 +40,112 @@
   - 並發（concurrent）是同一時間應對（dealing with）多件事情的能力
   - 並行（parallel）是同一時間動手做（doing）多件事情的能力
 
+## 創建線程
+
+### 1.直接使用Thread
+
+```java
+// 建立線程對象
+Thread t = new Thread() {
+  public void run() {
+  // 要執行的任務
+  }
+};
+// 啟動執行緒
+t.start();
+```
+
+例如:
+```java
+// 建構方法的參數是給執行緒指定名字，推薦
+Thread t1 = new Thread("t1") {
+  @Override
+  // run 方法內實作了要執行的任務
+  public void run() {
+  log.debug("hello");
+  }
+};
+t1.start();
+```
+
+輸出
+```
+19:19:00 [t1] c.ThreadStarter - hello
+```
+
+
+### 2.使用Runnable配合Thread
+
+- 把【線程】和【任務】（要執行的程式碼）分開
+  - Thread 代表線程
+  - Runnable 可運行的任務（執行緒要執行的程式碼）
+
+
+```java
+Runnable runnable = new Runnable() {
+  public void run(){
+  // 要執行的任務
+  }
+};
+// 建立線程對象
+Thread t = new Thread( runnable );
+// 啟動執行緒
+t.start();
+```
+
+```java
+// 建立任務對象
+Runnable task2 = new Runnable() {
+  @Override
+  public void run() {
+  log.debug("hello");
+  }
+};
+// 參數1 是任務物件; 參數2 是執行緒名字，推薦
+Thread t2 = new Thread(task2, "t2");
+t2.start();
+```
+
+輸出:
+
+```
+19:19:00 [t2] c.ThreadStarter - hello
+```
+
+java8 以後使用lambda
+
+```java
+// 建立任務對象
+Runnable task2 = () -> log.debug("hello");
+// 參數1 是任務物件; 參數2 是執行緒名字，推薦
+Thread t2 = new Thread(task2, "t2");
+t2.start();
+```
+
+### 3.FutureTask 配和 Thread
+
+```java
+// 建立任務對象
+FutureTask<Integer> task3 = new FutureTask<>(() -> {
+  log.debug("hello");
+  return 100;
+});
+// 參數1 是任務物件; 參數2 是執行緒名字，推薦
+new Thread(task3, "t3").start();
+// 主執行緒阻塞，同步等待 task 執行完畢的結果
+Integer result = task3.get();
+log.debug("結果是:{}", result);
+```
+
+輸出:
+
+```
+19:22:27 [t3] c.ThreadStarter - hello
+19:22:27 [main] c.ThreadStarter - 结果是:100
+
+```
+
+## 
 
 
 
