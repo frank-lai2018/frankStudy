@@ -145,9 +145,347 @@ log.debug("結果是:{}", result);
 
 ```
 
-## 
 
 
+## Thread原理
+
+### 棧與棧禎
+
+- Java Virtual Machine Stacks （Java 虛擬機器堆疊）
+
+- 我們都知道 JVM 中由堆疊、堆疊、方法區所組成，其中棧記憶體是給誰用的呢？ 其實就是線程，每個線程啟動後，虛擬
+機器就會為其分配一塊棧記憶體。
+- 每個棧由多個棧幀（Frame）組成，對應每次方法呼叫時所佔用的記憶體
+- 每個執行緒只能有一個活動棧幀，對應目前正在執行的那個方法
+
+### 線程上下文切換(Thread Context Switch)
 
 
+- 因為以下一些原因導致 cpu 不再執行目前的線程，轉而執行另一個線程的程式碼
+  - 線程的 cpu 時間片用完
+  - 垃圾回收
+  - 有更高優先權的執行緒需要運行
+  - 線程自己呼叫了 sleep、yield、wait、join、park、synchronized、lock 等方法
+- 當 Context Switch 發生時，需要由作業系統保存目前執行緒的狀態，並恢復另一個執行緒的狀態，Java 中對應的概念
+是程式計數器（Program Counter Register），它的功能是記住下一條 jvm 指令的執行位址，是執行緒私有的
+  - 狀態包括程式計數器、虛擬機器棧中每個棧幀的信息，如局部變數、操作數棧、返回地址等
+  - Context Switch 頻繁發生會影響效能
 
+## 常見的方法
+
+|方法名|static|功能說明|注意事項|
+|--|--|--|--|
+|start()||啟動一個新的Thread，在新的Thread運行run方法中的代碼|start 方法只是讓線程進入就緒，裡面程式碼不一定立刻運行（CPU 的時間片還沒分給它）。 每個線程對象的start方法只能呼叫一次，如果呼叫了多次會出現IllegalThreadStateException|
+|run()||新執行緒啟動後會呼叫的方法|如果在建構 Thread 物件時傳遞了Runnable 參數，則執行緒啟動後會呼叫 Runnable 中的 run 方法，否則默認不執行任何操作。但可以創建 Thread 的子類對象，來覆寫預設行為|
+|join()||等待調用該方法的執行緒運行結束||
+|join(long n)||等待執行緒運行結束,最多等待 n毫秒||
+|getId()||獲取執行緒長整型的id|id唯一|
+|getName()||獲取執行緒名||
+|setName(String)||修改執行緒名||
+|getPriority()||獲取執行緒優先級||
+|setPriority(int)||修改執行緒優先級|java中規定執行緒優先權是1~10 的整數，較大的優先權能提高該執行緒被 CPU 調度的機率|
+|getState()||獲取執行緒狀態|Java 中執行緒狀態以 6 個 enum 表示，分別為：NEW, RUNNABLE, BLOCKED, WAITING,TIMED_WAITING, TERMINATED|
+|isInterrupted()||判斷是否被打斷|不會清除打斷標記|
+|isAlive()||執行緒是否存活(還沒有運行完畢)||
+|interrupt()||打斷執行緒|如果被打斷線程正在 sleep，wait，join 會導致被打斷的執行緒拋出 InterruptedException，並清除打斷標記；如果打斷的正在運行的線程，則會設定 打斷標記；park 的線程被打斷，也會設定打斷標記|
+|interrupted()|static|判斷當前線程是否被打斷|會清除打斷標記|
+|currentThread()|static|獲取當前正在執行的執行緒||
+|sleep(long n)|static|讓目前執行的線程休眠n毫秒，休眠時讓出 cpu
+的時間片給其它執行緒||
+|yield()|static|提示線程調度器，讓出當前線程對CPU的使用權|主要為了測試和調試|
+
+## start與run
+
+### 調用run
+
+```java
+    public static void main(String[] args) {
+        Thread t1 = new Thread("t1") {
+
+            @Override
+            public void run() {
+                log.debug(Thread.currentThread().getName());
+                FileReader.read(Constants.MP4_FULL_PATH);
+            }
+        };
+        t1.run();
+        log.debug("do other things ...");
+    }
+```
+
+```
+19:39:14 [main] c.TestStart - main
+19:39:14 [main] c.FileReader - read [1.mp4] start ...
+19:39:18 [main] c.FileReader - read [1.mp4] end ... cost: 4227 ms
+19:39:18 [main] c.TestStart - do other things ...
+```
+程式仍在 main 執行緒運行， FileReader.read() 方法呼叫還是同步的
+
+### 調用start
+
+將上述代碼的t1.run()改為
+
+```java
+t1.start();
+```
+
+```
+19:41:30 [main] c.TestStart - do other things ...
+19:41:30 [t1] c.TestStart - t1
+19:41:30 [t1] c.FileReader - read [1.mp4] start ...
+19:41:35 [t1] c.FileReader - read [1.mp4] end ... cost: 4542 ms
+```
+
+程式在 t1 執行緒運行， FileReader.read() 方法呼叫是異步的
+
+- 小結
+  - 直接呼叫 run 是在主線程中執行了 run，沒有啟動新的線程
+  - 使用 start 是啟動新的線程，透過新的線程間接執行 run 中的程式碼
+
+## sleep 與 yield
+
+### sleep
+
+- 1. 呼叫 sleep 會讓目前執行緒從 Running 進入 Timed Waiting 狀態（阻塞）
+- 2. 其它線程可以使用 interrupt 方法打斷正在睡眠的線程，這時 sleep 方法會拋出 InterruptedException
+- 3. 睡眠結束後的執行緒未必會立刻得到執行
+- 4. 建議用 TimeUnit 的 sleep 取代 Thread 的 sleep 來獲得更好的可讀性
+
+### yield
+
+- 1. 呼叫 yield 會讓目前執行緒從 Running 進入 Runnable 就緒狀態，然後調度執行其它線程
+- 2. 具體的實作依賴作業系統的任務調度器
+
+### 執行緒優先級
+
+- 線程優先權會提示（hint）調度器優先調度該線程，但它只是一個提示，調度器可以忽略它
+- 如果 cpu 比較忙，那麼優先順序高的執行緒會獲得更多的時間片，但 cpu 閒時，優先權幾乎沒作用
+
+```java
+        Runnable task1 = () -> {
+            int count = 0;
+            for (;;) {
+                System.out.println("---->1 " + count++);
+            }
+        };
+        Runnable task2 = () -> {
+            int count = 0;
+            for (;;) {
+                // Thread.yield();
+                System.out.println(" ---->2 " + count++);
+            }
+        };
+        Thread t1 = new Thread(task1, "t1");
+        Thread t2 = new Thread(task2, "t2");
+        // t1.setPriority(Thread.MIN_PRIORITY);
+        // t2.setPriority(Thread.MAX_PRIORITY);
+        t1.start();
+        t2.start();
+```
+
+
+## join方法
+
+### 為什麼需要 join
+
+- 下面的程式碼執行，列印 r 是什麼？
+
+```java
+static int r = 0;
+
+     public static void main(String[] args) throws InterruptedException {
+         test1();
+     }
+
+     private static void test1() throws InterruptedException {
+         log.debug("開始");
+         Thread t1 = new Thread(() -> {
+             log.debug("開始");
+             sleep(1);
+             log.debug("結束");
+             r = 10;
+         });
+         t1.start();
+         log.debug("結果為:{}", r);
+         log.debug("結束");
+     }
+```
+
+- 分析
+  - 因為主執行緒和執行緒 t1 是並行執行的，t1 執行緒需要 1 秒後才能算出 r=10
+  - 而主線程一開始就要印出 r 的結果，所以只能印出 r=0
+- 解決方法
+  - 用 sleep 行不行？ 為什麼？
+  - 用 join，加在 t1.start() 之後即可
+
+
+![035](imgs/3.png)
+- 結論
+  - 需要等待結果返回，才能繼續運行就是同步
+  - 不需要等待結果返回，就能繼續運行就是非同步
+
+下面代碼cost大約多少秒?
+
+```java
+    static int r1 = 0;
+    static int r2 = 0;
+
+    public static void main(String[] args) throws InterruptedException {
+        test2();
+    }
+
+    private static void test2() throws InterruptedException {
+        Thread t1 = new Thread(() -> {
+            sleep(1);
+            r1 = 10;
+        });
+        Thread t2 = new Thread(() -> {
+            sleep(2);
+            r2 = 20;
+        });
+        long start = System.currentTimeMillis();
+        t1.start();
+        t2.start();
+        t1.join();
+        t2.join();
+        long end = System.currentTimeMillis();
+        log.debug("r1: {} r2: {} cost: {}", r1, r2, end - start);
+    }
+```
+
+- 分析如下
+  - 第一個 join：等待 t1 時, t2 並沒有停止, 而在運行
+  - 第二個 join：1s 後, 執行到此, t2 也運行了 1s, 因此也只需再等待 1s
+- 如果顛倒兩個 join 呢？
+- 最終都是輸出
+
+```
+20:45:43.239 [main] c.TestJoin - r1: 10 r2: 20 cost: 2005
+北
+```
+
+![035](imgs/4.png)
+
+### 有時效的join
+
+#### 有等夠時間
+
+```java
+    static int r1 = 0;
+    static int r2 = 0;
+
+    public static void main(String[] args) throws InterruptedException {
+        test3();
+    }
+
+    public static void test3() throws InterruptedException {
+        Thread t1 = new Thread(() -> {
+            sleep(1);
+            r1 = 10;
+        });
+        long start = System.currentTimeMillis();
+        t1.start();
+        // 執行緒執行結束會導致 join 結束
+        t1.join(1500);
+        long end = System.currentTimeMillis();
+        log.debug("r1: {} r2: {} cost: {}", r1, r2, end - start);
+    }
+```
+
+輸出
+
+```
+20:48:01.320 [main] c.TestJoin - r1: 10 r2: 0 cost: 1010
+```
+
+#### 沒等夠時間
+
+```java
+    static int r1 = 0;
+    static int r2 = 0;
+
+    public static void main(String[] args) throws InterruptedException {
+        test3();
+    }
+
+    public static void test3() throws InterruptedException {
+        Thread t1 = new Thread(() -> {
+            sleep(2);
+            r1 = 10;
+        });
+        long start = System.currentTimeMillis();
+        t1.start();
+        // 執行緒執行結束會導致 join 結束
+        t1.join(1500);
+        long end = System.currentTimeMillis();
+        log.debug("r1: {} r2: {} cost: {}", r1, r2, end - start);
+    }
+```
+
+輸出
+
+```
+20:52:15.623 [main] c.TestJoin - r1: 0 r2: 0 cost: 1502
+```
+
+## interrupt 方法
+
+### 打斷 sleep，wait，join 的線程
+
+- 這幾個方法都會讓執行緒進入阻塞狀態
+- 打斷 sleep 的線程, 會清空打斷狀態，以 sleep 為例
+
+```java
+private static void test1() throws InterruptedException {
+         Thread t1 = new Thread(() -> {
+             sleep(1);
+         }, "t1");
+         t1.start();
+         sleep(0.5);
+         t1.interrupt();
+         log.debug(" 打斷狀態: {}", t1.isInterrupted());
+     }
+```
+
+輸出
+
+```
+java.lang.InterruptedException: sleep interrupted
+at java.lang.Thread.sleep(Native Method)
+at java.lang.Thread.sleep(Thread.java:340)
+at java.util.concurrent.TimeUnit.sleep(TimeUnit.java:386)
+at cn.itcast.n2.util.Sleeper.sleep(Sleeper.java:8)
+at cn.itcast.n4.TestInterrupt.lambda$test1$3(TestInterrupt.java:59)
+at java.lang.Thread.run(Thread.java:745)
+21:18:10.374 [main] c.TestInterrupt - 打斷狀態: false
+
+```
+
+### 打斷正常運行的線程
+- 打斷正常運作的執行緒, 不會清空打斷狀態
+
+```java
+    private static void test2() throws InterruptedException {
+        Thread t2 = new Thread(() -> {
+            while (true) {
+                Thread current = Thread.currentThread();
+                boolean interrupted = current.isInterrupted();
+                if (interrupted) {
+                    log.debug(" 打斷狀態: {}", interrupted);
+                    break;
+                }
+            }
+        }, "t2");
+        t2.start();
+        sleep(0.5);
+        t2.interrupt();
+    }
+```
+
+輸出
+
+```
+20:57:37.964 [t2] c.TestInterrupt - 打斷狀態: true
+```
+
+## 模式:兩階段中止
