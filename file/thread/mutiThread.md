@@ -537,4 +537,170 @@ log.debug("運行結束...");
 
 ![6](imgs/6.png)
 
+- NEW 線程剛被創建，但還沒有呼叫 start() 方法
+- RUNNABLE 當呼叫了 start() 方法之後，注意，Java API 層面的 RUNNABLE 狀態涵蓋了 作業系統 層面的【可運行狀態】、【運行狀態】和【阻塞狀態】（由於 BIO 導致的執行緒阻塞，在 Java 裡無法區分，仍然認為是可運行）
+- BLOCKED ， WAITING ， TIMED_WAITING 都是 Java API 層面對【阻塞狀態】的細分，後面會在狀態轉換一節詳述
+- TERMINATED 當執行緒程式碼運行結束
+
+
+# 共享模型之管程
+
+## 1.共享帶來問題
+
+- 兩個執行緒對初始值為 0 的靜態變數一個做自增，一個做自減，各做 5000 次，結果是 0 嗎？
+
+```java
+static int counter = 0;
+public static void main(String[] args) throws InterruptedException {
+    Thread t1 = new Thread(() -> {
+        for (int i = 0; i < 5000; i++) {
+            counter++;
+        }
+    }, "t1");
+    Thread t2 = new Thread(() -> {
+        for (int i = 0; i < 5000; i++) {
+            counter--;
+        }
+    }, "t2");
+    t1.start();
+    t2.start();
+    t1.join();
+    t2.join();
+    log.debug("{}",counter);
+}
+```
+
+- 問題分析
+  - 以上的結果可能是正數、負數、零。 為什麼呢？ 因為 Java 中對靜態變數的自增，自減並不是原子操作，要徹底理解，必須從字節碼來進行分析，例如 i++ 而言（i 為靜態變數），實際上會產生如下的 JVM 字節碼指令：
+  
+```java
+getstatic i // 取得靜態變數i的值
+iconst_1 // 準備常數1
+iadd // 自增
+putstatic i // 將修改後的值存入靜態變數i
+```
+
+- 而對應 i-- 也是類似：
+
+```java
+getstatic i // 取得靜態變數i的值
+iconst_1 // 準備常數1
+isub // 自減
+putstatic i // 將修改後的值存入靜態變數i
+```
+
+- 而 Java 的記憶體模型如下，完成靜態變數的自增，自減則需要在主記憶體和工作記憶體中進行資料交換：
+
+![7](imgs/7.png)
+
+- 如果是單執行緒以上 8 行程式碼是順序執行（不會交錯）沒有問題：
+
+![8](imgs/8.png)
+
+- 但多執行緒下這 8 行程式碼可能交錯運行：
+- 出現負數的情況：
+
+![9](imgs/9.png)
+
+- 出現正數的情況：
+
+![10](imgs/10.png)
+
+### 1.臨界區 Critical Section
+- 一個程式運行多個執行緒本身是沒有問題的
+- 問題出在多個執行緒存取共享資源
+  - 多個執行緒讀取共享資源其實也沒問題
+  - 在多個執行緒對共享資源讀寫操作時發生指令交錯，就會出現問題
+- 一段程式碼區塊內如果存在共享資源的多執行緒讀寫操作，稱這段程式碼區塊為臨界區
+
+- 例如，下面程式碼中的臨界區
+
+```java
+static int counter = 0;
+static void increment() 
+// 臨界區
+{ 
+ counter++;
+}
+static void decrement() 
+// 臨界區
+{ 
+ counter--;
+}
+
+```
+
+### 2.競態條件 Race Condition
+- 個執行緒在臨界區內執行，由於程式碼的執行序列不同而導致結果無法預測，稱為發生了競態條件
+
+
+## 2. synchronized 解決方案
+
+* 應用之互斥
+
+為了避免臨界區的競態條件發生，有許多手段可以達到目的。
+  - 阻塞式的解決方案：synchronized，Lock
+  - 非阻塞式的解決方案：原子變數
+ 
+本次課使用阻塞式的解決方案：synchronized，來解決上述問題，即俗稱的【對象鎖】，它採用互斥的方式讓同一時刻至多只有一個線程能持有【物件鎖】，其它線程再想獲取這個【物件鎖】時就會阻塞住。 這樣就能保證擁有鎖的線程可以安全的執行臨界區內的程式碼，不用擔心線程上下文切換
+
+>注意
+>>雖然 java 中互斥和同步都可以採用 synchronized 關鍵字來完成，但它們還是有區別的：
+  >>- 互斥是保證臨界區的競態條件發生，同一時刻只能有一個執行緒執行臨界區程式碼
+  >>- 同步是由於執行緒執行的先後、順序不同、需要一個執行緒等待其它執行緒運行到某個點
+
+
+### synchronized語法
+
+```java
+synchronized(物件) // 執行緒1， 執行緒2(blocked)
+{
+  臨界區
+}
+
+```
+
+解决
+
+```java
+	static int counter = 0;
+	static final Object room = new Object();
+
+	public static void main(String[] args) throws InterruptedException {
+		Thread t1 = new Thread(() -> {
+			for (int i = 0; i < 5000; i++) {
+				synchronized (room) {
+					counter++;
+				}
+			}
+		}, "t1");
+		Thread t2 = new Thread(() -> {
+			for (int i = 0; i < 5000; i++) {
+				synchronized (room) {
+					counter--;
+				}
+			}
+		}, "t2");
+		t1.start();
+		t2.start();
+		t1.join();
+		t2.join();
+		log.debug("{}", counter);
+	}
+```
+
+![11](imgs/11.png)
+
+
+- ==synchronized(物件)== 中的物件，可以想像為一個房間（room），有唯一入口（門）房間只能一次進入一人
+進行計算，線程 t1，t2 想像成兩個人
+當線程 t1 執行到 synchronized(room) 時就好比 t1 進入了這個房間，並鎖住了門拿走了鑰匙，在門內執行
+count++ 程式碼
+這時候如果 t2 也運行到了 synchronized(room) 時，它發現門被鎖住了，只能在門外等待，發生了上下文切
+換，阻塞住了
+這中間即使 t1 的 cpu 時間片不幸用完，被踢出了門外（不要錯誤理解為鎖住了對象就能一直執行下去哦），
+這時門還是鎖住的，t1 仍拿著鑰匙，t2 線程還在阻塞狀態進不來，只有下次輪到 t1 自己再次獲得時間片時才
+能開門進入
+當 t1 執行完 synchronized{} 區塊內的程式碼，這時候才會從 obj 房間出來並解開門上的鎖，喚醒 t2 執行緒把鑰
+匙給他。 t2 執行緒這時才可以進入 obj 房間，鎖住了門拿上鑰匙，執行它的 count-- 程式碼
 
