@@ -692,15 +692,336 @@ synchronized(物件) // 執行緒1， 執行緒2(blocked)
 ![11](imgs/11.png)
 
 
-- ==synchronized(物件)== 中的物件，可以想像為一個房間（room），有唯一入口（門）房間只能一次進入一人
-進行計算，線程 t1，t2 想像成兩個人
-當線程 t1 執行到 synchronized(room) 時就好比 t1 進入了這個房間，並鎖住了門拿走了鑰匙，在門內執行
-count++ 程式碼
-這時候如果 t2 也運行到了 synchronized(room) 時，它發現門被鎖住了，只能在門外等待，發生了上下文切
-換，阻塞住了
-這中間即使 t1 的 cpu 時間片不幸用完，被踢出了門外（不要錯誤理解為鎖住了對象就能一直執行下去哦），
-這時門還是鎖住的，t1 仍拿著鑰匙，t2 線程還在阻塞狀態進不來，只有下次輪到 t1 自己再次獲得時間片時才
-能開門進入
-當 t1 執行完 synchronized{} 區塊內的程式碼，這時候才會從 obj 房間出來並解開門上的鎖，喚醒 t2 執行緒把鑰
-匙給他。 t2 執行緒這時才可以進入 obj 房間，鎖住了門拿上鑰匙，執行它的 count-- 程式碼
+- ***synchronized(物件)*** 中的物件，可以想像為一個房間（room），有唯一入口（門）房間只能一次進入一人進行計算，線程 t1，t2 想像成兩個人
+- 當線程 t1 執行到 ***synchronized(room)*** 時就好比 t1 進入了這個房間，並鎖住了門拿走了鑰匙，在門內執行***count++*** 程式碼
+- 這時候如果 t2 也運行到了 ***synchronized(room)*** 時，它發現門被鎖住了，只能在門外等待，發生了上下文切換，阻塞住了
+- 這中間即使 t1 的 cpu 時間片不幸用完，被踢出了門外（不要錯誤理解為鎖住了對象就能一直執行下去哦），
+這時門還是鎖住的，t1 仍拿著鑰匙，t2 線程還在阻塞狀態進不來，只有下次輪到 t1 自己再次獲得時間片時才能開門進入
+- 當 t1 執行完 ***synchronized{}*** 區塊內的程式碼，這時候才會從 obj 房間出來並解開門上的鎖，喚醒 t2 執行緒把鑰匙給他。 t2 執行緒這時才可以進入 obj 房間，鎖住了門拿上鑰匙，執行它的 ***count--*** 程式碼
+
+![12](imgs/12.png)
+
+### 思考
+- synchronized 實際上是用物件鎖定保證了臨界區內程式碼的原子性，臨界區內的程式碼對外是不可分割的，不會被執行緒切換所打斷。
+
+為了加深理解，請思考下面的問題
+
+- 如果把 synchronized(obj) 放在 for 迴圈的外面，如何理解？ -- 原子性
+- 如果 t1 synchronized(obj1) 而 t2 synchronized(obj2) 會如何運作？ -- 鎖物件
+- 如果 t1 synchronized(obj) 而 t2 沒有加會怎麼樣？ 如何理解？ -- 鎖物件
+
+
+### 物件導向改進
+
+把需要保護的共享變數放入一個類
+
+```java
+class Room {
+	int value = 0;
+
+	public void increment() {
+		synchronized (this) {
+			value++;
+		}
+	}
+
+	public void decrement() {
+		synchronized (this) {
+			value--;
+		}
+	}
+
+	public int get() {
+		synchronized (this) {
+			return value;
+		}
+	}
+}
+
+@Slf4j
+public class Test1 {
+
+	public static void main(String[] args) throws InterruptedException {
+		Room room = new Room();
+		Thread t1 = new Thread(() -> {
+			for (int j = 0; j < 5000; j++) {
+				room.increment();
+			}
+		}, "t1");
+		Thread t2 = new Thread(() -> {
+			for (int j = 0; j < 5000; j++) {
+				room.decrement();
+			}
+		}, "t2");
+		t1.start();
+		t2.start();
+		t1.join();
+		t2.join();
+		log.debug("count: {}", room.get());
+	}
+}
+
+```
+
+### 物件導向改進
+
+把需要保護的共享變數放入一個類
+
+```java
+class Test {
+	public synchronized void test() {
+
+	}
+}
+
+//等價於
+class Test {
+	public void test() {
+		synchronized (this) {
+
+		}
+	}
+}
+
+```
+
+
+```java
+class Test {
+	public synchronized static void test() {
+	}
+}
+
+//等價於
+class Test {
+	public static void test() {
+		synchronized (Test.class) {
+
+		}
+	}
+}
+
+```
+
+
+### 不加 synchronized 的方法
+- 不加 synchronzied 的方法就好比不遵守規則的人，不去老實排隊（好比翻窗戶進去的）
+
+### 所謂的“線程八鎖”
+
+ 其實就是考察 synchronized 鎖住的是哪個對象
+
+- 情况1：12 或 21
+
+```java
+@Slf4j(topic = "c.Number")
+class Number {
+	public synchronized void a() {
+		log.debug("1");
+	}
+
+	public synchronized void b() {
+		log.debug("2");
+	}
+
+}
+
+public static void main(String[] args) {
+ Number n1 = new Number();
+ new Thread(()->{ n1.a(); }).start();
+ new Thread(()->{ n1.b(); }).start();
+}
+```
+
+- 情况2：1s后12，或 2 1s后 1
+
+```java
+@Slf4j(topic = "c.Number")
+class Number {
+	public synchronized void a() {
+		sleep(1);
+		log.debug("1");
+	}
+
+	public synchronized void b() {
+		log.debug("2");
+	}
+
+}
+
+public static void main(String[] args) {
+ Number n1 = new Number();
+ new Thread(()->{ n1.a(); }).start();
+ new Thread(()->{ n1.b(); }).start();
+}
+```
+
+- 情况3：3 1s 12 或 23 1s 1 或 32 1s 1
+
+```java
+@Slf4j(topic = "c.Number")
+class Number {
+	public synchronized void a() {
+		sleep(1);
+		log.debug("1");
+	}
+
+	public synchronized void b() {
+		log.debug("2");
+	}
+
+	public void c() {
+		log.debug("3");
+	}
+
+	}
+
+	public static void main(String[] args) {
+	 Number n1 = new Number();
+	 new Thread(()->{ n1.a(); }).start();
+	 new Thread(()->{ n1.b(); }).start();
+	 new Thread(()->{ n1.c(); }).start();
+	}
+```
+- 情况4：2 1s 后 1
+
+```java
+@Slf4j(topic = "c.Number")
+class Number {
+	public synchronized void a() {
+		sleep(1);
+		log.debug("1");
+	}
+
+	public synchronized void b() {
+		log.debug("2");
+	}
+
+}
+
+public static void main(String[] args) {
+ Number n1 = new Number();
+ Number n2 = new Number();
+ new Thread(()->{ n1.a(); }).start();
+ new Thread(()->{ n2.b(); }).start();
+}
+
+```
+
+- 情况5：2 1s 后 1
+
+```java
+@Slf4j(topic = "c.Number")
+class Number {
+	public static synchronized void a() {
+		sleep(1);
+		log.debug("1");
+	}
+
+	public synchronized void b() {
+		log.debug("2");
+	}
+
+}
+
+public static void main(String[] args) {
+ Number n1 = new Number();
+ new Thread(()->{ n1.a(); }).start();
+ new Thread(()->{ n1.b(); }).start();
+}
+
+```
+
+- 情况6：1s 后12， 或 2 1s后 1
+
+```java
+@Slf4j(topic = "c.Number")
+class Number {
+	public static synchronized void a() {
+		sleep(1);
+		log.debug("1");
+	}
+
+	public static synchronized void b() {
+		log.debug("2");
+	}
+
+}
+
+public static void main(String[] args) {
+ Number n1 = new Number();
+ new Thread(()->{ n1.a(); }).start();
+ new Thread(()->{ n1.b(); }).start();
+}
+
+```
+- 情况7：2 1s 后 1
+
+```java
+@Slf4j(topic = "c.Number")
+class Number {
+	public static synchronized void a() {
+		sleep(1);
+		log.debug("1");
+	}
+
+	public synchronized void b() {
+		log.debug("2");
+	}
+
+}
+
+public static void main(String[] args) {
+ Number n1 = new Number();
+ Number n2 = new Number();
+ new Thread(()->{ n1.a(); }).start();
+ new Thread(()->{ n2.b(); }).start();
+}
+```
+
+- 情况8：1s 后12， 或 2 1s后 1
+
+```java
+@Slf4j(topic = "c.Number")
+class Number {
+	public static synchronized void a() {
+		sleep(1);
+		log.debug("1");
+	}
+
+	public static synchronized void b() {
+		log.debug("2");
+	}
+
+	}
+
+	public static void main(String[] args) {
+	 Number n1 = new Number();
+	 Number n2 = new Number();
+	 new Thread(()->{ n1.a(); }).start();
+	 new Thread(()->{ n2.b(); }).start();
+	}
+
+```
+# Monitor概念
+
+- Java 物件頭
+- 以 32 位元虛擬機器為例
+
+
+普通物件
+![13](imgs/13.png)
+
+陣列物件
+![14](imgs/14.png)
+
+其中Mark Word結構為
+![15](imgs/15.png)
+
+64 位元虛擬機器 Mark Word
+![16](imgs/16.png)
+
+
+
+
 
