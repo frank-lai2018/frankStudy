@@ -45,7 +45,7 @@
 ### 1.直接使用Thread
 
 ```java
-// 建立線程對象
+// 建立線程物件
 Thread t = new Thread() {
   public void run() {
   // 要執行的任務
@@ -87,14 +87,14 @@ Runnable runnable = new Runnable() {
   // 要執行的任務
   }
 };
-// 建立線程對象
+// 建立線程物件
 Thread t = new Thread( runnable );
 // 啟動執行緒
 t.start();
 ```
 
 ```java
-// 建立任務對象
+// 建立任務物件
 Runnable task2 = new Runnable() {
   @Override
   public void run() {
@@ -115,7 +115,7 @@ t2.start();
 java8 以後使用lambda
 
 ```java
-// 建立任務對象
+// 建立任務物件
 Runnable task2 = () -> log.debug("hello");
 // 參數1 是任務物件; 參數2 是執行緒名字，推薦
 Thread t2 = new Thread(task2, "t2");
@@ -125,7 +125,7 @@ t2.start();
 ### 3.FutureTask 配和 Thread
 
 ```java
-// 建立任務對象
+// 建立任務物件
 FutureTask<Integer> task3 = new FutureTask<>(() -> {
   log.debug("hello");
   return 100;
@@ -175,8 +175,8 @@ log.debug("結果是:{}", result);
 
 |方法名|static|功能說明|注意事項|
 |--|--|--|--|
-|start()||啟動一個新的Thread，在新的Thread運行run方法中的代碼|start 方法只是讓線程進入就緒，裡面程式碼不一定立刻運行（CPU 的時間片還沒分給它）。 每個線程對象的start方法只能呼叫一次，如果呼叫了多次會出現IllegalThreadStateException|
-|run()||新執行緒啟動後會呼叫的方法|如果在建構 Thread 物件時傳遞了Runnable 參數，則執行緒啟動後會呼叫 Runnable 中的 run 方法，否則默認不執行任何操作。但可以創建 Thread 的子類對象，來覆寫預設行為|
+|start()||啟動一個新的Thread，在新的Thread運行run方法中的代碼|start 方法只是讓線程進入就緒，裡面程式碼不一定立刻運行（CPU 的時間片還沒分給它）。 每個線程物件的start方法只能呼叫一次，如果呼叫了多次會出現IllegalThreadStateException|
+|run()||新執行緒啟動後會呼叫的方法|如果在建構 Thread 物件時傳遞了Runnable 參數，則執行緒啟動後會呼叫 Runnable 中的 run 方法，否則默認不執行任何操作。但可以創建 Thread 的子類物件，來覆寫預設行為|
 |join()||等待調用該方法的執行緒運行結束||
 |join(long n)||等待執行緒運行結束,最多等待 n毫秒||
 |getId()||獲取執行緒長整型的id|id唯一|
@@ -524,7 +524,7 @@ log.debug("運行結束...");
 
 ![5](imgs/5.png)
 
-- 【初始狀態】僅是在語言層面創建了線程對象，尚未與作業系統線程關聯
+- 【初始狀態】僅是在語言層面創建了線程物件，尚未與作業系統線程關聯
 - 【可運行狀態】（就緒狀態）指該執行緒已經被建立（與作業系統執行緒關聯），可以由 CPU 調度執行
 - 【運作狀態】指取得了 CPU 時間片運作中的狀態，當 CPU 時間片用完，會從【運行狀態】轉換至【可運行狀態】，會導致執行緒的上下文切換
 - 【阻塞狀態】
@@ -642,7 +642,7 @@ static void decrement()
   - 阻塞式的解決方案：synchronized，Lock
   - 非阻塞式的解決方案：原子變數
  
-本次課使用阻塞式的解決方案：synchronized，來解決上述問題，即俗稱的【對象鎖】，它採用互斥的方式讓同一時刻至多只有一個線程能持有【物件鎖】，其它線程再想獲取這個【物件鎖】時就會阻塞住。 這樣就能保證擁有鎖的線程可以安全的執行臨界區內的程式碼，不用擔心線程上下文切換
+本次課使用阻塞式的解決方案：synchronized，來解決上述問題，即俗稱的【物件鎖】，它採用互斥的方式讓同一時刻至多只有一個線程能持有【物件鎖】，其它線程再想獲取這個【物件鎖】時就會阻塞住。 這樣就能保證擁有鎖的線程可以安全的執行臨界區內的程式碼，不用擔心線程上下文切換
 
 >注意
 >>雖然 java 中互斥和同步都可以採用 synchronized 關鍵字來完成，但它們還是有區別的：
@@ -695,7 +695,7 @@ synchronized(物件) // 執行緒1， 執行緒2(blocked)
 - ***synchronized(物件)*** 中的物件，可以想像為一個房間（room），有唯一入口（門）房間只能一次進入一人進行計算，線程 t1，t2 想像成兩個人
 - 當線程 t1 執行到 ***synchronized(room)*** 時就好比 t1 進入了這個房間，並鎖住了門拿走了鑰匙，在門內執行***count++*** 程式碼
 - 這時候如果 t2 也運行到了 ***synchronized(room)*** 時，它發現門被鎖住了，只能在門外等待，發生了上下文切換，阻塞住了
-- 這中間即使 t1 的 cpu 時間片不幸用完，被踢出了門外（不要錯誤理解為鎖住了對象就能一直執行下去哦），
+- 這中間即使 t1 的 cpu 時間片不幸用完，被踢出了門外（不要錯誤理解為鎖住了物件就能一直執行下去哦），
 這時門還是鎖住的，t1 仍拿著鑰匙，t2 線程還在阻塞狀態進不來，只有下次輪到 t1 自己再次獲得時間片時才能開門進入
 - 當 t1 執行完 ***synchronized{}*** 區塊內的程式碼，這時候才會從 obj 房間出來並解開門上的鎖，喚醒 t2 執行緒把鑰匙給他。 t2 執行緒這時才可以進入 obj 房間，鎖住了門拿上鑰匙，執行它的 ***count--*** 程式碼
 
@@ -809,7 +809,7 @@ class Test {
 
 ### 所謂的“線程八鎖”
 
- 其實就是考察 synchronized 鎖住的是哪個對象
+ 其實就是考察 synchronized 鎖住的是哪個物件
 
 - 情况1：12 或 21
 
@@ -1020,6 +1020,747 @@ class Number {
 
 64 位元虛擬機器 Mark Word
 ![16](imgs/16.png)
+
+
+## Monitor原理
+
+- Monitor 翻譯為***監視器***或***管程***
+- 每個 Java 物件都可以關聯一個 Monitor 物件，如果使用 synchronized 給對像上鎖（重量級）之後，該物件頭的Mark Word 中就被設定指向 Monitor 物件的指針
+
+Monitor 結構如下
+![17](imgs/17.png)
+
+- 剛開始 Monitor 中 Owner 為 null
+- 當 Thread-2 執行 synchronized(obj) 就會將 Monitor 的所有者 Owner 置為 Thread-2，Monitor中只能有一個 Owner
+- 在 Thread-2 上鎖的過程中，如果 Thread-3，Thread-4，Thread-5 也來執行 synchronized(obj)，就會進入EntryList BLOCKED
+- Thread-2 執行完同步程式碼區塊的內容，然後喚醒 EntryList 中等待的執行緒來競爭鎖，競爭的時是非公平的
+- 圖中 WaitSet 中的 Thread-0，Thread-1 是之前獲得過鎖，但條件不滿足進入 WAITING 狀態的線程，後wait-notify 會分析
+
+>注意：
+>- synchronized 必須是進入同一個物件的 monitor 才有上述的效果
+>- 不加 synchronized 的物件不會關聯監視器，不遵從上述規則
+
+## synchronized 原理
+
+```java
+static final Object lock = new Object();
+static int counter = 0;
+public static void main(String[] args) {
+  synchronized (lock) {
+    counter++;
+  }
+}
+
+```
+
+對應的字節碼為
+
+```java
+public class mutiThread.Test
+  minor version: 0
+  major version: 52
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #1                          // mutiThread/Test
+  super_class: #3                         // java/lang/Object
+  interfaces: 0, fields: 2, methods: 3, attributes: 1
+Constant pool:
+   #1 = Class              #2             // mutiThread/Test
+   #2 = Utf8               mutiThread/Test
+   #3 = Class              #4             // java/lang/Object
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               lock
+   #6 = Utf8               Ljava/lang/Object;
+   #7 = Utf8               counter
+   #8 = Utf8               I
+   #9 = Utf8               <clinit>
+  #10 = Utf8               ()V
+  #11 = Utf8               Code
+  #12 = Methodref          #3.#13         // java/lang/Object."<init>":()V
+  #13 = NameAndType        #14:#10        // "<init>":()V
+  #14 = Utf8               <init>
+  #15 = Fieldref           #1.#16         // mutiThread/Test.lock:Ljava/lang/Object;
+  #16 = NameAndType        #5:#6          // lock:Ljava/lang/Object;
+  #17 = Fieldref           #1.#18         // mutiThread/Test.counter:I
+  #18 = NameAndType        #7:#8          // counter:I
+  #19 = Utf8               LineNumberTable
+  #20 = Utf8               LocalVariableTable
+  #21 = Utf8               this
+  #22 = Utf8               LmutiThread/Test;
+  #23 = Utf8               main
+  #24 = Utf8               ([Ljava/lang/String;)V
+  #25 = Utf8               args
+  #26 = Utf8               [Ljava/lang/String;
+  #27 = Utf8               StackMapTable
+  #28 = Class              #26            // "[Ljava/lang/String;"
+  #29 = Class              #30            // java/lang/Throwable
+  #30 = Utf8               java/lang/Throwable
+  #31 = Utf8               SourceFile
+  #32 = Utf8               Test.java
+{
+  static final java.lang.Object lock;
+    descriptor: Ljava/lang/Object;
+    flags: (0x0018) ACC_STATIC, ACC_FINAL
+
+  static int counter;
+    descriptor: I
+    flags: (0x0008) ACC_STATIC
+
+  static {};
+    descriptor: ()V
+    flags: (0x0008) ACC_STATIC
+    Code:
+      stack=2, locals=0, args_size=0
+         0: new           #3                  // class java/lang/Object
+         3: dup
+         4: invokespecial #12                 // Method java/lang/Object."<init>":()V
+         7: putstatic     #15                 // Field lock:Ljava/lang/Object;
+        10: iconst_0
+        11: putstatic     #17                 // Field counter:I
+        14: return
+      LineNumberTable:
+        line 4: 0
+        line 5: 10
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+
+  public mutiThread.Test();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #12                 // Method java/lang/Object."<init>":()V
+         4: return
+      LineNumberTable:
+        line 3: 0
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0       5     0  this   LmutiThread/Test;
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=2, args_size=1
+         0: getstatic     #15                 // <- lock引用 （synchronized開始）// Field lock:Ljava/lang/Object;
+         3: dup
+         4: astore_1                          // lock引用 -> slot 1
+         5: monitorenter                      // 將 lock物件 MarkWord 置為 Monitor 指針
+         6: getstatic     #17                 // <-i Field counter:I
+         9: iconst_1                          // 準備常數 1
+        10: iadd                              //+1
+        11: putstatic     #17                 // -> i Field counter:I
+        14: aload_1                           // <- lock引用
+        15: monitorexit                       // 將 lock物件 MarkWord 重置, 喚醒 EntryList
+        16: goto          22
+        19: aload_1                           // <- lock引用
+        20: monitorexit                       // 將 lock物件 MarkWord 重置, 喚醒 EntryList
+        21: athrow                            // throw e
+        22: return
+      Exception table:
+         from    to  target type
+             6    16    19   any
+            19    21    19   any
+      LineNumberTable:
+        line 7: 0
+        line 8: 6
+        line 7: 14
+        line 10: 22
+      LocalVariableTable:
+        Start  Length  Slot  Name   Signature
+            0      23     0  args   [Ljava/lang/String;
+      StackMapTable: number_of_entries = 2
+        frame_type = 255 /* full_frame */
+          offset_delta = 19
+          locals = [ class "[Ljava/lang/String;", class java/lang/Object ]
+          stack = [ class java/lang/Throwable ]
+        frame_type = 250 /* chop */
+          offset_delta = 2
+}
+SourceFile: "Test.java"
+
+```
+
+ >***注意***
+ >
+>方法層級的 synchronized 不會在字節碼指令中有所體現
+
+## synchronized 原理進階
+
+### 1. 輕量級鎖
+- 輕量級鎖的使用場景：如果一個物件雖然有多執行緒要加鎖，但加鎖的時間是錯開的（也就是沒有競爭），那麼可以使用輕量級鎖來優化。
+- 輕量級鎖定對使用者是透明的，即語法仍然是 synchronized
+- 假設有兩個方法同步區塊，利用同一個物件加鎖
+
+```java
+	static final Object obj = new Object();
+
+	public static void method1() {
+		synchronized (obj) {
+			// 同步區塊 A
+			method2();
+		}
+	}
+
+	public static void method2() {
+		synchronized (obj) {
+			// 同步區塊 B
+		}
+	}
+```
+
+
+- 建立鎖記錄（Lock Record）物件，每個執行緒都的堆疊幀都會包含一個鎖記錄的結構，內部可以儲存鎖定物件的Mark Word
+![18](imgs/18.png)
+
+
+- 讓鎖定記錄中 Object reference 指向鎖定對象，並嘗試以 cas 取代 Object 的 Mark Word，將 Mark Word 的值存入鎖記錄
+![19](imgs/19.png)
+
+
+- 如果 cas 替換成功，物件頭中儲存了 鎖定記錄位址和狀態 00 ，表示由該執行緒為物件加鎖，這時圖示如下
+![20](imgs/20.png)
+
+- 如果 cas 失敗，有兩種情況
+  - 如果是其它線程已經持有了該 Object 的輕量級鎖，這時表示有競爭，進入鎖膨脹過程
+  - 如果是自己執行了 synchronized 鎖定重入，那麼再增加一條 Lock Record 作為重入的計數
+
+![21](imgs/21.png)
+
+- 當退出 synchronized 程式碼區塊（解鎖時）如果有取值為 null 的鎖定記錄，表示有重入，這時重置鎖定記錄，表示重入計數減一
+
+![22](imgs/22.png)
+
+
+- 當退出 synchronized 程式碼區塊（解鎖時）鎖定記錄的值不為 null，這時使用 cas 將 Mark Word 的值恢復給對象頭
+  - 成功，則解鎖成功
+  - 失敗，說明輕量級鎖進行了鎖膨脹或已經升級為重量級鎖，進入重量級鎖解鎖流程
+
+### 鎖膨脹
+- 如果在嘗試加輕量級鎖的過程中，CAS 操作無法成功，這時一種情況就是有其它線程為此物件加上了輕量級鎖定（有競爭），這時需要進行鎖膨脹，將輕量級鎖變為重量級鎖。
+
+```java
+	static Object obj = new Object();
+
+	public static void method1() {
+		synchronized (obj) {
+			// 同步區塊
+		}
+	}
+```
+
+
+- 當 Thread-1 進行輕量級加鎖時，Thread-0 已經對該物件加了輕量級鎖
+
+![23](imgs/23.png)
+
+- 這時 Thread-1 加輕量級鎖定失敗，進入鎖定膨脹流程
+  - 即為 Object 物件申請 Monitor 鎖，讓 Object 指向重量級鎖位址
+  - 然後自己進入 Monitor 的 EntryList BLOCKED
+
+![24](imgs/24.png)
+- 當 Thread-0 退出同步區塊解鎖時，使用 cas 將 Mark Word 的值還原給物件頭，失敗。 這時會進入重量級解鎖流程，即依照 Monitor 位址找到Monitor 對象，設定 Owner 為 null，喚醒 EntryList 中 BLOCKED 執行緒
+
+
+### 3. 自旋優化
+- 重量級鎖競爭的時候，還可以使用自旋來進行最佳化，如果當前線程自旋成功（即這時候持鎖線程已經退出了同步塊，釋放了鎖），這時當前執行緒就可以避免阻塞。
+
+自旋重試成功的情況
+![25](imgs/25.png)
+
+自旋重試失敗的情況
+![26](imgs/26.png)
+
+- 自旋會佔用 CPU 時間，單核心 CPU 自旋就是浪費，多核心 CPU 自旋才能發揮優勢。
+- 在 Java 6 之後自旋鎖是自適應的，例如物件剛剛的一次自旋操作成功過，那麼認為這次自旋成功的可能性會高，就多自旋幾次；反之，就少自旋甚至不自旋，總之，比較智能。
+- Java 7 之後無法控制是否開啟自旋功能
+
+
+### 4. 偏向鎖
+- 輕量級鎖在沒有競爭時（就自己這個執行緒），每次重入仍然需要執行 CAS 操作。
+- Java 6 中引入了偏向鎖定來做進一步優化：只有第一次使用 CAS 將線程 ID 設定到物件的 Mark Word 頭，之後發現這個線程 ID 是自己的就表示沒有競爭，不用重新 CAS。 以後只要不發生競爭，這個物件就歸該執行緒所有
+  
+例如：
+
+```java
+	static final Object obj = new Object();
+
+	public static void m1() {
+		synchronized (obj) {
+			// 同步區塊 A
+			m2();
+		}
+	}
+
+	public static void m2() {
+		synchronized (obj) {
+			// 同步區塊 B
+			m3();
+		}
+	}
+
+	public static void m3() {
+		synchronized (obj) {// 同步區塊 C
+		}
+	}
+```
+
+![27](imgs/27.png)
+![28](imgs/28.png)
+
+
+### 偏向狀態
+
+物件頭格式
+![29](imgs/29.png)
+
+- 一個物件創建時：
+- 如果開啟了偏向鎖定（預設為開啟），那麼物件建立後，markword 值為 0x05 即最後 3 位元為 101，這時它的thread、epoch、age 都為 0
+- 偏向鎖是預設是延遲的，不會在程式啟動時立即生效，如果想避免延遲，可以加 VM 參數 -XX:BiasedLockingStartupDelay=0 來停用延遲
+- 如果沒有開啟偏向鎖，那麼物件建立後，markword 值為 0x01 即最後 3 位元為 001，這時它的 hashcode、age 都是 0，第一次用到 hashcode 時才會賦值
+
+1） 測試延遲特性
+
+2） 測試偏向鎖
+
+```java
+class Dog {}
+```
+
+利用 jol 第三方工具來查看物件頭資訊（注意這裡我擴展了 jol 讓它輸出更為簡潔）
+
+```java
+	// 新增虛擬機器參數 -XX:BiasedLockingStartupDelay=0
+	public static void main(String[] args) throws IOException {
+		Dog d = new Dog();
+		ClassLayout classLayout = ClassLayout.parseInstance(d);
+		new Thread(() -> {
+			log.debug("synchronized 前");
+			System.out.println(classLayout.toPrintableSimple(true));
+			synchronized (d) {
+				log.debug("synchronized 中");
+				System.out.println(classLayout.toPrintableSimple(true));
+			}
+			log.debug("synchronized 後");
+			System.out.println(classLayout.toPrintableSimple(true));
+		}, "t1").start();
+	}
+```
+```
+11:08:58.117 c.TestBiased [t1] - synchronized 前
+00000000 00000000 00000000 00000000 00000000 00000000 000000000 00000101
+11:08:58.121 c.TestBiased [t1] - synchronized 中
+00000000 00000000 00000000 00000000 00011111 11101011 11010000 00000101
+11:08:58.121 c.TestBiased [t1] - synchronized 後
+00000000 00000000 00000000 00000000 00011111 11101011 11010000 00000101
+```
+
+>注意
+>處於偏向鎖的物件解鎖後，執行緒 id 仍儲存於物件頭中
+
+
+
+3）測試禁用
+
+在上面測試程式碼運行時在新增 VM 參數 -XX:-UseBiasedLocking 停用偏向鎖
+
+輸出
+
+```
+11:13:10.018 c.TestBiased [t1] - synchronized 前
+00000000 00000000 00000000 00000000 00000000 00000000 000000000 00000001
+11:13:10.021 c.TestBiased [t1] - synchronized 中
+00000000 00000000 00000000 00000000 00100000 00010100 11110011 10001000
+11:13:10.021 c.TestBiased [t1] - synchronized 後
+00000000 00000000 00000000 00000000 00000000 00000000 000000000 00000001
+```
+
+
+4) 測試 hashCode
+   
+正常狀態物件一開始是沒有 hashCode 的，第一次呼叫才生成
+
+### 撤銷 - 呼叫物件 hashCode
+呼叫了物件的 hashCode，但偏向鎖的物件 MarkWord 中儲存的是執行緒 id，如果呼叫 hashCode 會導致偏向鎖被撤銷
+- 輕量級鎖定會在鎖定記錄中記錄 hashCode
+- 重量級鎖會在 Monitor 中記錄 hashCode
+  
+呼叫 hashCode 後使用偏向鎖，記得去掉 -XX:-UseBiasedLocking 輸出
+
+
+```
+11:22:10.386 c.TestBiased [main] - 呼叫 hashCode:1778535015
+11:22:10.391 c.TestBiased [t1] - synchronized 前
+00000000 00000000 00000000 01101010 00000010 01001010 01100111 00000001
+11:22:10.393 c.TestBiased [t1] - synchronized 中
+00000000 00000000 00000000 00000000 00100000 11000011 11110011 01101000
+11:22:10.393 c.TestBiased [t1] - synchronized 後
+00000000 00000000 00000000 01101010 00000010 01001010 01100111 00000001
+```
+
+### 撤銷 - 其它線程使用對象
+- 當有其它執行緒使用偏向鎖物件時，會將偏向鎖升級為輕量級鎖
+
+```java
+	private static void test2() throws InterruptedException {
+		Dog d = new Dog();
+		Thread t1 = new Thread(() -> {
+			synchronized (d) {
+				log.debug(ClassLayout.parseInstance(d).toPrintableSimple(true));
+			}
+			synchronized (TestBiased.class) {
+				TestBiased.class.notify();
+			}
+			// 如果不用 wait/notify 使用 join 必須開啟下面的註釋
+			// 因為：t1 線程不能結束，否則底層線程可能被 jvm 重用作為 t2 線程，底層線程 id 是一樣的
+			/*
+			 * try { System.in.read(); } catch (IOException e) { e.printStackTrace(); }
+			 */
+		}, "t1");
+		t1.start();
+		Thread t2 = new Thread(() -> {
+			synchronized (TestBiased.class) {
+				try {
+					TestBiased.class.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			log.debug(ClassLayout.parseInstance(d).toPrintableSimple(true));
+			synchronized (d) {
+				log.debug(ClassLayout.parseInstance(d).toPrintableSimple(true));
+			}
+			log.debug(ClassLayout.parseInstance(d).toPrintableSimple(true));
+		}, "t2");
+		t2.start();
+	}
+```
+
+```
+[t1] - 00000000 00000000 00000000 00000000 00011111 01000001 00010000 00000101 
+[t2] - 00000000 00000000 00000000 00000000 00011111 01000001 00010000 00000101 
+[t2] - 00000000 00000000 00000000 00000000 00011111 10110101 11110000 01000000 
+[t2] - 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+```
+
+
+### 撤銷 - 呼叫 wait/notify
+
+```java
+	public static void main(String[] args) throws InterruptedException {
+		Dog d = new Dog();
+		Thread t1 = new Thread(() -> {
+			log.debug(ClassLayout.parseInstance(d).toPrintableSimple(true));
+			synchronized (d) {
+				log.debug(ClassLayout.parseInstance(d).toPrintableSimple(true));
+				try {
+					d.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				log.debug(ClassLayout.parseInstance(d).toPrintableSimple(true));
+			}
+		}, "t1");
+		t1.start();
+		new Thread(() -> {
+			try {
+				Thread.sleep(6000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			synchronized (d) {
+				log.debug("notify");
+				d.notify();
+			}
+		}, "t2").start();
+	}
+```
+
+```
+[t1] - 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000101 
+[t1] - 00000000 00000000 00000000 00000000 00011111 10110011 11111000 00000101 
+[t2] - notify 
+[t1] - 00000000 00000000 00000000 00000000 00011100 11010100 00001101 11001010 
+```
+
+### 批量重偏向
+- 如果對象雖然被多個線程訪問，但沒有競爭，這時偏向了線程 T1 的對象仍有機會重新偏向 T2，重偏向會重置對象的 Thread ID
+- 當撤銷偏向鎖閾值超過 20 次後，jvm 會這樣覺得，我是不是偏向錯了呢，於是會在給這些物件加鎖時重新偏向至加鎖線程
+
+```java
+	private static void test3() throws InterruptedException {
+		Vector<Dog> list = new Vector<>();
+		Thread t1 = new Thread(() -> {
+			for (int i = 0; i < 30; i++) {
+				Dog d = new Dog();
+				list.add(d);
+				synchronized (d) {
+					log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+				}
+			}
+			synchronized (list) {
+				list.notify();
+			}
+		}, "t1");
+		t1.start();
+
+		Thread t2 = new Thread(() -> {
+			synchronized (list) {
+				try {
+					list.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			log.debug("===============> ");
+			for (int i = 0; i < 30; i++) {
+				Dog d = list.get(i);
+				log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+				synchronized (d) {
+					log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+				}
+				log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+			}
+		}, "t2");
+		t2.start();
+	}
+```
+
+```
+[t1] - 0 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 1 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 2 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 3 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 4 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 5 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 6 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 7 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 8 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 9 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 10 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 11 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 12 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 13 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 14 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 15 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 16 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 17 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 18 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 19 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 20 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 21 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 22 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 23 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 24 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 25 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 26 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 27 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 28 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t1] - 29 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - ===============> 
+[t2] - 0 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 0 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 0 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 1 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 1 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 1 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 2 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 2 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 2 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 3 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 3 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 3 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 4 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 4 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 4 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 5 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 5 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 5 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 6 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 6 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 6 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 7 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 7 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 7 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 8 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 8 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 8 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 9 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 9 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 9 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 10 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 10 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 10 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 11 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 11 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 11 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 12 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 12 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 12 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 13 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 13 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 13 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 14 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 14 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 14 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 15 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 15 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 15 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 16 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 16 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 16 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 17 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 17 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 17 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 18 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 18 00000000 00000000 00000000 00000000 00100000 01011000 11110111 00000000 
+[t2] - 18 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001 
+[t2] - 19 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 19 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 19 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 20 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 20 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 20 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 21 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 21 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 21 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 22 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 22 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 22 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 23 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 23 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 23 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 24 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 24 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 24 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 25 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 25 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 25 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 26 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 26 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 26 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 27 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 27 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 27 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 28 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 28 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 28 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 29 00000000 00000000 00000000 00000000 00011111 11110011 11100000 00000101 
+[t2] - 29 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101 
+[t2] - 29 00000000 00000000 00000000 00000000 00011111 11110011 11110001 00000101
+```
+
+### 大量撤銷
+- 當撤銷偏向鎖定閾值超過 40 次後，jvm 會這樣覺得，自己確實偏向錯了，根本就不該偏向。 於是整個類別的所有對象都會變成不可偏向的，新建的物件也是不可偏向的
+
+```java
+	static Thread t1, t2, t3;
+
+	private static void test4() throws InterruptedException {
+		Vector<Dog> list = new Vector<>();
+		int loopNumber = 39;
+		t1 = new Thread(() -> {
+			for (int i = 0; i < loopNumber; i++) {
+				Dog d = new Dog();
+				list.add(d);
+				synchronized (d) {
+					log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+				}
+			}
+			LockSupport.unpark(t2);
+		}, "t1");
+		t1.start();
+		t2 = new Thread(() -> {
+			LockSupport.park();
+			log.debug("===============> ");
+			for (int i = 0; i < loopNumber; i++) {
+				Dog d = list.get(i);
+				log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+				synchronized (d) {
+					log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+				}
+				log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+			}
+			LockSupport.unpark(t3);
+		}, "t2");
+		t2.start();
+		t3 = new Thread(() -> {
+			LockSupport.park();
+			log.debug("===============> ");
+			for (int i = 0; i < loopNumber; i++) {
+				Dog d = list.get(i);
+				log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+				synchronized (d) {
+					log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+				}
+				log.debug(i + "\t" + ClassLayout.parseInstance(d).toPrintableSimple(true));
+			}
+		}, "t3");
+		t3.start();
+		t3.join();
+		log.debug(ClassLayout.parseInstance(new Dog()).toPrintableSimple(true));
+	}
+```
+
+## 5. 鎖消除
+- 鎖消除
+
+```java
+@Fork(1)
+@BenchmarkMode(Mode.AverageTime)
+@Warmup(iterations = 3)
+@Measurement(iterations = 5)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
+public class MyBenchmark {
+	static int x = 0;
+
+	@Benchmark
+	public void a() throws Exception {
+		x++;
+	}
+
+	@Benchmark
+	public void b() throws Exception {
+		Object o = new Object();
+		synchronized (o) {
+			x++;
+		}
+	}
+}
+```
+
+```
+java -jar benchmarks.jar
+
+```
+
+
+```
+java -XX:-EliminateLocks -jar benchmarks.jar
+```
+
+- 鎖粗化
+- 對相同物件多次加鎖，導致執行緒發生多次重入，可以使用鎖粗化方式來最佳化，這不同於先前講的細分鎖的粒度。
+
+
+
+# wait notify 原理
+
+
+
+- Owner 執行緒發現條件不滿足，呼叫 wait 方法，即可進入 WaitSet 變成 WAITING 狀態
+- BLOCKED 和 WAITING 的執行緒都處於阻塞狀態，不佔用 CPU 時間片
+- BLOCKED 執行緒會在 Owner 執行緒釋放鎖定時喚醒
+- WAITING 執行緒會在 Owner 執行緒呼叫 notify 或 notifyAll 時喚醒，但喚醒後並不意味著者立刻獲得鎖定，仍需進入EntryList 重新競爭
+
+![30](imgs/30.png)
+
+
+
+
+
+
+
 
 
 
