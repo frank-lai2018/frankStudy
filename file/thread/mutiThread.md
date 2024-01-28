@@ -1788,6 +1788,39 @@ mutiThread.Test1.b    avgt        5  20.343        0.698  ns/op
 
 - 它們都是執行緒之間進行協作的手段，都屬於 Object 物件的方法。 必須取得此物件的鎖，才能呼叫這幾個方法
 
+如果沒獲得鎖直接調用wait()，會拋出IllegalMonitorStateException
+```java
+	public static void main(String[] args) {
+		Object lock = new Object();
+		
+		try {
+			lock.wait();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+```
+
+![31](imgs/31.png)
+
+需要先獲得鎖才能調用wait()
+
+```java
+	public static void main(String[] args) {
+		Object lock = new Object();
+		
+		synchronized (lock) {
+			try {
+				lock.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+```
+
+
 ```java
 	final static Object obj = new Object();
 
@@ -2104,6 +2137,8 @@ static boolean hasTakeout = false;
 20:58:35.324 [小女] c.TestCorrectPosture - 可以開始工作了
 20:58:35.324 [小南] c.TestCorrectPosture - 沒煙，先歇會！
 ```
+
+#### 最後正確的格式
 
 ```java
 		synchronized (lock) {
