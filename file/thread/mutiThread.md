@@ -1446,6 +1446,8 @@ class Dog {}
 
 ### 撤銷 - 呼叫 wait/notify
 
+- 因為wait/notify只有重量級鎖有，所以也會撤銷偏向鎖
+
 ```java
 	public static void main(String[] args) throws InterruptedException {
 		Dog d = new Dog();
@@ -1734,9 +1736,29 @@ java -jar benchmarks.jar
 
 ```
 
+```
+# Run complete. Total time: 00:00:20
+
+Benchmark             Mode  Samples  Score  Score error  Units
+mutiThread.Test1.a    avgt        5  1.611        0.061  ns/op
+mutiThread.Test1.b    avgt        5  1.620        0.061  ns/op
+```
+
+- 因為JIT即時編譯器會針對局部變數進行優化，發現物件O不會逃離方法作用域，此物件不會被共享，所以執行的時候沒有加鎖的，所以測試時數據才會跟沒加鎖時相近
+
+
+- 使用參數 ***-XX:-EliminateLocks*** 關閉鎖消除(前面的減號代表關閉)
 
 ```
 java -XX:-EliminateLocks -jar benchmarks.jar
+```
+
+```
+# Run complete. Total time: 00:00:20
+
+Benchmark             Mode  Samples   Score  Score error  Units
+mutiThread.Test1.a    avgt        5   1.615        0.020  ns/op
+mutiThread.Test1.b    avgt        5  20.343        0.698  ns/op
 ```
 
 - 鎖粗化
@@ -1744,7 +1766,10 @@ java -XX:-EliminateLocks -jar benchmarks.jar
 
 
 
-# wait notify 原理
+
+# wait &  notify
+
+## wait notify 原理
 
 
 
@@ -1755,10 +1780,347 @@ java -XX:-EliminateLocks -jar benchmarks.jar
 
 ![30](imgs/30.png)
 
+## API 介绍
+
+- ***obj.wait()*** 讓進入 object 監視器的執行緒到 waitSet 等待
+- ***obj.notify()*** 在 object 上正在 waitSet 等待的執行緒中挑一個喚醒
+- ***obj.notifyAll()*** 讓 object 上正在 waitSet 等待的執行緒全部喚醒
+
+- 它們都是執行緒之間進行協作的手段，都屬於 Object 物件的方法。 必須取得此物件的鎖，才能呼叫這幾個方法
+
+```java
+	final static Object obj = new Object();
+
+	public static void main(String[] args) {
+		new Thread(() -> {
+			synchronized (obj) {
+				log.debug("執行....");
+				try {
+					obj.wait(); // 讓執行緒在obj上一直等待下去
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				log.debug("其它程式碼....");
+			}
+		}).start();
+		new Thread(() -> {
+			synchronized (obj) {
+				log.debug("執行....");
+				try {
+					obj.wait(); // 讓執行緒在obj上一直等待下去
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				log.debug("其它程式碼....");
+			}
+		}).start();
+		// 主執行緒兩秒後執行
+		sleep(2);
+		log.debug("喚醒 obj 上其它執行緒");
+		synchronized (obj) {
+			obj.notify(); // 喚醒obj上一個執行緒
+			// obj.notifyAll(); // 喚醒obj上所有等待執行緒
+		}
+	}
+```
+
+
+notify 的一種結果
+
+```
+20:00:53.096 [Thread-0] c.TestWaitNotify - 執行....
+20:00:53.099 [Thread-1] c.TestWaitNotify - 執行....
+20:00:55.096 [main] c.TestWaitNotify - 喚醒 obj 上其它線程
+20:00:55.096 [Thread-0] c.TestWaitNotify - 其它程式碼....
+```
+
+notifyAll 的結果
+
+```
+19:58:15.457 [Thread-0] c.TestWaitNotify - 執行....
+19:58:15.460 [Thread-1] c.TestWaitNotify - 執行....
+19:58:17.456 [main] c.TestWaitNotify - 喚醒 obj 上其它線程
+19:58:17.456 [Thread-1] c.TestWaitNotify - 其它程式碼....
+19:58:17.456 [Thread-0] c.TestWaitNotify - 其它程式碼....
+```
+
+- ***wait()*** 方法會釋放物件的鎖，進入 WaitSet 等待區，讓其他執行緒就機會取得物件的鎖定。 無限制等待，直到
+notify 為止
+- ***wait(long n)*** 有時限的等待, 到 n 毫秒後結束等待，或是被 notify
+
+## wait notify 的正確姿勢
+
+### sleep(long n) 和 wait(long n) 的差別
+- 1) sleep 是 Thread 方法，而 wait 是 Object 的方法
+- 2) sleep 不需要強制和 synchronized 配合使用，但 wait 需要和 synchronized 一起用 
+- 3) sleep 在睡眠的同時，不會釋放物件鎖的，但 wait 在等待的時候會釋放物件鎖定 
+- 4) 它們狀態 TIMED_WAITING
+
+### step 1
+
+```java
+static final Object room = new Object();
+static boolean hasCigarette = false;
+static boolean hasTakeout = false;
+```
+
+思考下面的解決方案好不好，為什麼？
+
+```java
+		new Thread(() -> {
+			synchronized (room) {
+				log.debug("有煙沒？[{}]", hasCigarette);
+				if (!hasCigarette) {
+					log.debug("沒煙，先歇會！");
+					sleep(2);
+				}
+				log.debug("有煙沒？[{}]", hasCigarette);
+				if (hasCigarette) {
+					log.debug("可以開始工作了");
+				}
+			}
+		}, "小南").start();
+		for (int i = 0; i < 5; i++) {
+			new Thread(() -> {
+				synchronized (room) {
+					log.debug("可以開始工作了");
+				}
+			}, "其它人").start();
+		}
+		sleep(1);
+		new Thread(() -> {
+			// 這裡能不能加 synchronized (room)？
+			hasCigarette = true;
+			log.debug("煙到了噢！");
+		}, "送煙的").start();
+
+```
+輸出
+
+```java
+20:49:49.883 [小南] c.TestCorrectPosture - 有煙沒？ [false]
+20:49:49.887 [小南] c.TestCorrectPosture - 沒煙，先歇會！
+20:49:50.882 [送煙的] c.TestCorrectPosture - 煙到了噢！
+20:49:51.887 [小南] c.TestCorrectPosture - 有煙沒？ [true]
+20:49:51.887 [小南] c.TestCorrectPosture - 可以開始工作了
+20:49:51.887 [其它人] c.TestCorrectPosture - 可以開始工作了
+20:49:51.887 [其它人] c.TestCorrectPosture - 可以開始工作了
+20:49:51.888 [其它人] c.TestCorrectPosture - 可以開始工作了
+20:49:51.888 [其它人] c.TestCorrectPosture - 可以開始工作了
+20:49:51.888 [其它人] c.TestCorrectPosture - 可以開始工作了
+```
+
+- 其它幹活的線程，都要一直阻塞，效率太低
+- 小南線程必須睡足 2s 後才能醒來，就算煙提前送到，也無法立刻醒來
+- 加了 synchronized (room) 後，就好比小南在裡面反鎖了門睡覺，煙根本沒辦法送進門，main 沒加synchronized 就好像 main 線程是翻窗戶進來的
+- 解決方法，使用 wait - notify 機制
+
+### step 2
+
+思考下面的實現行嗎，為什麼？
+
+```java
+		new Thread(() -> {
+			synchronized (room) {
+				log.debug("有煙沒？[{}]", hasCigarette);
+				if (!hasCigarette) {
+					log.debug("沒煙，先歇會！");
+					try {
+						room.wait(2000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				log.debug("有煙沒？[{}]", hasCigarette);
+				if (hasCigarette) {
+					log.debug("可以開始工作了");
+				}
+			}
+		}, "小南").start();
+		for (int i = 0; i < 5; i++) {
+			new Thread(() -> {
+				synchronized (room) {
+					log.debug("可以開始工作了");
+				}
+			}, "其它人").start();
+		}
+		sleep(1);
+		new Thread(() -> {
+			synchronized (room) {
+				hasCigarette = true;
+				log.debug("煙到了噢！");
+				room.notify();
+			}
+		}, "送煙的").start();
+```
 
 
 
+輸出
+```java
+20:51:42.489 [小南] c.TestCorrectPosture - 有煙沒？ [false]
+20:51:42.493 [小南] c.TestCorrectPosture - 沒煙，先歇會！
+20:51:42.493 [其它人] c.TestCorrectPosture - 可以開始工作了
+20:51:42.493 [其它人] c.TestCorrectPosture - 可以開始工作了
+20:51:42.494 [其它人] c.TestCorrectPosture - 可以開始工作了
+20:51:42.494 [其它人] c.TestCorrectPosture - 可以開始工作了
+20:51:42.494 [其它人] c.TestCorrectPosture - 可以開始工作了
+20:51:43.490 [送煙的] c.TestCorrectPosture - 煙到了噢！
+20:51:43.490 [小南] c.TestCorrectPosture - 有煙沒？ [true]
+20:51:43.490 [小南] c.TestCorrectPosture - 可以開始工作了
+```
 
+- 解決了其它工作的線程阻塞的問題
+- 但如果有其它線程也在等待條件呢？
+
+### step 3
+
+```java
+		new Thread(() -> {
+			synchronized (room) {
+				log.debug("有煙沒？[{}]", hasCigarette);
+				if (!hasCigarette) {
+					log.debug("沒煙，先歇會！");
+					try {
+						room.wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				log.debug("有煙沒？[{}]", hasCigarette);
+				if (hasCigarette) {
+					log.debug("可以開始工作了");
+				} else {
+					log.debug("沒幹成活...");
+				}
+			}
+		}, "小南").start();
+		new Thread(() -> {
+			synchronized (room) {
+				Thread thread = Thread.currentThread();
+				log.debug("外送送到沒？[{}]", hasTakeout);
+				if (!hasTakeout) {
+					log.debug("沒外賣，先歇會！");
+					try {
+						room.wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				log.debug("外送送到沒？[{}]", hasTakeout);
+				if (hasTakeout) {
+					log.debug("可以開始工作了");
+				} else {
+					log.debug("沒幹成活...");
+				}
+			}
+		}, "小女").start();
+		sleep(1);
+		new Thread(() -> {
+			synchronized (room) {
+				hasTakeout = true;
+				log.debug("外送到了噢！");
+				room.notify();
+			}
+		}, "外送的").start();
+```
+
+輸出
+
+```java
+20:53:12.173 [小南] c.TestCorrectPosture - 有煙沒？ [false]
+20:53:12.176 [小南] c.TestCorrectPosture - 沒煙，先歇會！
+20:53:12.176 [小女] c.TestCorrectPosture - 外送送到沒？ [false]
+20:53:12.176 [小女] c.TestCorrectPosture - 沒外賣，先休會！
+20:53:13.174 [外送的] c.TestCorrectPosture - 外賣到了噢！
+20:53:13.174 [小南] c.TestCorrectPosture - 有煙沒？ [false]
+20:53:13.174 [小南] c.TestCorrectPosture - 沒工作...
+```
+
+- notify 只能隨機喚醒一個 WaitSet 中的線程，這時如果有其它線程也在等待，那麼就可能喚醒不了正確的線程，稱為【虛假喚醒】
+- 解決方法，改為 notifyAll
+
+### step 4
+
+```java
+		new Thread(() -> {
+			synchronized (room) {
+				hasTakeout = true;
+				log.debug("外送到了噢！");
+				room.notifyAll();
+			}
+		}, "外送的").start();
+```
+
+
+
+```java
+20:55:23.978 [小南] c.TestCorrectPosture - 有煙沒？ [false]
+20:55:23.982 [小南] c.TestCorrectPosture - 沒煙，先歇會！
+20:55:23.982 [小女] c.TestCorrectPosture - 外送送到沒？ [false]
+20:55:23.982 [小女] c.TestCorrectPosture - 沒外賣，先休會！
+20:55:24.979 [外送的] c.TestCorrectPosture - 外賣到了噢！
+20:55:24.979 [小女] c.TestCorrectPosture - 外送送到沒？ [true]
+20:55:24.980 [小女] c.TestCorrectPosture - 可以開始工作了
+20:55:24.980 [小南] c.TestCorrectPosture - 有煙沒？ [false]
+20:55:24.980 [小南] c.TestCorrectPosture - 沒工作...
+```
+- 用 notifyAll 只解決某個執行緒的喚醒問題，但使用 if + wait 判斷只一次機會，一旦條件不成立，就沒有重新判斷的機會了
+- 解法，用 while + wait，當條件不成立，再 wait
+
+### step 5
+將 if 改為 while
+```java
+		if (!hasCigarette) {
+			log.debug("沒煙，先歇會！");
+			try {
+				room.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+```
+
+改動後
+```java
+		while (!hasCigarette) {
+			log.debug("沒煙，先歇會！");
+			try {
+				room.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+```
+
+
+```java
+20:58:34.322 [小南] c.TestCorrectPosture - 有煙沒？ [false]
+20:58:34.326 [小南] c.TestCorrectPosture - 沒煙，先歇會！
+20:58:34.326 [小女] c.TestCorrectPosture - 外送送到沒？ [false]
+20:58:34.326 [小女] c.TestCorrectPosture - 沒外賣，先休會！
+20:58:35.323 [外送的] c.TestCorrectPosture - 外賣到了噢！
+20:58:35.324 [小女] c.TestCorrectPosture - 外送送到沒？ [true]
+20:58:35.324 [小女] c.TestCorrectPosture - 可以開始工作了
+20:58:35.324 [小南] c.TestCorrectPosture - 沒煙，先歇會！
+```
+
+```java
+		synchronized (lock) {
+			while (條件不成立) {
+				lock.wait();
+			}
+			// 幹活
+		}
+		// 另一個執行緒
+		synchronized (lock) {
+			lock.notifyAll();
+		}
+	}
+```
+
+* 模式之保護性暫停
+* 模式生產者消費者
 
 
 
