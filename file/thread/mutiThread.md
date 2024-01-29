@@ -2154,9 +2154,458 @@ static boolean hasTakeout = false;
 	}
 ```
 
-* 模式之保護性暫停
-* 模式生產者消費者
+## 模式之保護性暫停
 
+### 1. 定義
+- 即 Guarded Suspension，用在一個執行緒等待另一個執行緒的執行結果
+- 重點
+  - 有一個結果需要從一個線程傳遞到另一個線程，讓他們關聯同一個 GuardedObject
+  - 如果有結果不斷從一個執行緒到另一個執行緒那麼可以使用訊息隊列（請參閱生產者/消費者）
+  - JDK 中，join 的實作、Future 的實現，採用的就是此模式
+  - 因為要等待另一方的結果，因此歸類到同步模式
+
+![32](imgs/32.png)
+
+## 2.實現
+
+```java
+class GuardedObject {
+
+     private Object response;
+     private final Object lock = new Object();
+
+     public Object get() {
+         synchronized (lock) {
+             // 條件不滿足則等待
+             while (response == null) {
+                 try {
+                     lock.wait();
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+             }
+             return response;
+         }
+     }
+
+     public void complete(Object response) {
+         synchronized (lock) {
+             // 條件滿足，通知等待執行緒
+             this.response = response;
+             lock.notifyAll();
+         }
+     }
+}
+```
+
+### 應用
+
+```java
+    public static void main(String[] args) {
+        GuardedObject guardedObject = new GuardedObject();
+        new Thread(() -> {
+            try {
+                // 子執行緒執行下載
+                List<String> response = download();
+                log.debug("download complete...");
+                guardedObject.complete(response);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
+        log.debug("waiting...");
+        // 主執行緒阻塞等待
+        Object response = guardedObject.get();
+        log.debug("get response: [{}] lines", ((List<String>) response).size());
+    }
+```
+
+執行結果
+
+```
+08:42:18.568 [main] c.TestGuardedObject - waiting...
+08:42:23.312 [Thread-0] c.TestGuardedObject - download complete...
+08:42:23.312 [main] c.TestGuardedObject - get response: [3] lines
+```
+
+## 3. 帶超時版 GuardedObject
+
+如果要控制超時時間呢
+
+```java
+class GuardedObjectV2 {
+
+     private Object response;
+     private final Object lock = new Object();
+
+     public Object get(long millis) {
+         synchronized (lock) {
+             // 1) 記錄最初時間
+             long begin = System.currentTimeMillis();
+             // 2) 已經經歷過的時間
+             long timePassed = 0;
+             while (response == null) {
+                 // 4) 假設 millis 是 1000，結果在 400 時喚醒了，那麼還有 600 要等
+                 long waitTime = millis - timePassed;
+                 log.debug("waitTime: {}", waitTime);
+                 if (waitTime <= 0) {
+                     log.debug("break...");
+                     break;
+                 }
+                 try {
+                     lock.wait(waitTime);
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+                 // 3) 若事先被喚醒，這時已經經歷的時間假設為 400
+                 timePassed = System.currentTimeMillis() - begin;
+                 log.debug("timePassed: {}, object is null {}",
+                         timePassed, response == null);
+             }
+             return response;
+         }
+     }
+
+     public void complete(Object response) {
+         synchronized (lock) {
+             // 條件滿足，通知等待執行緒
+             this.response = response;
+             log.debug("notify...");
+             lock.notifyAll();
+         }
+     }
+}
+```
+
+測試，沒有超時
+
+```java
+
+auto_awesome
+原文語言： 英文
+​
+508 / 5,000
+翻譯結果
+翻譯搜尋結果
+public static void main(String[] args) {
+         GuardedObjectV2 v2 = new GuardedObjectV2();
+         new Thread(() -> {
+             sleep(1);
+             v2.complete(null);
+             sleep(1);
+             v2.complete(Arrays.asList("a", "b", "c"));
+         }).start();
+         Object response = v2.get(2500);
+         if (response != null) {
+             log.debug("get response: [{}] lines", ((List<String>) response).size());
+         } else {
+             log.debug("can't get response");
+         }
+     }
+```
+輸出
+
+```
+08:49:39.917 [main] c.GuardedObjectV2 - waitTime: 2500
+08:49:40.917 [Thread-0] c.GuardedObjectV2 - notify...
+08:49:40.917 [main] c.GuardedObjectV2 - timePassed: 1003, object is null true
+08:49:40.917 [main] c.GuardedObjectV2 - waitTime: 1497
+08:49:41.918 [Thread-0] c.GuardedObjectV2 - notify...
+08:49:41.918 [main] c.GuardedObjectV2 - timePassed: 2004, object is null false
+08:49:41.918 [main] c.TestGuardedObjectV2 - get response: [3] lines
+```
+
+測試，超時
+
+```java
+// 等待時間不足
+List<String> lines = v2.get(1500);
+```
+
+輸出
+
+```
+08:47:54.963 [main] c.GuardedObjectV2 - waitTime: 1500
+08:47:55.963 [Thread-0] c.GuardedObjectV2 - notify...
+08:47:55.963 [main] c.GuardedObjectV2 - timePassed: 1002, object is null true
+08:47:55.963 [main] c.GuardedObjectV2 - waitTime: 498
+08:47:56.461 [main] c.GuardedObjectV2 - timePassed: 1500, object is null true
+08:47:56.461 [main] c.GuardedObjectV2 - waitTime: 0
+08:47:56.461 [main] c.GuardedObjectV2 - break...
+08:47:56.461 [main] c.TestGuardedObjectV2 - can't get response
+08:47:56.963 [Thread-0] c.GuardedObjectV2 - notify...
+```
+
+
+## 4. 多工版 GuardedObject
+- 圖中 Futures 就好比居民樓層的信箱（每個信箱有房間編號），左側的 t0，t2，t4 就好比等待郵件的居民，右側的 t1，t3，t5 就好比郵差
+- 如果需要在多個類別之間使用 GuardedObject 對象，作為參數傳遞不是很方便，因此設計一個用來解耦的中間類，這樣不僅能夠解耦【結果等待者】和【結果生產者】，還能夠同時支援多個任務的管理
+
+![33](imgs/33.png)
+
+新增 id 用來標識 Guarded Object
+
+```java
+class GuardedObject {
+
+     // 標識 Guarded Object
+     private int id;
+
+     public GuardedObject(int id) {
+         this.id = id;
+     }
+
+     public int getId() {
+         return id;
+     }
+
+     // 結果
+     private Object response;
+
+     // 取得結果
+     // timeout 表示要等多久 2000
+     public Object get(long timeout) {
+         synchronized (this) {
+             // 開始時間 15:00:00
+             long begin = System.currentTimeMillis();
+             // 經歷的時間
+             long passedTime = 0;
+             while (response == null) {
+                 // 這一輪循環應該等待的時間
+                 long waitTime = timeout - passedTime;
+                 // 經歷的時間超過了最大等待時間時，退出循環
+                 if (timeout - passedTime <= 0) {
+                     break;
+                 }
+                 try {
+                     this.wait(waitTime); // 虛假喚醒 15:00:01
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+                 //求得經歷時間
+                 passedTime = System.currentTimeMillis() - begin; // 15:00:02 1s
+             }
+             return response;
+         }
+     }
+
+     //產生結果
+     public void complete(Object response) {
+         synchronized (this) {
+             //給結果成員變數賦值
+             this.response = response;
+             this.notifyAll();
+         }
+     }
+}
+```
+
+中間解耦類
+
+```java
+class Mailboxes {
+
+    private static Map<Integer, GuardedObject> boxes = new Hashtable<>();
+    private static int id = 1;
+
+    // 產生唯一 id
+    private static synchronized int generateId() {
+        return id++;
+    }
+
+    public static GuardedObject getGuardedObject(int id) {
+        return boxes.remove(id);
+    }
+
+    public static GuardedObject createGuardedObject() {
+        GuardedObject go = new GuardedObject(generateId());
+        boxes.put(go.getId(), go);
+        return go;
+    }
+
+    public static Set<Integer> getIds() {
+        return boxes.keySet();
+    }
+}
+```
+
+業務相關類
+
+```java
+class People extends Thread {
+
+     @Override
+     public void run() {
+         // 收信
+         GuardedObject guardedObject = Mailboxes.createGuardedObject();
+         log.debug("開始收信 id:{}", guardedObject.getId());
+         Object mail = guardedObject.get(5000);
+         log.debug("收到信 id:{}, 內容:{}", guardedObject.getId(), mail);
+     }
+}
+```
+
+```java
+class Postman extends Thread {
+
+    private int id;
+    private String mail;
+
+    public Postman(int id, String mail) {
+        this.id = id;
+        this.mail = mail;
+    }
+
+    @Override
+    public void run() {
+        GuardedObject guardedObject = Mailboxes.getGuardedObject(id);
+        log.debug("送信 id:{}, 内容:{}", id, mail);
+        guardedObject.complete(mail);
+    }
+}
+```
+
+測試
+
+```java
+public static void main(String[] args) throws InterruptedException {
+         for (int i = 0; i < 3; i++) {
+             new People().start();
+         }
+         Sleeper.sleep(1);
+         for (Integer id : Mailboxes.getIds()) {
+             new Postman(id, "內容" + id).start();
+         }
+     }
+```
+
+某次運行結果
+
+```
+10:35:05.689 c.People [Thread-1] - 開始收信 id:3
+10:35:05.689 c.People [Thread-2] - 開始收信 id:1
+10:35:05.689 c.People [Thread-0] - 開始收信 id:2
+10:35:06.688 c.Postman [Thread-4] - 送信 id:2, 內容:內容2
+10:35:06.688 c.Postman [Thread-5] - 送信 id:1, 內容:內容1
+10:35:06.688 c.People [Thread-0] - 收到信 id:2, 內容:內容2
+10:35:06.688 c.People [Thread-2] - 收到信 id:1, 內容:內容1
+10:35:06.688 c.Postman [Thread-3] - 送信 id:3, 內容:內容3
+10:35:06.689 c.People [Thread-1] - 收到信 id:3, 內容:內容3
+```
+
+
+
+# 模式生產者消費者
+
+### 1. 定義
+- 重點
+- 與前面的保護性暫停中的 GuardObject 不同，不需要產生結果和消費結果的線程一一對應
+- 消費隊列可以用來平衡生產和消費的線程資源
+- 生產者僅負責產生結果數據，不關心數據該如何處理，而消費者專心處理結果數據
+- 消息隊列是有容量限制的，滿時不會再加入數據，空時不會再消耗數據
+- JDK 中各種阻塞佇列，採用的就是這種模式
+
+
+![34](imgs/34.png)
+
+
+### 2.實現
+
+```java
+class MessageQueue {
+
+     private LinkedList<Message> queue;
+     private int capacity;
+
+     public MessageQueue(int capacity) {
+         this.capacity = capacity;
+         queue = new LinkedList<>();
+     }
+
+     public Message take() {
+         synchronized (queue) {
+             while (queue.isEmpty()) {
+                 log.debug("沒貨了, wait");
+                 try {
+                     queue.wait();
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+             }
+             Message message = queue.removeFirst();
+             queue.notifyAll();
+             return message;
+         }
+     }
+
+     public void put(Message message) {
+         synchronized (queue) {
+             while (queue.size() == capacity) {
+                 log.debug("庫存已達上限, wait");
+                 try {
+                     queue.wait();
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+             }
+             queue.addLast(message);
+             queue.notifyAll();
+         }
+     }
+}
+```
+#### 應用
+
+```java
+MessageQueue messageQueue = new MessageQueue(2);
+         // 4 個生產者執行緒, 下載任務
+         for (int i = 0; i < 4; i++) {
+             int id = i;
+             new Thread(() -> {
+                 try {
+                     log.debug("download...");
+                     List<String> response = Downloader.download();
+                     log.debug("try put message({})", id);
+                     messageQueue.put(new Message(id, response));
+                 } catch (IOException e) {
+                     e.printStackTrace();
+                 }
+             }, "生產者" + i).start();
+         }
+         // 1 個消費者線程, 處理結果
+         new Thread(() -> {
+             while (true) {
+                 Message message = messageQueue.take();
+                 List<String> response = (List<String>) message.getMessage();
+                 log.debug("take message({}): [{}] lines", message.getId(), response.size());
+             }
+         }, "消費者").start();
+```
+
+
+某次運行結果
+
+```
+10:48:38.070 [生產者3] c.TestProducerConsumer - download...
+10:48:38.070 [生產者0] c.TestProducerConsumer - download...
+10:48:38.070 [消費者] c.MessageQueue - 沒貨了, wait
+10:48:38.070 [生產者1] c.TestProducerConsumer - download...
+10:48:38.070 [生產者2] c.TestProducerConsumer - download...
+10:48:41.236 [生產者1] c.TestProducerConsumer - try put message(1)
+10:48:41.237 [生產者2] c.TestProducerConsumer - try put message(2)
+10:48:41.236 [生產者0] c.TestProducerConsumer - try put message(0)
+10:48:41.237 [生產者3] c.TestProducerConsumer - try put message(3)
+10:48:41.239 [生產者2] c.MessageQueue - 庫存已達上限, wait
+10:48:41.240 [生產者1] c.MessageQueue - 庫存已達上限, wait
+10:48:41.240 [消費者] c.TestProducerConsumer - take message(0): [3] lines
+10:48:41.240 [生產者2] c.MessageQueue - 庫存已達上限, wait
+10:48:41.240 [消費者] c.TestProducerConsumer - take message(3): [3] lines
+10:48:41.240 [消費者] c.TestProducerConsumer - take message(1): [3] lines
+10:48:41.240 [消費者] c.TestProducerConsumer - take message(2): [3] lines
+10:48:41.240 [消費者] c.MessageQueue - 沒貨了, wait
+```
+
+結果解讀
 
 
 
