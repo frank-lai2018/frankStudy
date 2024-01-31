@@ -2156,6 +2156,8 @@ static boolean hasTakeout = false;
 
 ## 模式之保護性暫停
 
+- 跟join的區別在於，join是等待另一個thread結束，而保護性暫停是等待另一個thread的結果
+
 ### 1. 定義
 - 即 Guarded Suspension，用在一個執行緒等待另一個執行緒的執行結果
 - 重點
