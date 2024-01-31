@@ -2280,13 +2280,6 @@ class GuardedObjectV2 {
 測試，沒有超時
 
 ```java
-
-auto_awesome
-原文語言： 英文
-​
-508 / 5,000
-翻譯結果
-翻譯搜尋結果
 public static void main(String[] args) {
          GuardedObjectV2 v2 = new GuardedObjectV2();
          new Thread(() -> {
