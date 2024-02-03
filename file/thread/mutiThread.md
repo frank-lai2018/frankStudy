@@ -2600,7 +2600,113 @@ MessageQueue messageQueue = new MessageQueue(2);
 10:48:41.240 [消費者] c.MessageQueue - 沒貨了, wait
 ```
 
-結果解讀
+# Park & Unpark
+
+## 基本使用
+- 它們是 LockSupport 類別中的方法
+
+```java
+// 暫停目前執行緒
+LockSupport.park();
+// 恢復某個執行緒的運行
+LockSupport.unpark(暫停線程物件)
+```
+
+- 先 park 再 unpark
+
+```java
+Thread t1 = new Thread(() -> {
+    log.debug("start...");
+    sleep(1);
+    log.debug("park...");
+    LockSupport.park();
+    log.debug("resume...");
+},"t1");
+t1.start();
+sleep(2);
+log.debug("unpark...");
+LockSupport.unpark(t1);
+```
+
+
+```java
+18:42:52.585 c.TestParkUnpark [t1] - start... 
+18:42:53.589 c.TestParkUnpark [t1] - park... 
+18:42:54.583 c.TestParkUnpark [main] - unpark... 
+18:42:54.583 c.TestParkUnpark [t1] - resume... 
+```
+
+
+- 先 unpark 再 park
+```java
+Thread t1 = new Thread(() -> {
+    log.debug("start...");
+    sleep(2);
+    log.debug("park...");
+    LockSupport.park();
+    log.debug("resume...");
+}, "t1");
+t1.start();
+sleep(1);
+log.debug("unpark...");
+LockSupport.unpark(t1);
+```
+
+```java
+18:43:50.765 c.TestParkUnpark [t1] - start... 
+18:43:51.764 c.TestParkUnpark [main] - unpark... 
+18:43:52.769 c.TestParkUnpark [t1] - park... 
+18:43:52.769 c.TestParkUnpark [t1] - resume... 
+```
+
+## 特點
+  - 與 Object 的 wait & notify 相比
+    - wait，notify 和 notifyAll 必須配合 Object Monitor 一起使用，而 park，unpark 不必
+
+    - park & unpark 是以線程為單位來【阻塞】和【喚醒】線程，而 notify 只能隨機喚醒一個等待線程，notifyAll
+    是喚醒所有等待線程，就不那麼【精確】
+    - park & unpark 可以先 unpark，而 wait & notify 不能先 notify
+
+## park unpark 原理
+
+
+- 每個線程都有自己的一個 Parker 對象，由三個部分組成 _counter ， _cond 和 _mutex 打個比喻
+  - 線就像旅人，Parker 就像他隨身攜帶的背包，條件變數就好比背包裡的帳篷。 _counter 就好比背包中
+  的備用乾糧（0 為耗盡，1 為充足）
+  - 呼叫 park 就是要看需不需要停下來歇息
+    - 如果備用乾糧耗盡，那麼鑽進帳篷歇息
+    - 如果備用乾糧充足，那麼不需停留，繼續前進
+  - 調用 unpark，就好比令乾糧充足
+    - 如果這時線程還在帳篷，就喚醒讓他繼續前進
+    - 如果此時線程還在運行，那麼下次他調用 park 時，僅是消耗掉備用乾糧，不需停留繼續前進
+      - 因為背包空間有限，多次呼叫 unpark 僅會補充一份備用乾糧
+
+![35](imgs/35.png)
+
+1. 目前執行緒呼叫 Unsafe.park() 方法
+2. 檢查 _counter ，本情況為 0，這時，獲得 _mutex 互斥鎖
+3. 線程進入 _cond 條件變數阻塞
+4. 設定 _counter = 0
+
+
+![36](imgs/36.png)
+
+1. 呼叫 Unsafe.unpark(Thread_0) 方法，設定 _counter 為 1
+2. 喚醒 _cond 條件變數中的 Thread_0
+3. Thread_0 恢復運行
+4. 設定 _counter 為 0
+
+![37](imgs/37.png)
+
+
+1. 呼叫 Unsafe.unpark(Thread_0) 方法，設定 _counter 為 1
+2. 目前執行緒呼叫 Unsafe.park() 方法
+3. 檢查 _counter ，本情況為 1，此時執行緒無需阻塞，繼續執行
+4. 設定 _counter 為 0
+
+
+
+
 
 
 
