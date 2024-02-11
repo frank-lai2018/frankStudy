@@ -2705,6 +2705,945 @@ LockSupport.unpark(t1);
 4. 設定 _counter 為 0
 
 
+# 執行緒狀態轉換
+
+![38](imgs/38.png)
+假設有線程 Thread t
+
+### 情況 1 NEW --> RUNNABLE
+- 當呼叫 t.start() 方法時，由 NEW --> RUNNABLE
+
+
+### 情況 2 RUNNABLE <--> WAITING
+- t 線程用 synchronized(obj) 取得了物件鎖定後
+  - 當呼叫 obj.wait() 方法時，t 執行緒從 RUNNABLE --> WAITING
+  - 呼叫 obj.notify() ， obj.notifyAll() ， t.interrupt() 時
+    - 競爭鎖定成功，t 執行緒從 WAITING --> RUNNABLE
+    - 競爭鎖失敗，t 執行緒從 WAITING --> BLOCKED
+
+```java
+public class TestWaitNotify {
+	final static Object obj = new Object();
+
+	public static void main(String[] args) {
+		new Thread(() -> {
+			synchronized (obj) {
+				log.debug("執行....");
+				try {
+					obj.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				log.debug("其它程式碼...."); // 斷點
+			}
+		}, "t1").start();
+		new Thread(() -> {
+			synchronized (obj) {
+				log.debug("執行....");
+				try {
+					obj.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				log.debug("其它程式碼...."); // 斷點
+			}
+		}, "t2").start();
+		sleep(0.5);
+		log.debug("喚醒 obj 上其它執行緒");
+		synchronized (obj) {
+			obj.notifyAll(); // 喚醒obj上所有等待執行緒 斷點
+		}
+	}
+}
+```
+
+
+
+### 情況 3 RUNNABLE <--> WAITING
+- 當目前執行緒呼叫 t.join() 方法時，當前執行緒從 RUNNABLE --> WAITING
+  - 注意是當前執行緒在t 執行緒物件的監視器上等待
+- t 執行緒運行結束，或呼叫了目前執行緒的 interrupt() 時，目前執行緒從 WAITING --> RUNNABLE
+
+### 情況 4 RUNNABLE <--> WAITING
+- 目前執行緒呼叫 LockSupport.park() 方法會讓目前執行緒從 RUNNABLE --> WAITING
+- 呼叫 LockSupport.unpark(目標執行緒) 或呼叫了執行緒 的 interrupt() ，會讓目標執行緒從 WAITING --> RUNNABLE
+
+### 情況 5 RUNNABLE <--> TIMED_WAITING
+
+t 線程用 synchronized(obj) 取得了物件鎖定後
+- 當呼叫 obj.wait(long n) 方法時，t 執行緒從 RUNNABLE --> TIMED_WAITING
+- t 執行緒等待時間超過了 n 毫秒，或呼叫 obj.notify() ， obj.notifyAll() ， t.interrupt() 時
+  - 競爭鎖定成功，t 執行緒從 TIMED_WAITING --> RUNNABLE
+  - 競爭鎖定失敗，t 執行緒從 TIMED_WAITING --> BLOCKED
+
+
+### 情況 6 RUNNABLE <--> TIMED_WAITING
+- 當目前執行緒呼叫 t.join(long n) 方法時，目前執行緒從 RUNNABLE --> TIMED_WAITING
+  - 注意是當前執行緒在t 執行緒物件的監視器上等待
+- 當前線程等待時間超過了 n 毫秒，或t 線程運行結束，或調用了當前線程的 interrupt() 時，當前線程從 TIMED_WAITING --> RUNNABLE
+
+### 情況 7 RUNNABLE <--> TIMED_WAITING
+- 目前執行緒呼叫 Thread.sleep(long n) ，目前執行緒從 RUNNABLE --> TIMED_WAITING
+- 目前執行緒等待時間超過了 n 毫秒，目前執行緒從 TIMED_WAITING --> RUNNABLE
+
+### 情況 8 RUNNABLE <--> TIMED_WAITING
+- 當目前執行緒呼叫 LockSupport.parkNanos(long nanos) 或 LockSupport.parkUntil(long millis) 時，當線程從 RUNNABLE --> TIMED_WAITING
+- 呼叫 LockSupport.unpark(目標線程) 或呼叫了執行緒 的 interrupt() ，或是等待逾時，會讓目標執行緒從 TIMED_WAITING--> RUNNABLE
+
+
+### 情況 9 RUNNABLE <--> BLOCKED
+- t 線程用 synchronized(obj) 獲取了對象鎖時如果競爭失敗，從 RUNNABLE --> BLOCKED
+- 持 obj 鎖執行緒的同步程式碼區塊執行完畢，會喚醒該物件上所有 BLOCKED 的執行緒重新競爭，如果其中 t 執行緒競爭成功，從 BLOCKED --> RUNNABLE ，其它失敗的線程仍然 BLOCKED
+  
+### 情況 10 RUNNABLE <--> TERMINATED
+- 目前執行緒所有程式碼都運行完畢，進入TERMINATED
+
+# 活躍性
+
+### 死鎖
+- 有這樣的情況：一個執行緒需要同時取得多把鎖，這時就容易發生死鎖t1 執行緒 取得 A物件 鎖，接下來想取得 B物件的鎖 t2 執行緒 取得 B物件 鎖，接下來想取得 A物件的鎖 
+- 範例：
+
+```java
+		Object A = new Object();
+		Object B = new Object();
+		Thread t1 = new Thread(() -> {
+			synchronized (A) {
+				log.debug("lock A");
+				sleep(1);
+				synchronized (B) {
+					log.debug("lock B");
+					log.debug("操作...");
+				}
+			}
+		}, "t1");
+		Thread t2 = new Thread(() -> {
+			synchronized (B) {
+				log.debug("lock B");
+				sleep(0.5);
+				synchronized (A) {
+					log.debug("lock A");
+					log.debug("操作...");
+				}
+			}
+		}, "t2");
+		t1.start();
+		t2.start();
+```
+
+### 定位死鎖
+
+- 偵測死鎖可以使用 jconsole工具，或使用 jps 定位進程 id，再用 jstack 定位死鎖：
+
+```java
+cmd > jps
+Picked up JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
+12320 Jps
+22816 KotlinCompileDaemon
+33200 TestDeadLock // JVM 進程
+11508 Main
+28468 Launcher
+```
+![39](imgs/39.png)
+![40](imgs/40.png)
+
+- 避免死鎖要注意加鎖順序
+- 另外如果因為某個執行緒進入了死循環，導致其它執行緒一直等待，對於這種情況 linux 下可以透過 top 先定位到CPU 佔用高的 Java 進程，再利用 top -Hp 進程id 來定位是哪個線程，最後再用 jstack 排查
+
+
+### 活鎖
+
+- 活鎖出現在兩個線程互相改變對方的結束條件，最後誰也無法結束，例如
+
+```java
+public class TestLiveLock {
+	static volatile int count = 10;
+	static final Object lock = new Object();
+
+	public static void main(String[] args) {
+		new Thread(() -> {
+// 期望減到 0 退出循環
+			while (count > 0) {
+				sleep(0.2);
+				count--;
+				log.debug("count: {}", count);
+			}
+		}, "t1").start();
+		new Thread(() -> {
+// 期望超過 20 退出循環
+			while (count < 20) {
+				sleep(0.2);
+				count++;
+				log.debug("count: {}", count);
+			}
+		}, "t2").start();
+	}
+}
+```
+
+
+### 飢餓
+
+
+- 很多教程中把飢餓定義為，一個執行緒由於優先權太低，始終得不到 CPU 調度執行，也不能夠結束，飢餓的情況不易演示，講讀寫鎖時會涉及飢餓問題
+- 下面我來講一下我遇到的一個線程飢餓的例子，先來看看使用順序加鎖的方式解決之前的死鎖問題
+
+![41](imgs/41.png)
+順序加鎖的解決方案
+![42](imgs/42.png)
+
+
+# ReentrantLock
+
+
+- 相對於 synchronized 它具備以下特點
+  - 可中斷
+  - 可以設定超時時間
+  - 可以設定為公平鎖
+  - 支援多個條件變數
+- 與 synchronized 一樣，都支援可重入
+
+
+### 基本文法
+
+```java
+// 取得鎖
+reentrantLock.lock();
+try {
+// 臨界區
+} finally {
+// 釋放鎖
+    reentrantLock.unlock();
+}
+```
+
+
+### 可重入
+- 可重入是指同一個線程如果首次獲得了這把鎖，那麼因為它是這把鎖的擁有者，因此有權利再次獲取這把鎖，如果是不可重入鎖，那麼第二次獲得鎖時，自己也會被鎖擋住
+
+
+```java
+	static ReentrantLock lock = new ReentrantLock();
+
+	public static void main(String[] args) {
+		method1();
+	}
+
+	public static void method1() {
+		lock.lock();
+		try {
+			log.debug("execute method1");
+			method2();
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	public static void method2() {
+		lock.lock();
+		try {
+			log.debug("execute method2");
+			method3();
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	public static void method3() {
+		lock.lock();
+		try {
+			log.debug("execute method3");
+		} finally {
+			lock.unlock();
+		}
+	}
+```
+
+
+```
+17:59:11.862 [main] c.TestReentrant - execute method1
+17:59:11.865 [main] c.TestReentrant - execute method2
+17:59:11.865 [main] c.TestReentrant - execute method3
+```
+
+
+###可打斷
+
+範例
+
+```java
+		ReentrantLock lock = new ReentrantLock();
+		Thread t1 = new Thread(() -> {
+			log.debug("啟動...");
+			try {
+				lock.lockInterruptibly();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				log.debug("等鎖的過程中被打斷");
+				return;
+			}
+			try {
+				log.debug("獲得了鎖");
+			} finally {
+				lock.unlock();
+			}
+		}, "t1");
+		lock.lock();
+		log.debug("獲得了鎖");
+		t1.start();
+		try {
+			sleep(1);
+			t1.interrupt();
+			log.debug("執行打斷");
+		} finally {
+			lock.unlock();
+		}
+```
+
+
+
+```
+18:02:40.520 [main] c.TestInterrupt - 獲得了鎖
+18:02:40.524 [t1] c.TestInterrupt - 啟動...
+18:02:41.530 [main] c.TestInterrupt - 執行打斷
+java.lang.InterruptedException
+at
+java.util.concurrent.locks.AbstractQueuedSynchronizer.doAcquireInterruptibly(AbstractQueuedSynchr
+onizer.java:898)
+at
+java.util.concurrent.locks.AbstractQueuedSynchronizer.acquireInterruptibly(AbstractQueuedSynchron
+izer.java:1222)
+at java.util.concurrent.locks.ReentrantLock.lockInterruptibly(ReentrantLock.java:335)
+at cn.itcast.n4.reentrant.TestInterrupt.lambda$main$0(TestInterrupt.java:17)
+at java.lang.Thread.run(Thread.java:748)
+18:02:41.532 [t1] c.TestInterrupt - 等鎖的過程中被打斷
+```
+
+
+注意如果是不可中斷模式，那麼即使使用了 interrupt 也不會讓等待中斷
+
+```java
+		ReentrantLock lock = new ReentrantLock();
+		Thread t1 = new Thread(() -> {
+			log.debug("啟動...");
+			lock.lock();
+			try {
+				log.debug("獲得了鎖");
+			} finally {
+				lock.unlock();
+			}
+		}, "t1");
+		lock.lock();
+		log.debug("獲得了鎖");
+		t1.start();
+		try {
+			sleep(1);
+			t1.interrupt();
+			log.debug("執行打斷");
+			sleep(1);
+		} finally {
+			log.debug("釋放了鎖");
+			lock.unlock();
+		}
+```
+
+
+```
+18:06:56.261 [main] c.TestInterrupt - 獲得了鎖
+18:06:56.265 [t1] c.TestInterrupt - 啟動...
+18:06:57.266 [main] c.TestInterrupt - 執行打斷 // 這時 t1 並沒有被真正打斷, 而是仍繼續等待鎖
+18:06:58.267 [main] c.TestInterrupt - 釋放了鎖
+18:06:58.267 [t1] c.TestInterrupt - 獲得了鎖
+```
+
+
+### 鎖逾時
+
+立刻失敗
+
+```java
+		ReentrantLock lock = new ReentrantLock();
+		Thread t1 = new Thread(() -> {
+			log.debug("啟動...");
+			if (!lock.tryLock()) {
+				log.debug("取得立刻失敗，返回");
+				return;
+			}
+			try {
+				log.debug("獲得了鎖");
+			} finally {
+				lock.unlock();
+			}
+		}, "t1");
+		lock.lock();
+		log.debug("獲得了鎖");
+		t1.start();
+		try {
+			sleep(2);
+		} finally {
+			lock.unlock();
+		}
+```
+
+```
+18:15:02.918 [main] c.TestTimeout - 獲得了鎖
+18:15:02.921 [t1] c.TestTimeout - 啟動...
+18:15:02.921 [t1] c.TestTimeout - 取得立刻失敗，返回
+```
+
+
+超时失败
+
+```java
+		ReentrantLock lock = new ReentrantLock();
+		Thread t1 = new Thread(() -> {
+			log.debug("啟動...");
+			try {
+				if (!lock.tryLock(1, TimeUnit.SECONDS)) {
+					log.debug("取得等待 1s 後失敗，返回");
+					return;
+				}
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			try {
+				log.debug("獲得了鎖");
+			} finally {
+				lock.unlock();
+			}
+		}, "t1");
+		lock.lock();
+		log.debug("獲得了鎖");
+		t1.start();
+		try {
+			sleep(2);
+		} finally {
+			lock.unlock();
+		}
+```
+
+```
+18:19:40.537 [main] c.TestTimeout - 獲得了鎖
+18:19:40.544 [t1] c.TestTimeout - 啟動...
+18:19:41.547 [t1] c.TestTimeout - 取得等待 1s 後失敗，返回
+```
+
+
+### 公平鎖
+- ReentrantLock 預設是不公平的
+
+```java
+		ReentrantLock lock = new ReentrantLock(false);
+		lock.lock();
+		for (int i = 0; i < 500; i++) {
+			new Thread(() -> {
+				lock.lock();
+				try {
+					System.out.println(Thread.currentThread().getName() + " running...");
+				} finally {
+					lock.unlock();
+				}
+			}, "t" + i).start();
+		}
+		// 1s 之後去爭搶鎖
+		Thread.sleep(1000);
+		new Thread(() -> {
+			System.out.println(Thread.currentThread().getName() + " start...");
+			lock.lock();
+			try {
+				System.out.println(Thread.currentThread().getName() + " running...");
+			} finally {
+				lock.unlock();
+			}
+		}, "強行插入").start();
+		lock.unlock();
+```
+
+- 強行插入，有機會在中間輸出
+>- 注意：此實驗不一定總是能復現
+
+```
+t39 running...
+t40 running...
+t41 running...
+t42 running...
+t43 running...
+強行插入 start...
+強行插入 running...
+t44 running...
+t45 running...
+t46 running...
+t47 running...
+t49 running...
+```
+
+改為公平鎖後
+
+```java
+ReentrantLock lock = new ReentrantLock(true);
+```
+
+強行插入，總是在最後輸出
+```
+t465 running...
+t464 running...
+t477 running...
+t442 running...
+t468 running...
+t493 running...
+t482 running...
+t485 running...
+t481 running...
+強行插入 running...
+```
+
+公平鎖一般沒必要，會降低並發度
+
+
+### 條件變數
+synchronized 中也有條件變量，就是我們講原理時那個 waitSet 休息室，當條件不滿足時進入 waitSet 等待
+
+ReentrantLock 的條件變數比 synchronized 強大之處在於，它是支援多個條件變數的，這就好比
+
+- synchronized 是那些不滿足條件的線程都在一間休息室等訊息
+- 而 ReentrantLock 支援多間休息室，有專門等煙的休息室、專門等早餐的休息室、喚醒時也是按休息室來喚醒
+
+使用要點：
+
+- await 前需要取得鎖
+- await 執行後，會釋放鎖，進入 conditionObject 等待
+- await 的線程被喚醒（或打斷、或超時）取重新競爭 lock 鎖
+- 競爭 lock 鎖成功後，從 await 後繼續執行
+
+例子:
+
+```java
+	static ReentrantLock lock = new ReentrantLock();
+	static Condition waitCigaretteQueue = lock.newCondition();
+	static Condition waitbreakfastQueue = lock.newCondition();
+	static volatile boolean hasCigrette = false;
+	static volatile boolean hasBreakfast = false;
+
+	public static void main(String[] args) {
+		new Thread(() -> {
+			try {
+				lock.lock();
+				while (!hasCigrette) {
+					try {
+						waitCigaretteQueue.await();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				log.debug("等到它的煙了");
+			} finally {
+				lock.unlock();
+			}
+		}).start();
+		new Thread(() -> {
+			try {
+				lock.lock();
+				while (!hasBreakfast) {
+					try {
+						waitbreakfastQueue.await();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				log.debug("等到它的早餐了");
+			} finally {
+				lock.unlock();
+			}
+		}).start();
+		sleep(1);
+		sendBreakfast();
+		sleep(1);
+		sendCigarette();
+	}
+
+	private static void sendCigarette() {
+		lock.lock();
+		try {
+			log.debug("送煙來了");
+			hasCigrette = true;
+			waitCigaretteQueue.signal();
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	private static void sendBreakfast() {
+		lock.lock();
+		try {
+			log.debug("送早餐來了");
+			hasBreakfast = true;
+			waitbreakfastQueue.signal();
+		} finally {
+			lock.unlock();
+		}
+	}
+```
+
+```
+18:52:27.680 [main] c.TestCondition - 送早餐來了
+18:52:27.682 [Thread-1] c.TestCondition - 等到了它的早餐
+18:52:28.683 [main] c.TestCondition - 送煙來了
+18:52:28.683 [Thread-0] c.TestCondition - 等到了它的煙
+```
+
+# JAVA內存模型 (JMM)
+
+JMM 即 ***Java Memory Model***，它定義了主記憶體(所有執行緒共享的數據，例如類的類的靜態變量、成員變量)、工作記憶體(執行緒私有的數據，例如局部變量)抽象概念，底層對應 CPU 暫存器、快取、硬體記憶體、CPU 指令最佳化等。
+
+- JMM 體現在以下幾個方面
+  - 原子性 - 保證指令不會受到執行緒上下文切換的影響
+  - 可見性 - 保證指令不會受 cpu 快取的影響
+  - 有序性 - 保證指令不會受 cpu 指令並行最佳化的影響
+
+## 可見性
+### 退不出的循環
+- 先來看一個現象，main 執行緒對 run 變數的修改對於 t 執行緒不可見，導致了 t 執行緒無法停止：
+
+
+```java
+	static boolean run = true;
+
+	public static void main(String[] args) throws InterruptedException {
+		Thread t = new Thread(() -> {
+			while (run) {
+				// ....
+			}
+		});
+		t.start();
+		sleep(1);
+		run = false; // 線程t不會如預想的停下來
+	}
+```
+
+為什麼呢？ 分析一下：
+- 1. 初始狀態， t 執行緒剛開始從主記憶體讀取了 run 的值到工作記憶體。
+
+![43](imgs/43.png)
+
+- 2. 因為 t 執行緒要經常從主記憶體讀取 run 的值，JIT 編譯器會將 run 的值快取到自己工作記憶體中的快取中，減少對主記憶體中 run 的訪問，提高效率
+
+![44](imgs/44.png)
+
+- 3. 1 秒之後，main 執行緒修改了 run 的值，並同步至主記憶體，而 t 是從自己工作記憶體中的快取中讀取這個變量的值，結果永遠是舊值
+
+![45](imgs/45.png)
+
+### 解決方法
+volatile（易變關鍵字）
+
+它可以用來修飾成員變數和靜態成員變量，他可以避免執行緒從自己的工作快取中尋找變數的值，必須到主記憶體中取得
+
+它的值，線程操作 volatile 變數都是直接操作主存
+
+### 可見性 vs 原子性
+前面例子體現的實際上是可見性，它保證的是在多個線程之間，一個線程對 volatile 變數的修改對另一個線程可見， 不能保證原子性，僅用在一個寫線程，多個讀線程的情況： 上例從字節碼理解是這樣的：
+
+
+```
+getstatic run // 線程 t 取得 run true
+getstatic run // 線程 t 取得 run true
+getstatic run // 線程 t 取得 run true
+getstatic run // 線程 t 取得 run true
+putstatic run // 執行緒 main 修改 run 為 false， 僅此一次
+getstatic run // 線程 t 取得 run false
+```
+
+比較一下之前我們將線程安全時舉的例子：兩個線程一個 i++ 一個 i-- ，只能保證看到最新值，不能解決指令交錯
+
+
+```
+// 假設i的初始值為0
+getstatic i // 線程2-取得靜態變數i的值 線程內i=0
+getstatic i // 線程1-取得靜態變數i的值 線程內i=0
+iconst_1 // 執行緒1-準備常數1
+iadd // 線程1-自增 線程內i=1
+putstatic i // 線程1-將修改後的值存入靜態變數i 靜態變數i=1
+iconst_1 // 線程2-準備常數1
+isub // 線程2-自減 線程內i=-1
+putstatic i // 線程2-將修改後的值存入靜態變數i 靜態變數i=-1
+```
+
+>- 注意 synchronized 語句區塊既可以保證程式碼區塊的原子性，也同時保證程式碼區塊內變數的可見性。 但缺點是synchronized 是屬於重量級操作，性能相對較低
+>- 如果在前面範例的死迴圈中加入 System.out.println() 會發現即使不加 volatile 修飾符，則執行緒 t 也能正確看到對 run 變數的修改了，想想為什麼？
+
+
+* 原理之 CPU 快取結構
+* 模式之兩階段終止
+* 模式之 Balking
+## 有序性
+
+JVM 會在不影響正確性的前提下，可以調整語句的執行順序，思考下面一段程式碼
+
+
+```java
+static int i;
+static int j;
+// 在某個執行緒內執行如下賦值操作
+i = ...;
+j = ...;
+```
+
+可以看到，至於是先執行 i 還是 先執行 j ，對最終的結果不會產生影響。 所以，當上面程式碼真正執行時，可以是
+
+```java
+i = ...;
+j = ...;
+```
+
+也可以是
+
+```java
+j = ...;
+i = ...;
+```
+
+這個特性稱為『指令重排』，多執行緒下『指令重排』會影響正確性。 為什麼要有重排指令這項最佳化呢？ 從 CPU執行指令的原理來理解一下吧
+
+* 原理之指令級平行
+
+### 詭異的結果
+
+
+```java
+int num = 0;
+boolean ready = false;
+
+	// 執行緒1 執行此方法
+	public void actor1(I_Result r) {
+		if (ready) {
+			r.r1 = num + num;
+		} else {
+			r.r1 = 1;
+		}
+	}
+
+	// 執行緒2 執行此方法
+	public void actor2(I_Result r) {
+		num = 2;
+		ready = true;
+	}
+
+```
+
+
+I_Result 是一個對象，有一個屬性 r1 用來保存結果，問，可能的結果有幾種？
+
+有同學這麼分析
+
+情況1：線程1 先執行，這時 ready = false，所以進入 else 分支結果為 1
+
+情況2：線程2 先執行 num = 2，但來不及執行 ready = true，線程1 執行，還是進入 else 分支，結果為1
+
+情況3：線程2 執行到 ready = true，線程1 執行，這回進入 if 分支，結果為 4（因為 num 已經執行過了）
+
+但我告訴你，結果還有可能是 0 😁😁😁，信不信吧！
+
+這種情況下是：線程2 執行 ready = true，切換到線程1，進入 if 分支，相加為 0，然後切回線程2 執行 num = 2
+
+相信很多人已經暈了 😵😵
+
+這種現象叫做指令重排，是 JIT 編譯器在執行時的一些最佳化，這個現象需要通過大量測試才能重現：
+
+使用 java 並發壓測工具 jcstress https://wiki.openjdk.java.net/display/CodeTools/jcstress
+
+
+```
+mvn archetype:generate -DinteractiveMode=false -DarchetypeGroupId=org.openjdk.jcstress -
+DarchetypeArtifactId=jcstress-java-test-archetype -DarchetypeVersion=0.5 -DgroupId=cn.itcast -
+DartifactId=ordering -Dversion=1.0
+```
+
+
+建立 maven 項目，提供以下測試類
+
+```java
+@JCStressTest
+@Outcome(id = { "1", "4" }, expect = Expect.ACCEPTABLE, desc = "ok")
+@Outcome(id = "0", expect = Expect.ACCEPTABLE_INTERESTING, desc = "!!!!")
+@State
+public class ConcurrencyTest {
+	int num = 0;
+	boolean ready = false;
+
+	@Actor
+	public void actor1(I_Result r) {
+		if (ready) {
+			r.r1 = num + num;
+		} else {
+			r.r1 = 1;
+		}
+	}
+
+	@Actor
+	public void actor2(I_Result r) {
+		num = 2;
+		ready = true;
+	}
+}
+```
+
+執行
+
+
+```java
+mvn clean install
+java -jar target/jcstress.jar
+```
+
+會輸出我們感興趣的結果，摘錄其中一次結果：
+
+![46](imgs/46.png)
+
+
+可以看到，出現結果為 0 的情況有 638 次，雖然次數相對很少，但畢竟是出現了。
+
+### 解決方法
+
+volatile 修飾的變量，可以停用指令重排
+
+
+```java
+@JCStressTest
+@Outcome(id = { "1", "4" }, expect = Expect.ACCEPTABLE, desc = "ok")
+@Outcome(id = "0", expect = Expect.ACCEPTABLE_INTERESTING, desc = "!!!!")
+@State
+public class ConcurrencyTest {
+	int num = 0;
+	volatile boolean ready = false;
+
+	@Actor
+	public void actor1(I_Result r) {
+		if (ready) {
+			r.r1 = num + num;
+		} else {
+			r.r1 = 1;
+		}
+	}
+
+	@Actor
+	public void actor2(I_Result r) {
+		num = 2;
+		ready = true;
+	}
+}
+```
+
+```
+*** INTERESTING tests
+Some interesting behaviors observed. This is for the plain curiosity.
+0 matching test results.
+```
+
+* 原理之 volatile
+
+### happens-before
+happens-before 規定了對共享變數的寫入操作對其它線程的讀取操作可見，它是可見性與有序性的一套規則總結，拋開啟以下 happens-before 規則，JMM 並不能保證一個執行緒對共享變數的寫，對於其它執行緒對該共享變數的讀取可見
+
+- 執行緒解鎖 m 之前對變數的寫，對於接下來對 m 加鎖的其它執行緒對該變數的讀取可見
+
+```java
+	static int x;
+	static Object m = new Object();new Thread(()->
+	{
+		synchronized (m) {
+			x = 10;
+		}
+	},"t1").start();new Thread(()->
+	{
+		synchronized (m) {
+			System.out.println(x);
+		}
+	},"t2").start();
+```
+
+線程對 volatile 變數的寫，對接下來其它線程對該變數的讀可見
+
+```java
+	volatile static int x;new Thread(()->
+	{
+		x = 10;
+	},"t1").start();new Thread(()->
+	{
+		System.out.println(x);
+	},"t2").start();
+```
+
+
+執行緒 start 前對變數的寫，對該執行緒開始後對該變數的讀可見
+
+```java
+	static int x;x=10;new Thread(()->
+	{
+		System.out.println(x);
+	},"t2").start();
+```
+
+線程結束前對變數的寫，對其它線程得知它結束後的讀可見（比如其它線程調用 t1.isAlive() 或 t1.join()等待它結束）
+
+
+```java
+	static int x;
+	Thread t1 = new Thread(()->{
+	x = 10;
+	},"t1");
+	t1.start();
+	t1.join();
+	System.out.println(x);
+```
+
+
+執行緒 t1 打斷 t2（interrupt）前對變數的寫，對於其他執行緒得知 t2 被打斷後對變數的讀可見（透過 t2.interrupted 或 t2.isInterrupted）
+
+```java
+	static int x;
+
+	public static void main(String[] args) {
+		Thread t2 = new Thread(() -> {
+			while (true) {
+				if (Thread.currentThread().isInterrupted()) {
+					System.out.println(x);
+					break;
+				}
+			}
+		}, "t2");
+		t2.start();
+		new Thread(() -> {
+			sleep(1);
+			x = 10;
+			t2.interrupt();
+		}, "t1").start();
+		while (!t2.isInterrupted()) {
+			Thread.yield();
+		}
+		System.out.println(x);
+	}
+```
+
+- 對變數預設值（0，false，null）的寫，對其它執行緒對該變數的讀可見
+- 具有傳遞性，如果 x hb-> y 且 y hb-> z 那麼有 x hb-> z ，配合 volatile 的防指令重排，有下面的例子
+
+
+```java
+	volatile static int x;
+	static int y;new Thread(()->
+	{
+		y = 10;
+		x = 20;
+	},"t1").start();new Thread(()->
+	{
+		// x=20 對 t2 可見, 同時 y=10 也對 t2 可見
+		System.out.println(x);
+	},"t2").start();
+```
+
+變數都是指成員變數或靜態成員變數
+
+
 
 
 
