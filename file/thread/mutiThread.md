@@ -3404,7 +3404,85 @@ i = ...;
 
 這個特性稱為『指令重排』，多執行緒下『指令重排』會影響正確性。 為什麼要有重排指令這項最佳化呢？ 從 CPU執行指令的原理來理解一下吧
 
-* 原理之指令級平行
+### 指令級並行原理
+
+#### 名詞
+- Clock Cycle Time
+  - 主頻的概念大家接觸的比較多，而 CPU 的 Clock Cycle Time（時脈週期時間），等於主頻的倒數，意思是 CPU 能 夠辨識的最小時間單位，比如說 4G 主頻的 CPU 的 Clock Cycle Time 就是 0.25 ns，作為對比，我們牆上掛鐘的Cycle Time 是 1s
+  - 例如，執行一條加法指令一般需要一個時脈週期時間
+- CPI
+  - 有的指令需要更多的時脈週期時間，所以引出了 CPI （Cycles Per Instruction）指令平均時脈週期數
+- IPC
+  - IPC（Instruction Per Clock Cycle） 即 CPI 的倒數，表示每個時脈週期能夠運行的指令數
+- CPU 執行時間
+  - 程式的 CPU 執行時間，也就是我們前面提到的 user + system 時間，可以用下面的公式來表示
+
+>- 程式 CPU 執行時間 = 指令數 * CPI * Clock Cycle Time 
+
+#### 魚罐頭的故事
+
+- 加工一條魚需要 50 分鐘，只能一條魚、一條魚順序加工...
+
+![47](imgs/47.png)
+
+- 可以將每個魚罐頭的加工流程細分為 5 個步驟：
+  - 去鱗清洗 10分鐘
+  - 蒸煮瀝水 10分鐘
+  - 加註湯料 10分鐘
+  - 殺菌出鍋 10分鐘
+  - 真空封罐 10分鐘
+
+即使只有一個工人，最理想的情況是：他能夠在 10 分鐘內同時做好這 5 件事，因為對第一條魚的真空裝罐，不會影響對第二條魚的殺菌出鍋...
+
+
+#### 指令重排序最佳化
+- 事實上，現代處理器會設計為一個時脈週期完成一條執行時間最長的 CPU 指令。 為什麼要這麼做呢？ 可以想到指令也可以再分割成一個個較小的階段，例如，每條指令都可以分為： ***取指令 - 指令譯碼 - 執行指令 - 記憶體存取 - 數據寫回*** 這 5 個階段
+
+![48](imgs/48.png)
+
+>術語參考：
+>- instruction fetch (IF)
+>- instruction decode (ID)
+>- execute (EX)
+>- memory access (MEM)
+>- register write back (WB)
+
+- 在不改變程式結果的前提下，這些指令的各個階段可以透過重排序和組合來實現指令級並行，這項技術在 80's 中葉到 90's 中葉佔據了運算架構的重要地位。
+
+> 提示：
+>- 分階段，分工是提升效率的關鍵！
+
+
+指令重排的前提是，重排指令不能影響結果，例如
+
+
+```java
+// 可以重排的例子
+int a = 10; // 指令1
+int b = 20; // 指令2
+System.out.println( a + b );
+// 不能重排的例子
+int a = 10; // 指令1
+int b = a - 5; // 指令2
+```
+
+> 参考： Scoreboarding and the Tomasulo algorithm (which is similar to scoreboarding but makes use of
+register renaming) are two of the most common techniques for implementing out-of-order execution
+and instruction-level parallelism.
+
+#### 支援管線的處理器
+- 現代 CPU 支援多層指令管線，例如支援同時執行 取指令 - 指令譯碼 - 執行指令 - 記憶體存取 - 資料寫回 的處理器，就可以稱為五級指令管線。 這時 CPU 可以在一個時脈週期內，同時運行五個指令的不同階段（相當於一條執行時間最長的複雜指令），IPC = 1，本質上，管線技術並不能縮短單一指令的執行時間，但它變相地提高了指令地吞吐率。
+
+> 提示：
+>- 奔騰四（Pentium 4）支援高達 35 等級管線，但由於功耗太高被廢棄
+
+![50](imgs/50.png)
+
+#### SuperScalar 處理器
+- 大多數處理器包含多個執行單元，並非所有運算功能都集中在一起，可以再細分為整數運算單元、浮點數運算單元等，這樣可以把多條指令也可以做到並行獲取、譯碼等，CPU 可以在一個時鐘週期內，執行多於一條指令，IPC > 1
+
+![50](imgs/51.png)
+![50](imgs/52s.png)
 
 ### 詭異的結果
 
@@ -3453,9 +3531,7 @@ I_Result 是一個對象，有一個屬性 r1 用來保存結果，問，可能�
 
 
 ```
-mvn archetype:generate -DinteractiveMode=false -DarchetypeGroupId=org.openjdk.jcstress -
-DarchetypeArtifactId=jcstress-java-test-archetype -DarchetypeVersion=0.5 -DgroupId=cn.itcast -
-DartifactId=ordering -Dversion=1.0
+mvn archetype:generate -DinteractiveMode=false -DarchetypeGroupId=org.openjdk.jcstress -DarchetypeArtifactId=jcstress-java-test-archetype -DarchetypeVersion=0.5 -DgroupId=com.frank -DartifactId=ordering -Dversion=1.0
 ```
 
 
@@ -3471,7 +3547,7 @@ public class ConcurrencyTest {
 	boolean ready = false;
 
 	@Actor
-	public void actor1(I_Result r) {
+	public void actor1(II_Result r) {
 		if (ready) {
 			r.r1 = num + num;
 		} else {
@@ -3480,7 +3556,7 @@ public class ConcurrencyTest {
 	}
 
 	@Actor
-	public void actor2(I_Result r) {
+	public void actor2(II_Result r) {
 		num = 2;
 		ready = true;
 	}
@@ -3541,6 +3617,205 @@ Some interesting behaviors observed. This is for the plain curiosity.
 
 * 原理之 volatile
 
+## volatile 原理
+- volatile 的底層實作原理是記憶體屏障，Memory Barrier（Memory Fence）
+  - 對 volatile 變數的寫入指令後會加入寫入屏障，防止寫入屏障之前的代表被重排序到屏障後面
+  - 對 volatile 變數的讀指令前會加入讀取屏障，防止讀取屏障之後的代碼被重排序到屏障前面
+
+
+
+### 1. 如何保證可見性
+
+- 寫入屏障（sfence）保證在該屏障之前的，對共享變數的改動，都同步到主存當中
+
+```java
+public void actor2(I_Result r) {
+	num = 2;
+	ready = true; // ready 是 volatile 賦值帶寫屏障
+	// 寫屏障
+}
+```
+
+- 而讀屏障（lfence）保證在該屏障之後，對共享變數的讀取，載入的是主存中最新數據
+
+```java
+public void actor1(I_Result r) {
+	// 讀屏障
+	// ready 是 volatile 讀取值帶讀屏障
+	if(ready) {
+		r.r1 = num + num;
+	} else {
+		r.r1 = 1;
+	}
+}
+```
+![53](imgs/53.png)
+
+### 2. 如何保證有序性
+- 寫入屏障會確保指令重新排序時，不會將寫入屏障之前的程式碼排在寫入屏障之後
+
+```java
+public void actor2(I_Result r) {
+	num = 2;
+	ready = true; // ready 是 volatile 賦值帶寫屏障
+	// 寫屏障
+}
+```
+
+- 讀取屏障會確保指令重新排序時，不會將讀取屏障之後的程式碼排在讀取屏障之前
+
+```java
+public void actor1(I_Result r) {
+	// 讀屏障
+	// ready 是 volatile 讀取值帶讀屏障
+	if(ready) {
+		r.r1 = num + num;
+	} else {
+		r.r1 = 1;
+	}
+}
+```
+
+![54](imgs/54.png)
+
+
+- volatile不能解決指令交錯：
+  - 寫屏障只是保證之後的讀能夠讀到最新的結果，但不能保證讀跑到它前面去
+  - 而有序性的保證也只是保證了本線程內相關程式碼不被重新排序
+
+![55](imgs/55.png)
+
+### 3. double-checked locking 問題
+
+- 以著名的 double-checked locking 單例模式為例
+
+```java
+public final class Singleton {
+	private Singleton() { }
+	private static Singleton INSTANCE = null;
+	public static Singleton getInstance() {
+		if(INSTANCE == null) { // t2
+			// 首次存取會同步，而之後的使用沒有 synchronized
+			synchronized(Singleton.class) {
+			if (INSTANCE == null) { // t1
+				INSTANCE = new Singleton();
+				}
+			}
+		}
+		return INSTANCE;
+	}
+}
+```
+
+- 以上的實現特點是：
+  - 懶惰實例化
+  - 首次使用 getInstance() 才使用 synchronized 加鎖，後續使用時無需加鎖
+  - 有隱含的，但很關鍵的一點：第一個 if 使用了 INSTANCE 變量，是在同步區塊之外
+
+
+- 但在多執行緒環境下，上面的程式碼是有問題的，getInstance 方法對應的字節碼為：
+
+```java
+0: getstatic #2      // Field INSTANCE:Lcn/itcast/n5/Singleton;
+3: ifnonnull 37
+6: ldc #3            // class cn/itcast/n5/Singleton
+8: dup
+9: astore_0
+10: monitorenter
+11: getstatic #2      // Field INSTANCE:Lcn/itcast/n5/Singleton;
+14: ifnonnull 27
+17: new #3            // class cn/itcast/n5/Singleton
+20: dup
+21: invokespecial #4  // Method "<init>":()V
+24: putstatic #2      // Field INSTANCE:Lcn/itcast/n5/Singleton;
+27: aload_0
+28: monitorexit
+29: goto 37
+32: astore_1
+33: aload_0
+34: monitorexit
+35: aload_1
+36: athrow
+37: getstatic #2       // Field INSTANCE:Lcn/itcast/n5/Singleton;
+40: areturn
+```
+
+其中
+- 17 表示建立對象，將物件參考入棧 // new Singleton
+- 20 表示複製一份物件參考 // 引用位址
+- 21 表示利用一個物件引用，呼叫建構方法
+- 24 表示利用一個物件引用，賦值給 static INSTANCE
+- 也許 jvm 會優化為：先執行 24，再執行 21。 如果兩個執行緒 t1，t2 如下時間序列執行：
+
+![56](imgs/56.png)
+
+- 關鍵在於 0: getstatic 這行程式碼在 monitor 控制之外，它就像之前舉例中不守規則的人，可以越過 monitor 讀取INSTANCE 變數的值
+- 這時 t1 還未完全將構造方法執行完畢，如果在構造方法中要執行很多初始化操作，那麼 t2 拿到的是將是一個未初始化完畢的單例
+- 對 INSTANCE 使用 volatile 修飾即可，可以停用指令重排，但要注意在 JDK 5 以上的版本的 volatile 才會真正有效
+
+### 4. double-checked locking 解決
+
+```java
+public final class Singleton {
+	private Singleton() { }
+	private static volatile Singleton INSTANCE = null;
+	public static Singleton getInstance() {
+		// 實例沒創建，才會進入內部的 synchronized程式碼區塊
+		if (INSTANCE == null) {
+			synchronized (Singleton.class) { // t2
+				// 也許有其它線程已經創建實例，所以再判斷一次
+				if (INSTANCE == null) { // t1
+					INSTANCE = new Singleton();
+				}
+			}
+		}
+		return INSTANCE;
+	}
+}
+```
+
+- 字節碼上看不出來 volatile 指令的效果
+
+```java
+// -------------------------------------> 加入對 INSTANCE 變數的讀取屏障
+0: getstatic #2 // Field INSTANCE:Lcn/itcast/n5/Singleton;
+3: ifnonnull 37
+6: ldc #3 // class cn/itcast/n5/Singleton
+8: dup
+9: astore_0
+10: monitorenter -----------------------> 保證原子性、可見性
+11: getstatic #2 // Field INSTANCE:Lcn/itcast/n5/Singleton;
+14: ifnonnull 27
+17: new #3 // class cn/itcast/n5/Singleton
+20: dup
+21: invokespecial #4 // Method "<init>":()V
+24: putstatic #2 // Field INSTANCE:Lcn/itcast/n5/Singleton;
+// -------------------------------------> 加入對 INSTANCE 變數的寫入屏障
+27: aload_0
+28: monitorexit ------------------------> 保證原子性、可見性
+29: goto 37
+32: astore_1
+33: aload_0
+34: monitorexit
+35: aload_1
+36: athrow
+37: getstatic #2 // Field INSTANCE:Lcn/itcast/n5/Singleton;
+40: areturn
+```
+
+
+如上面的註解內容所示，讀寫 volatile 變數時會加入記憶體屏障（Memory Barrier（Memory Fence）），保證下面兩點：
+
+- 可見性
+  - 寫入屏障（sfence）保證在該屏障之前的 t1 對共享變數的改動，都同步到主存當中
+  - 而讀屏障（lfence）保證在該屏障之後 t2 對共享變數的讀取，載入的是主存中最新數據
+- 有序性
+  - 寫入屏障會確保指令重新排序時，不會將寫入屏障之前的程式碼排在寫入屏障之後
+  - 讀取屏障會確保指令重新排序時，不會將讀取屏障之後的程式碼排在讀取屏障之前
+- 更底層是讀寫變數時使用 lock 指令來多核心 CPU 之間的可見性與有序性
+
+![57](imgs/57.png)
+
 ### happens-before
 happens-before 規定了對共享變數的寫入操作對其它線程的讀取操作可見，它是可見性與有序性的一套規則總結，拋開啟以下 happens-before 規則，JMM 並不能保證一個執行緒對共享變數的寫，對於其它執行緒對該共享變數的讀取可見
 
@@ -3561,7 +3836,7 @@ happens-before 規定了對共享變數的寫入操作對其它線程的讀取�
 	},"t2").start();
 ```
 
-線程對 volatile 變數的寫，對接下來其它線程對該變數的讀可見
+- 線程對 volatile 變數的寫，對接下來其它線程對該變數的讀可見
 
 ```java
 	volatile static int x;new Thread(()->
@@ -3574,7 +3849,7 @@ happens-before 規定了對共享變數的寫入操作對其它線程的讀取�
 ```
 
 
-執行緒 start 前對變數的寫，對該執行緒開始後對該變數的讀可見
+- 執行緒 start 前對變數的寫，對該執行緒開始後對該變數的讀可見
 
 ```java
 	static int x;x=10;new Thread(()->
@@ -3583,7 +3858,7 @@ happens-before 規定了對共享變數的寫入操作對其它線程的讀取�
 	},"t2").start();
 ```
 
-線程結束前對變數的寫，對其它線程得知它結束後的讀可見（比如其它線程調用 t1.isAlive() 或 t1.join()等待它結束）
+- 線程結束前對變數的寫，對其它線程得知它結束後的讀可見（比如其它線程調用 t1.isAlive() 或 t1.join()等待它結束）
 
 
 ```java
@@ -3641,14 +3916,386 @@ happens-before 規定了對共享變數的寫入操作對其它線程的讀取�
 	},"t2").start();
 ```
 
-變數都是指成員變數或靜態成員變數
+>- 變數都是指成員變數或靜態成員變數
 
 
+### balking 模式習題
+- 希望 doInit() 方法只被呼叫一次，下面的實作是否有問題，為什麼？
+
+```java
+public class TestVolatile {
+	volatile boolean initialized = false;
+	void init() {
+		if (initialized) {
+			return;
+		}
+		doInit();
+		initialized = true;
+	}
+	private void doInit() {
+	}
+}
+```
+
+#### 線程安全單例習題
+- 單例模式有很多實作方法，餓漢、懶漢、靜態內部類別、枚舉類，試分析每個實作下取得單例物件（即調用getInstance）時的線程安全，並思考註解中的問題
+  >- 餓漢式：類別載入就會導致該單一實例物件被創建
+  >- 懶漢式：類別載入不會導致該單一實例物件被創建，而是首次使用該物件時才會創建
+
+```java
+	// 問題1：為什麼要加 final
+	// 問題2：如果實現了序列化介面, 還要做什麼來防止反序列化破壞單例
+	public final class Singleton implements Serializable {
+		// 問題3：為什麼設定為私有? 是否能防止反射創建新的實例?
+		private Singleton() {
+		}
+
+		// 問題4：這樣初始化是否能保證單例物件建立時的執行緒安全?
+		private static final Singleton INSTANCE = new Singleton();
+
+		// 問題5：為什麼提供靜態方法而不是直接將 INSTANCE 設為 public, 說出你知道的理由
+		public static Singleton getInstance() {
+			return INSTANCE;
+		}
+
+		public Object readResolve() {
+			return INSTANCE;
+		}
+	}
+
+```
+
+- 問題一:怕將來有子類會破壞他單利的方法
+- 問題二:在反序列化的過程中，發現readResolve()返回了一個物件就會用這個物件
+- 問題三:如果設置成public其他類都可以創建這個物件，就不能說他是個單例了，但不能防止反射創建新的實例
+- 問題四:可以，因為靜態變數是在類加載時完成賦值得，透過JVM保證執行緒安全
+- 問題五:
+
+實現2:
+
+```java
+	// 問題1：枚舉單例是如何限制實例個數的
+	// 問題2：列舉單例在建立時是否有並發問題
+	// 問題3：枚舉單例能否被反射破壞單例
+	// 問題4：枚舉單例能否被反序列化破壞單例
+	// 問題5：列舉單例屬於懶漢式還是餓漢式
+	// 問題6：枚舉單例如果希望加入一些單例建立時的初始化邏輯該如何做
+
+	enum Singleton {
+		INSTANCE;
+	}
+```
+
+實現3：
+```java
+public final class Singleton {
+	private Singleton() {
+	}
+
+	private static Singleton INSTANCE = null;
+
+// 分析這裡的線程安全, 並說明有什麼缺點
+	public static synchronized Singleton getInstance() {
+		if (INSTANCE != null) {
+			return INSTANCE;
+		}
+		INSTANCE = new Singleton();
+		return INSTANCE;
+	}
+}
+```
+
+實作4：DCL
+
+```java
+public final class Singleton {
+	private Singleton() {
+	}
+
+// 問題1：解釋為什麼要加 volatile ?
+	private static volatile Singleton INSTANCE = null;
+
+// 問題2：對比實現3, 說出這樣做的意義
+	public static Singleton getInstance() {
+		if (INSTANCE != null) {
+			return INSTANCE;
+		}
+		synchronized (Singleton.class) {
+// 問題3：為什麼還要在這裡加為空判斷, 之前不是判斷過了嗎
+			if (INSTANCE != null) { // t2
+				return INSTANCE;
+			}
+			INSTANCE = new Singleton();
+			return INSTANCE;
+		}
+	}
+}
+```
+
+- 問題一:因為有可能會發生指令從排序，導致INSTANCE先賦值再調用建構式，這樣如果有發生值執行緒上下文切換，第2個執行緒就會拿到不完整的INSTANCE，加了volatile可以防止發生重排序
+
+實現5：
+
+```java
+
+public final class Singleton {
+	private Singleton() {
+	}
+
+// 問題1：屬於懶漢式還是餓漢式
+	private static class LazyHolder {
+		static final Singleton INSTANCE = new Singleton();
+	}
+
+// 問題2：建立時是否有並發問題
+	public static Singleton getInstance() {
+		return LazyHolder.INSTANCE;
+	}
+}
+```
+
+- 問題一:因為靜態內部類，是使用時才會被類加載，所以屬於懶漢式
+- 問題二:類加載對靜態變數的賦值操作，是有JVM保證執行緒安全的
+
+# 共享模型之無鎖
+
+## 1 問題提出
+- 有以下需求，確保 ***account.withdraw*** 提款方法的執行緒安全
+
+```java
+package cn.itcast;
+
+import java.util.ArrayList;
+import java.util.List;
+
+interface Account {
+// 取得餘額
+	Integer getBalance();
+
+// 提款
+	void withdraw(Integer amount);
+
+	/**
+	 * 方法內會啟動 1000 個線程，每個線程做 -10 元 的操作 如果初始餘額為 10000 那麼正確的結果應為 0
+	 */
+	static void demo(Account account) {
+		List<Thread> ts = new ArrayList<>();
+		long start = System.nanoTime();
+		for (int i = 0; i < 1000; i++) {
+			ts.add(new Thread(() -> {
+				account.withdraw(10);
+			}));
+		}
+		ts.forEach(Thread::start);
+		ts.forEach(t -> {
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		});
+		long end = System.nanoTime();
+		System.out.println(account.getBalance() + " cost: " + (end - start) / 1000_000 + " ms");
+	}
+}
+```
+
+原有實作並不是線程安全的
+
+```java
+class AccountUnsafe implements Account {
+	private Integer balance;
+
+	public AccountUnsafe(Integer balance) {
+		this.balance = balance;
+	}
+
+	@Override
+	public Integer getBalance() {
+		return balance;
+	}
+
+	@Override
+	public void withdraw(Integer amount) {
+		balance -= amount;
+	}
+}
+```
+執行測試程式碼
+
+```java
+public static void main(String[] args) {
+	Account.demo(new AccountUnsafe(10000));
+}
+```
+
+某次的執行結果
+
+```java
+330 cost: 306 ms
+```
+
+為什麼不安全
+withdraw 方法
+
+```java
+public void withdraw(Integer amount) {
+	balance -= amount;
+}
+```
+對應的字節碼
+
+```java
+ALOAD 0 // <- this
+ALOAD 0
+GETFIELD cn/itcast/AccountUnsafe.balance : Ljava/lang/Integer; // <- this.balance
+INVOKEVIRTUAL java/lang/Integer.intValue ()I // 拆箱
+ALOAD 1 // <- amount
+INVOKEVIRTUAL java/lang/Integer.intValue ()I // 拆箱
+ISUB // 減法
+INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer; // 結果包裝箱
+PUTFIELD cn/itcast/AccountUnsafe.balance : Ljava/lang/Integer; // -> this.balance
+```
+
+多執行緒執行流程
+
+```java
+ALOAD 0 // thread-0 <- this
+ALOAD 0
+GETFIELD cn/itcast/AccountUnsafe.balance // thread-0 <- this.balance
+INVOKEVIRTUAL java/lang/Integer.intValue // thread-0 拆箱
+ALOAD 1 // thread-0 <- amount
+INVOKEVIRTUAL java/lang/Integer.intValue // thread-0 拆箱
+ISUB // thread-0 減法
+INVOKESTATIC java/lang/Integer.valueOf // thread-0 結果裝箱
+PUTFIELD cn/itcast/AccountUnsafe.balance // thread-0 -> this.balance
+ALOAD 0 // thread-1 <- this
+ALOAD 0
+GETFIELD cn/itcast/AccountUnsafe.balance // thread-1 <- this.balance
+INVOKEVIRTUAL java/lang/Integer.intValue // thread-1 拆箱
+ALOAD 1 // thread-1 <- amount
+INVOKEVIRTUAL java/lang/Integer.intValue // thread-1 拆箱
+ISUB // thread-1 減法
+INVOKESTATIC java/lang/Integer.valueOf // thread-1 結果裝箱
+PUTFIELD cn/itcast/AccountUnsafe.balance // thread-1 -> this.balance
+```
+
+- 單核心的指令交錯
+- 多核心的指令交錯
+
+##　解決思路-鎖
+－　首先想到的是給 Account 物件加鎖
 
 
+```java
+class AccountUnsafe implements Account {
+	private Integer balance;
+
+	public AccountUnsafe(Integer balance) {
+		this.balance = balance;
+	}
+
+	@Override
+	public synchronized Integer getBalance() {
+		return balance;
+	}
+
+	@Override
+	public synchronized void withdraw(Integer amount) {
+		balance -= amount;
+	}
+}
+```
+
+結果為
+
+```java
+0 cost: 399 ms
+```
+
+## 解決思路-無鎖
 
 
+```java
+class AccountSafe implements Account {
+	private AtomicInteger balance;
 
+	public AccountSafe(Integer balance) {
+		this.balance = new AtomicInteger(balance);
+	}
+
+	@Override
+	public Integer getBalance() {
+		return balance.get();
+	}
+
+	@Override
+	public void withdraw(Integer amount) {
+		while (true) {
+			int prev = balance.get();
+			int next = prev - amount;
+			if (balance.compareAndSet(prev, next)) {
+				break;
+			}
+		}
+// 可以簡化為下面的方法
+// balance.addAndGet(-1 * amount);
+	}
+}
+```
+
+執行測試程式碼
+
+```java
+public static void main(String[] args) {
+	Account.demo(new AccountSafe(10000));
+}
+```
+
+
+某次的執行結果
+
+
+```java
+0 cost: 302 ms
+```
+
+## 2 CAS 與 volatile
+
+前面看到的 AtomicInteger 的解決方法，內部並沒有用鎖來保護共享變數的執行緒安全性。 那麼它是如何實現的呢？
+
+```java
+	public void withdraw(Integer amount) {
+		while (true) {
+			// 需要不斷嘗試，直到成功為止
+			while (true) {
+				// 例如拿到了舊值 1000
+				int prev = balance.get();
+				// 在這個基礎上 1000-10 = 990
+				int next = prev - amount;
+				/*
+				 * compareAndSet 正是做這個檢查，在 set 前，先比較 prev 與當前值 - 不一致了，next 作廢，返回 false 表示失敗
+				 * 例如，別的線程已經做了減法，當前值已經被減成了 990 那麼本線程的這次 990 就作廢了，進入 while 下次循環重試 - 一致，以 next
+				 * 設定為新值，回傳 true 表示成功
+				 */if (balance.compareAndSet(prev, next)) {
+					break;
+				}
+			}
+		}
+	}
+```
+
+其中的關鍵是 compareAndSet，它的簡稱就是 CAS （也有 Compare And Swap 的說法），它必須是原子運算。
+
+
+![58](imgs/58.png)
+
+
+> 注意
+>- 其實 CAS 的底層是 lock cmpxchg 指令（X86 架構），在單核心 CPU 和多核心 CPU 下都能夠保證【比較-交換】的原子性。
+>- 在多核心狀態下，某個核心執行到帶有 lock 的指令時，CPU 會讓總線鎖住，當這個核把此指令執行完畢，再
+開啟總線。 這個過程中不會被執行緒的調度機制打斷，確保了多個執行緒對記憶體操作的準確性，是原子
+的。
 
 
 
