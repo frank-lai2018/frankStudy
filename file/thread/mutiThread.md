@@ -4297,5 +4297,1159 @@ public static void main(String[] args) {
 開啟總線。 這個過程中不會被執行緒的調度機制打斷，確保了多個執行緒對記憶體操作的準確性，是原子
 的。
 
+### 慢動作分析
+
+```java
+@Slf4j
+public class SlowMotion {
+	public static void main(String[] args) {
+		AtomicInteger balance = new AtomicInteger(10000);
+		int mainPrev = balance.get();
+		log.debug("try get {}", mainPrev);
+		new Thread(() -> {
+			sleep(1000);
+			int prev = balance.get();
+			balance.compareAndSet(prev, 9000);
+			log.debug(balance.toString());
+		}, "t1").start();
+		sleep(2000);
+		log.debug("try set 8000...");
+		boolean isSuccess = balance.compareAndSet(mainPrev, 8000);
+		log.debug("is success ? {}", isSuccess);
+		if (!isSuccess) {
+			mainPrev = balance.get();
+			log.debug("try set 8000...");
+			isSuccess = balance.compareAndSet(mainPrev, 8000);
+			log.debug("is success ? {}", isSuccess);
+		}
+	}
+
+	private static void sleep(int millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+}
+```
+
+```java
+2019-10-13 11:28:37.134 [main] try get 10000
+2019-10-13 11:28:38.154 [t1] 9000
+2019-10-13 11:28:39.154 [main] try set 8000...
+2019-10-13 11:28:39.154 [main] is success ? false
+2019-10-13 11:28:39.154 [main] try set 8000...
+2019-10-13 11:28:39.154 [main] is success ? true
+```
+
+### volatile
+
+- 在取得共享變數時，為了確保該變數的可見性，需要使用 volatile 修飾。
+- 它可以用來修飾成員變數和靜態成員變量，他可以避免執行緒從自己的工作快取中尋找變數的值，必須到主記憶體中取得它的值，線程操作 volatile 變數都是直接操作主存。 即一個線程對 volatile 變數的修改，對另一個線程可見。
+
+>- 注意
+>- volatile 僅僅保證了共享變數的可見性，讓它執行緒能夠看到最新值，但不能解決指令交錯問題（不能保證原
+子性）
+- CAS 必須藉助 volatile 才能讀取到共享變數的最新值來實現【比較並交換】的效果
+
+### 為什麼無鎖效率高
+
+- 無鎖情況下，即使重試失敗，執行緒始終在高速運行，沒有停歇，而 synchronized 會讓執行緒在沒有獲得鎖的時候，發生上下文切換，進入阻塞。 打個比喻
+- 線程就好像高速跑道上的賽車，高速運行時，速度超快，一旦發生上下文切換，就好比賽車要減速、熄火，等被喚醒又得重新打火、啟動、加速... 恢復到高速運行，代價比較大
+- 但無鎖情況下，因為線程要保持運行，需要額外 CPU 的支持，CPU 在這裡就好比高速跑道，沒有額外的跑道，線程想高速運行也無從談起，雖然不會進入阻塞，但由於沒有分到時間片，仍然會進入可運行狀態，還
+是會導致上下文切換。
+
+![59](imgs/59.png)
+
+
+### CAS 的特點
+- 結合 CAS 和 volatile 可以實現無鎖並發，適用於執行緒數少、多核心 CPU 的場景。
+- CAS 是基於樂觀鎖的想法：最樂觀的估計，不怕別的線程來修改共享變量，就算改了也沒關係，我吃虧點再重試唄。
+- synchronized 是基於悲觀鎖的想法：最悲觀的估計，得防著其它線程來修改共享變量，我上了鎖你們都別想改，我改完了解開鎖，你們才有機會。
+- ***CAS 體現的是無鎖並發、無阻塞並發***，請仔細體會這兩句話的意思
+  - 因為沒有使用 synchronized，所以線程不會陷入阻塞，這是效率提升的因素之一
+  - 但如果競爭激烈，可以想到重試必然頻繁發生，反而效率會受影響
+
+
+## 原子整数
+
+- J.U.C 並發包提供了：
+  - AtomicBoolean
+  - AtomicInteger
+  - AtomicLong
+- 以 AtomicInteger 為例
+
+```java
+AtomicInteger i = new AtomicInteger(0);
+// 取得並自增（i = 0, 結果 i = 1, 回傳 0），類似 i++
+System.out.println(i.getAndIncrement());
+// 自增並取得（i = 1, 結果 i = 2, 回傳 2），類似 ++i
+System.out.println(i.incrementAndGet());
+// 自減並取得（i = 2, 結果 i = 1, 回傳 1），類似 --i
+System.out.println(i.decrementAndGet());
+// 取得並自減（i = 1, 結果 i = 0, 回傳 1），類似 i--
+System.out.println(i.getAndDecrement());
+// 取得並加值（i = 0, 結果 i = 5, 回傳 0）
+System.out.println(i.getAndAdd(5));
+// 加值並取得（i = 5, 結果 i = 0, 回傳 0）
+System.out.println(i.addAndGet(-5));
+// 取得並更新（i = 0, p 為 i 的目前值, 結果 i = -2, 傳回 0）
+// 其中函數中的操作能保證原子，但函數需要無副作用
+System.out.println(i.getAndUpdate(p -> p - 2));
+// 更新並取得（i = -2, p 為 i 的目前值, 結果 i = 0, 傳回 0）
+// 其中函數中的操作能保證原子，但函數需要無副作用
+System.out.println(i.updateAndGet(p -> p + 2));
+// 取得並計算（i = 0, p 為 i 的目前值, x 為參數1, 結果 i = 10, 傳回 0）
+// 其中函數中的操作能保證原子，但函數需要無副作用
+// getAndUpdate 如果在 lambda 中引用了外部的局部變量，要確保該局部變數是 final 的
+// getAndAccumulate 可以透過 參數1 來引用外部的局部變量，但因為其不在 lambda 中因此不必是 final
+System.out.println(i.getAndAccumulate(10, (p, x) -> p + x));
+// 計算並取得（i = 10, p 為 i 的目前值, x 為參數1, 結果 i = 0, 傳回 0）
+// 其中函數中的操作能保證原子，但函數需要無副作用
+System.out.println(i.accumulateAndGet(-10, (p, x) -> p + x));
+```
+
+## 原子引用
+- 為什麼需要原子引用型別？
+  - AtomicReference
+  - AtomicMarkableReference
+  - AtomicStampedReference
+- 有以下方法
+
+```java
+public interface DecimalAccount {
+	// 取得餘額
+	BigDecimal getBalance();
+
+	// 提款
+	void withdraw(BigDecimal amount);
+
+	/**
+	 * 方法內會啟動 1000 個線程，每個線程做 -10 元 的操作 若初始餘額為 10000 那麼正確的結果應為 0
+	 */
+	static void demo(DecimalAccount account) {
+		List<Thread> ts = new ArrayList<>();
+		for (int i = 0; i < 1000; i++) {
+			ts.add(new Thread(() -> {
+				account.withdraw(BigDecimal.TEN);
+			}));
+		}
+		ts.forEach(Thread::start);
+		ts.forEach(t -> {
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		});
+		System.out.println(account.getBalance());
+	}
+}
+```
+- 試著提供不同的 DecimalAccount 實現，實現安全的提款操作
+
+## 不安全實現
+
+```java
+class DecimalAccountUnsafe implements DecimalAccount {
+	BigDecimal balance;
+
+	public DecimalAccountUnsafe(BigDecimal balance) {
+		this.balance = balance;
+	}
+
+	@Override
+	public BigDecimal getBalance() {
+		return balance;
+	}
+
+	@Override
+	public void withdraw(BigDecimal amount) {
+		BigDecimal balance = this.getBalance();
+		this.balance = balance.subtract(amount);
+	}
+}
+```
+
+
+## 安全實作-使用鎖
+
+```java
+class DecimalAccountSafeLock implements DecimalAccount {
+	private final Object lock = new Object();
+	BigDecimal balance;
+
+	public DecimalAccountSafeLock(BigDecimal balance) {
+		this.balance = balance;
+	}
+
+	@Override
+	public BigDecimal getBalance() {
+		return balance;
+	}
+
+	@Override
+	public void withdraw(BigDecimal amount) {
+		synchronized (lock) {
+			BigDecimal balance = this.getBalance();
+			this.balance = balance.subtract(amount);
+		}
+	}
+}
+```
+
+
+## 安全實作-使用 CAS
+
+```java
+class DecimalAccountSafeCas implements DecimalAccount {
+	AtomicReference<BigDecimal> ref;
+
+	public DecimalAccountSafeCas(BigDecimal balance) {
+		ref = new AtomicReference<>(balance);
+	}
+
+	@Overridepublic
+	BigDecimal getBalance() {
+		return ref.get();
+	}
+
+	@Override
+	public void withdraw(BigDecimal amount) {
+		while (true) {
+			BigDecimal prev = ref.get();
+			BigDecimal next = prev.subtract(amount);
+			if (ref.compareAndSet(prev, next)) {
+				break;
+			}
+		}
+	}
+}
+```
+測試代碼
+```java
+DecimalAccount.demo(new DecimalAccountUnsafe(new BigDecimal("10000")));
+DecimalAccount.demo(new DecimalAccountSafeLock(new BigDecimal("10000")));
+DecimalAccount.demo(new DecimalAccountSafeCas(new BigDecimal("10000")));
+```
+
+運行結果
+
+```java
+4310 cost: 425 ms
+0 cost: 285 ms
+0 cost: 274 ms
+```
+
+
+## ABA 問題及解決
+### ABA 問題
+
+
+```java
+	static AtomicReference<String> ref = new AtomicReference<>("A");
+
+	public static void main(String[] args) throws InterruptedException {
+		log.debug("main start...");
+// 取得值 A
+// 這個共享變數被它執行緒修改過？
+		String prev = ref.get();
+		other();
+		sleep(1);
+// 嘗試改為 C
+		log.debug("change A->C {}", ref.compareAndSet(prev, "C"));
+	}
+
+	private static void other() {
+		new Thread(() -> {
+			log.debug("change A->B {}", ref.compareAndSet(ref.get(), "B"));
+		}, "t1").start();
+		sleep(0.5);
+		new Thread(() -> {
+			log.debug("change B->A {}", ref.compareAndSet(ref.get(), "A"));
+		}, "t2").start();
+	}
+```
+
+輸出
+
+```java
+11:29:52.325 c.Test36 [main] - main start...
+11:29:52.379 c.Test36 [t1] - change A->B true
+11:29:52.879 c.Test36 [t2] - change B->A true
+11:29:53.880 c.Test36 [main] - change A->C true
+```
+
+- 主執行緒只能判斷共享變數的值與原先值 A 是否相同，不能感知到這種從 A 改為 B 又 改回 A 的情況，如果主執行緒
+- 希望：
+  - 只要有其它線程【動過了】共享變量，那麼自己的 cas 就算失敗，這時，僅比較值是不夠的，需要再加一個版本號
+
+
+### AtomicStampedReference
+
+```java
+	static AtomicStampedReference<String> ref = new AtomicStampedReference<>("A", 0);
+
+	public static void main(String[] args) throws InterruptedException {
+		log.debug("main start...");
+		// 取得值 A
+		String prev = ref.getReference();
+		// 取得版本號
+		int stamp = ref.getStamp();
+		log.debug("版本 {}", stamp);
+		// 如果中間有其它線程幹擾，則發生了 ABA 現象
+		other();
+		sleep(1);
+		// 嘗試改為 C
+		log.debug("change A->C {}", ref.compareAndSet(prev, "C", stamp, stamp + 1));
+	}
+
+	private static void other() {
+		new Thread(() -> {
+			log.debug("change A->B {}", ref.compareAndSet(ref.getReference(), "B", ref.getStamp(), ref.getStamp() + 1));
+			log.debug("更新版本為 {}", ref.getStamp());
+		}, "t1").start();
+		sleep(0.5);
+		new Thread(() -> {
+			log.debug("change B->A {}", ref.compareAndSet(ref.getReference(), "A", ref.getStamp(), ref.getStamp() + 1));
+			log.debug("更新版本為 {}", ref.getStamp());
+		}, "t2").start();
+	}
+```
+
+```java
+15:41:34.891 c.Test36 [main] - main start...
+15:41:34.894 c.Test36 [main] - 版本 0
+15:41:34.956 c.Test36 [t1] - change A->B true
+15:41:34.956 c.Test36 [t1] - 更新版本為 1
+15:41:35.457 c.Test36 [t2] - change B->A true
+15:41:35.457 c.Test36 [t2] - 更新版本為 2
+15:41:36.457 c.Test36 [main] - change A->C false
+```
+
+- AtomicStampedReference 可以為原子引用加上版本號，追蹤原子引用整個的變化過程，如： ***A -> B -> A ->C*** ，透過AtomicStampedReference，我們可以知道，引用變數中途被更改了幾次。
+- 但有時候，並不關心引用變數更改了幾次，只是單純的關心是否更改過，所以就有了
+
+
+AtomicMarkableReference
+
+![60](imgs/60.png)
+
+
+### AtomicMarkableReference
+
+
+```java
+class GarbageBag {
+	String desc;
+
+	public GarbageBag(String desc) {
+		this.desc = desc;
+	}
+
+	public void setDesc(String desc) {
+		this.desc = desc;
+	}
+
+	@Override
+	public String toString() {
+		return super.toString() + " " + desc;
+	}
+}
+
+```
+
+```java
+@Slf4j
+public class TestABAAtomicMarkableReference {
+	public static void main(String[] args) throws InterruptedException {
+		GarbageBag bag = new GarbageBag("裝滿了垃圾");
+// 參數2 mark 可以看成一個標記，表示垃圾袋滿了
+		AtomicMarkableReference<GarbageBag> ref = new AtomicMarkableReference<>(bag, true);
+		log.debug("主線程 start...");
+		GarbageBag prev = ref.getReference();
+		log.debug(prev.toString());
+		new Thread(() -> {
+			log.debug("打掃的線程 start...");
+			bag.setDesc("空垃圾袋");
+			while (!ref.compareAndSet(bag, bag, true, false)) {
+			}
+			log.debug(bag.toString());
+		}).start();
+		Thread.sleep(1000);
+		log.debug("主執行緒想換一個新垃圾袋？");
+		boolean success = ref.compareAndSet(prev, new GarbageBag("空垃圾袋"), true, false);
+		log.debug("換了麼？" + success);
+		log.debug(ref.getReference().toString());
+	}
+}
+```
+
+
+```java
+2019-10-13 15:30:09.264 [main] 主線程 start...
+2019-10-13 15:30:09.270 [main] cn.itcast.GarbageBag@5f0fd5a0 裝滿了垃圾
+2019-10-13 15:30:09.293 [Thread-1] 打掃的線程 start...
+2019-10-13 15:30:09.294 [Thread-1] cn.itcast.GarbageBag@5f0fd5a0 空垃圾袋
+2019-10-13 15:30:10.294 [main] 主執行緒想換一個新垃圾袋？
+2019-10-13 15:30:10.294 [main] 換了呢？ false
+2019-10-13 15:30:10.294 [main] cn.itcast.GarbageBag@5f0fd5a0 空垃圾袋
+```
+
+## 原子陣列
+
+- AtomicIntegerArray
+- AtomicLongArray
+- AtomicReferenceArray
+
+
+
+```java
+	/**
+	 * 參數1，提供數組、可以是線程不安全數組或線程安全數組 參數2，取得數組長度的方法 參數3，自增方法，回傳 array, index 參數4，列印數組的方法
+	 */
+	// supplier 提供者 無中生有 ()->結果
+	// function 函數 一個參數一個結果 (參數)->結果 , BiFunction (參數1,參數2)->結果
+	// consumer 消費者 一個參數沒結果 (參數)->void, BiConsumer (參數1,參數2)->
+	private static <T> void demo(Supplier<T> arraySupplier, Function<T, Integer> lengthFun,
+			BiConsumer<T, Integer> putConsumer, Consumer<T> printConsumer) {
+		List<Thread> ts = new ArrayList<>();
+		T array = arraySupplier.get();
+		int length = lengthFun.apply(array);
+		for (int i = 0; i < length; i++) {
+			// 每個執行緒對數組作 10000 次操作
+			ts.add(new Thread(() -> {
+				for (int j = 0; j < 10000; j++) {
+					putConsumer.accept(array, j % length);
+				}
+			}));
+		}
+		ts.forEach(t -> t.start()); // 啟動所有線程
+		ts.forEach(t -> {
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}); // 等所有執行緒結束
+		printConsumer.accept(array);
+	}
+```
+
+
+### 不安全陣列
+
+
+
+```java
+demo(
+	()->new int[10],
+	(array)->array.length,
+	(array, index) -> array[index]++,
+	array-> System.out.println(Arrays.toString(array))
+);
+````
+
+```java
+[9870, 9862, 9774, 9697, 9683, 9678, 9679, 9668, 9680, 9698]
+```
+
+### 安全陣列
+
+```java
+demo(
+	()-> new AtomicIntegerArray(10),
+	(array) -> array.length(),
+	(array, index) -> array.getAndIncrement(index),
+	array -> System.out.println(array)
+);
+```
+
+```java
+[10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000]
+```
+
+## 字段更新器
+
+- AtomicReferenceFieldUpdater // 域 字段
+- AtomicIntegerFieldUpdater
+- AtomicLongFieldUpdater
+ 
+利用欄位更新器，可以針對物件的某個域（Field）進行原子操作，只能配合 volatile 修飾的欄位使用，否則會出現例外
+
+```java
+Exception in thread "main" java.lang.IllegalArgumentException: Must be volatile type
+```
+
+```java
+public class Test5 {
+	private volatile int field;
+
+	public static void main(String[] args) {
+		AtomicIntegerFieldUpdater fieldUpdater = AtomicIntegerFieldUpdater.newUpdater(Test5.class, "field");
+		Test5 test5 = new Test5();
+		fieldUpdater.compareAndSet(test5, 0, 10);
+// 修改成功 field = 10
+		System.out.println(test5.field);
+// 修改成功 field = 20
+		fieldUpdater.compareAndSet(test5, 10, 20);
+		System.out.println(test5.field);
+// 修改失敗 field = 20
+		fieldUpdater.compareAndSet(test5, 10, 30);
+		System.out.println(test5.field);
+	}
+}
+```
+
+```java
+10
+20
+20
+```
+
+## 原子累加器
+### 累加器性能比較
+
+
+```java
+	private static <T> void demo(Supplier<T> adderSupplier, Consumer<T> action) {
+		T adder = adderSupplier.get();
+		long start = System.nanoTime();
+		List<Thread> ts = new ArrayList<>();
+		// 4 個線程，每人累加 50 萬
+		for (int i = 0; i < 40; i++) {
+			ts.add(new Thread(() -> {
+				for (int j = 0; j < 500000; j++) {
+					action.accept(adder);
+				}
+			}));
+		}
+		ts.forEach(t -> t.start());
+		ts.forEach(t -> {
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		});
+		long end = System.nanoTime();
+		System.out.println(adder + " cost:" + (end - start) / 1000_000);
+	}
+```
+
+比較 AtomicLong 與 LongAdder
+```java
+for (int i = 0; i < 5; i++) {
+	demo(() -> new LongAdder(), adder -> adder.increment());
+}
+for (int i = 0; i < 5; i++) {
+	demo(() -> new AtomicLong(), adder -> adder.getAndIncrement());
+}
+```
+
+```java
+1000000 cost:43
+1000000 cost:9
+1000000 cost:7
+1000000 cost:7
+1000000 cost:7
+1000000 cost:31
+1000000 cost:27
+1000000 cost:28
+1000000 cost:24
+1000000 cost:22
+```
+
+效能提升的原因很簡單，就是在有競爭時，設定多個累加單元，Therad-0 累加 Cell[0]，而 Thread-1 累加Cell[1]... 最後將結果匯總。 這樣它們在累加時操作的不同的 Cell 變量，因此減少了 CAS 重試失敗，從而提高性能。
+
+
+## 源碼之 LongAdder
+- LongAdder 是並發大師 @author Doug Lea （大哥李）的作品，設計的非常精巧
+- LongAdder 類別有幾個關鍵域
+
+```java
+// 累加單元數組, 懶惰初始化
+transient volatile Cell[] cells;
+// 基礎值, 如果沒有競爭, 則用 cas 累加這個域
+transient volatile long base;
+// 在 cells 建立或擴充時, 置為 1, 表示加鎖
+transient volatile int cellsBusy;
+```
+
+## cas鎖
+
+```java
+//不要用於實作！ ！ ！
+public class LockCas {
+	private AtomicInteger state = new AtomicInteger(0);
+
+	public void lock() {
+		while (true) {
+			if (state.compareAndSet(0, 1)) {
+				break;
+			}
+		}
+	}
+
+	public void unlock() {
+		log.debug("unlock...");
+		state.set(0);
+	}
+}
+
+```
+
+測試
+
+```java
+	LockCas lock = new LockCas();new Thread(()->
+	{
+		log.debug("begin...");
+		lock.lock();
+		try {
+			log.debug("lock...");
+			sleep(1);
+		} finally {
+			lock.unlock();
+		}
+	}).start();new Thread(()->
+	{
+		log.debug("begin...");
+		lock.lock();
+		try {
+			log.debug("lock...");
+		} finally {
+			lock.unlock();
+		}
+	}).start();
+```
+
+輸出
+
+```java
+18:27:07.198 c.Test42 [Thread-0] - begin...
+18:27:07.202 c.Test42 [Thread-0] - lock...
+18:27:07.198 c.Test42 [Thread-1] - begin...
+18:27:08.204 c.Test42 [Thread-0] - unlock...
+18:27:08.204 c.Test42 [Thread-1] - lock...
+18:27:08.204 c.Test42 [Thread-1] - unlock...
+```
+
+
+## 原理之偽共享
+
+其中 Cell 即為累加單元
+
+```java
+//防止快取行偽共享
+@sun.misc.Contended
+static final class Cell {
+	volatile long value;
+
+	Cell(long x) {
+		value = x;
+	}
+
+//最重要的方法, 用來 cas 方式進行累加, prev 表示舊值, next 表示新值
+	final boolean cas(long prev, long next) {
+		return UNSAFE.compareAndSwapLong(this, valueOffset, prev, next);
+	}
+//省略不重要程式碼
+}
+
+```
+
+得從緩存說起
+快取與記憶體的速度比較
+
+![61](imgs/61.png)
+
+- 因為 CPU 與 記憶體的速度差異很大，需要靠預讀資料至快取來提升效率。
+- 而緩存以緩存行為單位，每個緩存行對應著一塊內存，一般是 64 byte（8 個 long）
+- 快取的加入會造成資料副本的產生，即同一份資料會快取在不同核心的快取行中
+- CPU 要確保資料的一致性，如果某個 CPU 核心更改了數據，其它 CPU 核心對應的整個緩存行必須失效
+
+![62](imgs/62.png)
+
+- 因為 Cell 是陣列形式，在記憶體中是連續儲存的，一個 Cell 為 24 個位元組（16 個位元組的物件頭和 8 個位元組的 value），因此快取行可以存下 2 個的 Cell 物件。 這樣問題來了：
+  - Core-0 要修改 Cell[0]
+  - Core-1 要修改 Cell[1]
+- 無論誰修改成功，都會導致對方 Core 的快取行失效，例如 Core-0 中 Cell[0]=6000, Cell[1]=8000 要累加Cell[0]=6001, Cell[1]=8000 ，這時會讓 Core-1 的快取行失效
+- @sun.misc.Contended 用來解決這個問題，它的原理是在使用此註解的物件或欄位的前後各增加 128 位元組大小的padding，從而讓 CPU 將物件預讀至快取時佔用不同的快取行，這樣不會造成對方快取行的失效
+
+![63](imgs/63.png)
+
+累加主要呼叫下面的方法
+
+```java
+	public void add(long x) {
+		// as 為累加單元數組
+		// b 為基礎值
+		// x 為累加值
+		Cell[] as;
+		長 b, v;
+		int m;
+		Cell a;
+		// 進入 if 的兩個條件
+		// 1. as 有值, 表示已經發生過競爭, 進入 if// 2. cas 給 base 累加時失敗了, 表示 base 發生了競爭, 進入 if
+		if ((as = cells) != null || !casBase(b = base, b + x)) {
+			// uncontended 表示 cell 沒有競爭
+			boolean uncontended = true;
+			if (
+			// as 還沒有創建
+			as == null || (m = as.length - 1) < 0 ||
+			// 目前執行緒對應的 cell 還沒有
+					(a = as[getProbe() & m]) == null ||
+					// cas 給目前執行緒的 cell 累加失敗 uncontended=false ( a 為目前執行緒的 cell )
+					!(uncontended = a.cas(v = a.value, v + x))) {
+				// 進入 cell 陣列建立、cell 建立的流程
+				longAccumulate(x, null, uncontended);
+			}
+		}
+	}
+```
+
+![64](imgs/64.png)
+
+```java
+	final void longAccumulate(long x, LongBinaryOperator fn, boolean wasUncontended) {
+		int h;
+		// 目前執行緒還沒有對應的 cell, 需要隨機產生一個 h 值用來將目前執行緒綁定到 cell
+		if ((h = getProbe()) == 0) {
+			// 初始化 probe
+			ThreadLocalRandom.current();
+			// h 對應新的 probe 值, 用來對應 cell
+			h = getProbe();
+			wasUncontended = true;
+		}
+		// collide 為 true 表示需要擴容
+		boolean collide = false;
+		for (;;) {
+			Cell[] as;
+			Cell a;
+			int n;
+			long v;
+			// 已經有了 cells
+			if ((as = cells) != null && (n = as.length) > 0) {
+				// 還沒有 cell
+				if ((a = as[(n - 1) & h]) == null) {
+					// 為 cellsBusy 加鎖, 建立 cell, cell 的初始累加值為 x
+					// 成功則 break, 否則繼續 continue 循環
+				}
+				// 有競爭, 改變線程對應的 cell 來重試 cas
+				else if (!wasUncontended)
+					wasUncontended = true;
+				// cas 嘗試累加, fn 配合 LongAccumulator 不為 null, 配合 LongAdder 為 null
+				else if (a.cas(v = a.value, ((fn == null) ? v + x : fn.applyAsLong(v, x))))
+					break;
+				// 如果 cells 長度已經超過了最大長度, 或已經擴容, 改變線程對應的 cell 來重試 cas
+				else if (n >= NCPU || cells != as)
+					collide = false;
+				// 確保 collide 為 false 進入此分支, 就不會進入下面的 else if 進行擴容了
+				else if (!collide)
+					collide = true;
+				// 加鎖
+				else if (cellsBusy == 0 && casCellsBusy()) {
+					// 加鎖成功, 擴容
+					continue;
+				}
+				// 改變線程對應的 cell
+				h = advanceProbe(h);
+			}
+			// 還沒有 cells, 嘗試給 cellsBusy 加鎖
+			else if (cellsBusy == 0 && cells == as && casCellsBusy()) {
+				// 加鎖成功, 初始化 cells, 最開始長度為 2, 並填滿一個 cell
+				// 成功則 break;
+			}
+			// 上兩種情況失敗, 嘗試給 base 累積
+			else if (casBase(v = base, ((fn == null) ? v + x : fn.applyAsLong(v, x))))
+				break;
+		}
+	}
+```
+
+
+longAccumulate流程圖
+
+![65](imgs/65.png)
+![66](imgs/66.png)
+
+每個執行緒剛進入 longAccumulate 時，會嘗試對應一個 cell 物件（找到一個坑位）
+
+![67](imgs/67.png)
+
+
+取得最終結果通過 sum 方法
+
+```java
+	public long sum() {
+		Cell[] as = cells;
+		Cell a;
+		long sum = base;
+		if (as != null) {
+			for (int i = 0; i < as.length; ++i) {
+				if ((a = as[i]) != null)
+					sum += a.value;
+			}
+		}
+		return sum;
+	}
+```
+
+## Unsafe
+
+- 概述
+  - Unsafe 物件提供了非常底層的，操作記憶體、執行緒的方法，Unsafe 物件不能直接調用，只能透過反射獲得
+
+```java
+public class UnsafeAccessor {
+	static Unsafe unsafe;
+	static {
+		try {
+			Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+			theUnsafe.setAccessible(true);
+			unsafe = (Unsafe) theUnsafe.get(null);
+		} catch (NoSuchFieldException | IllegalAccessException e) {
+			throw new Error(e);
+		}
+	}
+
+	static Unsafe getUnsafe() {
+		return unsafe;
+	}
+}
+
+```
+
+## Unsafe CAS 操作
+
+```java
+@Data
+class Student {
+	volatile int id;
+	volatile String name;
+}
+```
+
+```java
+Unsafe unsafe = UnsafeAccessor.getUnsafe();
+Field id = Student.class.getDeclaredField("id");
+Field name = Student.class.getDeclaredField("name");
+// 取得成員變數的偏移量
+long idOffset = UnsafeAccessor.unsafe.objectFieldOffset(id);
+long nameOffset = UnsafeAccessor.unsafe.objectFieldOffset(name);
+Student student = new Student();
+// 使用 cas 方法取代成員變數的值
+UnsafeAccessor.unsafe.compareAndSwapInt(student, idOffset, 0, 20); // 回傳 true
+UnsafeAccessor.unsafe.compareAndSwapObject(student, nameOffset, null, "張三"); // 回傳 true
+System.out.println(student);
+```
+
+```java
+Student(id=20, name=張三)
+```
+
+使用自訂的 AtomicData 實作之前線程安全的原子整數 Account 實現
+Account 實
+
+```java
+class AtomicData {
+	private volatile int data;
+	static final Unsafe unsafe;
+	static final long DATA_OFFSET;
+	static {
+		unsafe = UnsafeAccessor.getUnsafe();
+		try {
+// data 屬性在 DataContainer 物件中的偏移量，用於 Unsafe 直接存取該屬性
+			DATA_OFFSET = unsafe.objectFieldOffset(AtomicData.class.getDeclaredField("data"));
+		} catch (NoSuchFieldException e) {
+			throw new Error(e);
+		}
+	}
+
+	public AtomicData(int data) {
+		this.data = data;
+	}
+
+	public void decrease(int amount) {
+		int oldValue;
+		while (true) {
+// 取得共享變數舊值，可以在這一行加入斷點，修改 data 偵錯來加深理解
+			oldValue = data;
+// cas 嘗試修改 data 為 舊值 + amount，如果期間舊值被別的線程改了，回傳 false
+			if (unsafe.compareAndSwapInt(this, DATA_OFFSET, oldValue, oldValue - amount)) {
+				return;
+			}
+		}
+	}
+
+	public int getData() {
+		return data;
+	}
+}
+```
+
+
+Account 實現
+
+
+```java
+		Account.demo(new Account() {
+			AtomicData atomicData = new AtomicData(10000);
+
+			@Override
+			public Integer getBalance() {
+				return atomicData.getData();
+			}
+
+			@Override
+			public void withdraw(Integer amount) {
+				atomicData.decrease(amount);
+			}
+		});
+```
+
+# 共享模型之不可變
+
+
+## 日期轉換的問題
+- 問題提出
+  - 下面的程式碼在運行時，由於 SimpleDateFormat 不是線程安全的
+
+```java
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		for (int i = 0; i < 10; i++) {
+			new Thread(() -> {
+				try {
+					log.debug("{}", sdf.parse("1951-04-21"));
+				} catch (Exception e) {
+					log.error("{}", e);
+				}
+			}).start();
+		}
+```
+有很大幾率出現 java.lang.NumberFormatException 或出現不正確的日期解析結果，例如：
+
+```java
+19:10:40.859 [Thread-2] c.TestDateParse - {}
+java.lang.NumberFormatException: For input string: ""
+at java.lang.NumberFormatException.forInputString(NumberFormatException.java:65)
+at java.lang.Long.parseLong(Long.java:601)
+at java.lang.Long.parseLong(Long.java:631)
+at java.text.DigitList.getLong(DigitList.java:195)
+at java.text.DecimalFormat.parse(DecimalFormat.java:2084)
+at java.text.SimpleDateFormat.subParse(SimpleDateFormat.java:2162)
+at java.text.SimpleDateFormat.parse(SimpleDateFormat.java:1514)
+at java.text.DateFormat.parse(DateFormat.java:364)
+at cn.itcast.n7.TestDateParse.lambda$test1$0(TestDateParse.java:18)
+at java.lang.Thread.run(Thread.java:748)
+19:10:40.859 [Thread-1] c.TestDateParse - {}
+java.lang.NumberFormatException: empty String
+at sun.misc.FloatingDecimal.readJavaFormatString(FloatingDecimal.java:1842)
+at sun.misc.FloatingDecimal.parseDouble(FloatingDecimal.java:110)
+at java.lang.Double.parseDouble(Double.java:538)
+at java.text.DigitList.getDouble(DigitList.java:169)
+at java.text.DecimalFormat.parse(DecimalFormat.java:2089)
+at java.text.SimpleDateFormat.subParse(SimpleDateFormat.java:2162)
+at java.text.SimpleDateFormat.parse(SimpleDateFormat.java:1514)
+at java.text.DateFormat.parse(DateFormat.java:364)
+at cn.itcast.n7.TestDateParse.lambda$test1$0(TestDateParse.java:18)
+at java.lang.Thread.run(Thread.java:748)
+19:10:40.857 [Thread-8] c.TestDateParse - Sat Apr 21 00:00:00 CST 1951
+19:10:40.857 [Thread-9] c.TestDateParse - Sat Apr 21 00:00:00 CST 1951
+19:10:40.857 [Thread-6] c.TestDateParse - Sat Apr 21 00:00:00 CST 1951
+19:10:40.857 [Thread-4] c.TestDateParse - Sat Apr 21 00:00:00 CST 1951
+19:10:40.857 [Thread-5] c.TestDateParse - Mon Apr 21 00:00:00 CST 178960645
+19:10:40.857 [Thread-0] c.TestDateParse - Sat Apr 21 00:00:00 CST 1951
+19:10:40.857 [Thread-7] c.TestDateParse - Sat Apr 21 00:00:00 CST 1951
+19:10:40.857 [Thread-3] c.TestDateParse - Sat Apr 21 00:00:00 CST 1951
+```
+
+- 思路 - 同步鎖
+  - 這樣雖能解決問題，但帶來的是效能上的損失，並不算很好：
+
+```java
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		for (int i = 0; i < 50; i++) {
+			new Thread(() -> {
+				synchronized (sdf) {
+					try {
+						log.debug("{}", sdf.parse("1951-04-21"));
+					} catch (Exception e) {
+						log.error("{}", e);
+					}
+				}
+			}).start();
+		}
+```
+
+- 思路 - 不可變
+  - 如果一個物件在不能夠修改其內部狀態（屬性），那麼它就是線程安全的，因為不存在並發修改啊！ 這樣的對像在Java 中有很多，例如在 Java 8 後，提供了一個新的日期格式化類別：
+
+```java
+		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+		for (int i = 0; i < 10; i++) {
+			new Thread(() -> {
+				LocalDate date = dtf.parse("2018-10-01", LocalDate::from);
+				log.debug("{}", date);
+			}).start();
+		}
+```
+
+可以看 DateTimeFormatter 的文件：
+
+```java
+@implSpec
+This class is immutable and thread-safe.
+```
+不可變對象，實際上是另一種避免競爭的方式。
+
+
+- 不可變設計
+  - 另一個大家較為熟悉的 String 類別也是不可變的，以它為例，說明一下不可變設計的要素
+
+```java
+public final class String implements java.io.Serializable, Comparable<String>, CharSequence {
+	/** The value is used for character storage. */
+	private final char value[];
+	/** Cache the hash code for the string */
+	private int hash; // Default to 0
+// ...
+}
+```
+
+## final 的使用
+- 發現該類別、類別中所有屬性都是 final 的
+  - 屬性用 final 修飾保證了該屬性是唯讀的，不能修改
+  - 類別以 final 修飾保證了該類別中的方法不能被覆蓋，防止子類別無意間破壞不可變性
+- 保護性拷貝
+  - 但有同學會說，使用字串時，也有一些跟修改相關的方法啊，比如 substring 等，那麼下面就看一看這些方法是如何實現的，以 substring 為例：
+
+```java
+	public String substring(int beginIndex) {
+		if (beginIndex < 0) {
+			throw new StringIndexOutOfBoundsException(beginIndex);
+		}
+		int subLen = value.length - beginIndex;
+		if (subLen < 0) {
+			throw new StringIndexOutOfBoundsException(subLen);
+		}
+		return (beginIndex == 0) ? this : new String(value, beginIndex, subLen);
+	}
+```
+
+發現其內部是呼叫 String 的建構方法創建了一個新字串，再進入這個構造看看，是否對 final char[] value 做出了修改：
+
+```java
+    /**
+     * Allocates a new {@code String} that contains characters from a subarray
+     * of the character array argument. The {@code offset} argument is the
+     * index of the first character of the subarray and the {@code count}
+     * argument specifies the length of the subarray. The contents of the
+     * subarray are copied; subsequent modification of the character array does
+     * not affect the newly created string.
+     *
+     * @param  value
+     *         Array that is the source of characters
+     *
+     * @param  offset
+     *         The initial offset
+     *
+     * @param  count
+     *         The length
+     *
+     * @throws  IndexOutOfBoundsException
+     *          If the {@code offset} and {@code count} arguments index
+     *          characters outside the bounds of the {@code value} array
+     */
+    public String(char value[], int offset, int count) {
+        if (offset < 0) {
+            throw new StringIndexOutOfBoundsException(offset);
+        }
+        if (count <= 0) {
+            if (count < 0) {
+                throw new StringIndexOutOfBoundsException(count);
+            }
+            if (offset <= value.length) {
+                this.value = "".value;
+                return;
+            }
+        }
+        // Note: offset or count might be near -1>>>1.
+        if (offset > value.length - count) {
+            throw new StringIndexOutOfBoundsException(offset + count);
+        }
+        this.value = Arrays.copyOfRange(value, offset, offset+count);
+    }
+```
+
+結果發現也沒有，建構新字串物件時，會產生新的 char[] value，對內容進行複製 。 這種透過創建副本物件來避免共享的手段稱為【保護性拷貝（defensive copy）】
+
+
+# 模式之享元
+
+## 1. 簡介
+- 定義 英文名稱：Flyweight pattern. 當需要重複使用數量有限的相同類別物件時
+> wikipedia： A flyweight is an object that minimizes memory usage by sharing as much data as
+possible with other similar objects
+- 來自 "Gang of Four" design patterns
+- 歸類 Structual patterns
+
+## 2. 體現
+### 2.1 包裝類
+在JDK中 Boolean，Byte，Short，Integer，Long，Character 等包裝類別提供了 valueOf 方法，例如 Long 的
+valueOf 會快取 -128~127 之間的 Long 對象，在這個範圍之間會重複使用對象，大於這個範圍，才會新建 Long 對
+象：
+
+```java
+	public static Long valueOf(long l) {
+		final int offset = 128;
+		if (l >= -128 && l <= 127) { // will cache
+			return LongCache.cache[(int) l + offset];
+		}
+		return new Long(l);
+	}
+
+```
+
+> 注意：
+>- Byte, Short, Long 快取的範圍都是 -128~127
+>- Character 快取的範圍是 0~127
+>- Integer的預設範圍是 -128~127
+>	- 最小值不能改變
+>	- 但最大值可以透過調整虛擬機器參數 `
+>- -Djava.lang.Integer.IntegerCache.high` 來改變
+Boolean 快取了 TRUE 和 FALSE
+
+# 原理之 final
+
+## 1. 設定 final 變數的原理
+- 了解 volatile 原理，再對比 final 的實作就比較簡單了
+
+```java
+public class TestFinal {
+	final int a = 20;
+}
+```
+
+字節碼
+
+```java
+0: aload_0
+1: invokespecial #1 // Method java/lang/Object."<init>":()V
+4: aload_0
+5: bipush 20
+7: putfield #2 // Field a:I
+<-- 写屏障
+10: return
+```
+
+發現 final 變數的賦值也會透過 putfield 指令來完成，同樣在這條指令之後也會加入寫屏障，保證在其它線程讀到它的值時不會出現為 0 的情況
+## 2. 取得 final 變數的原理
+
+
+[共享模型之工具](mutiThreadTools.md )
+
 
 
