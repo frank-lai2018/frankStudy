@@ -1309,8 +1309,553 @@ public static void main(String[] args) {
 ![75](imgs/75.png)
 
 ##　2 J.U.C
+
 ### 1. * AQS 原理
+
+### 1. 概述
+全名是 AbstractQueuedSynchronizer，是阻塞式鎖和相關的同步器工具的框架
+
+特點：
+
+- 用 state 屬性表示資源的狀態（分獨佔模式和共用模式），子類別需要定義如何維護這個狀態，控制如何取得
+鎖和釋放鎖
+  - getState - 取得 state 狀態
+  - setState - 設定 state 狀態
+  - compareAndSetState - cas 機制設定 state 狀態
+  - 獨佔模式是只有一個執行緒能夠存取資源，而共享模式可以允許多個執行緒存取資源
+- 提供了基於 FIFO 的等待佇列，類似於 Monitor 的 EntryList
+- 條件變數來實現等待、喚醒機制，支援多個條件變量，類似 Monitor 的 WaitSet
+  
+子類別主要實作這樣一些方法（預設拋出 UnsupportedOperationException）
+
+- tryAcquire
+- tryRelease
+- tryAcquireShared
+- tryReleaseShared
+- isHeldExclusively
+
+
+***獲取鎖的姿勢***
+
+```java
+// 如果取得鎖定失敗
+if (!tryAcquire(arg)) {
+// 入隊, 可以選擇封鎖目前執行緒 park unpark
+}
+```
+
+***釋放鎖的姿勢***
+```java
+// 如果釋放鎖定成功
+if (tryRelease(arg)) {
+// 讓阻塞執行緒恢復運行
+}
+```
+
+#### 2. 實現不可重入鎖
+***自訂同步器***
+
+
+```java
+
+final class MySync extends AbstractQueuedSynchronizer {
+	@Override
+	protected boolean tryAcquire(int acquires) {
+		if (acquires == 1) {
+			if (compareAndSetState(0, 1)) {
+				setExclusiveOwnerThread(Thread.currentThread());
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override
+	protected boolean tryRelease(int acquires) {
+		if (acquires == 1) {
+			if (getState() == 0) {
+				throw new IllegalMonitorStateException();
+			}
+			setExclusiveOwnerThread(null);
+			setState(0);
+			return true;
+		}
+		return false;
+	}
+
+	protected Condition newCondition() {
+		return new ConditionObject();
+	}
+
+	@Override
+	protected boolean isHeldExclusively() {
+		return getState() == 1;
+	}
+}
+```
+
+***自訂鎖***
+
+有了自訂同步器，很容易重複使用 AQS ，實現一個功能完備的自訂鎖
+
+```java
+class MyLock implements Lock {
+	static MySync sync = new MySync();
+
+	@Override
+// 嘗試，不成功，進入等待隊列
+	public void lock() {
+		sync.acquire(1);
+	}
+
+	@Override
+// 嘗試，不成功，進入等待隊列，可打斷
+	public void lockInterruptibly() throws InterruptedException {
+		sync.acquireInterruptibly(1);
+	}
+
+	@Override
+// 嘗試一次，不成功返回，不進入佇列
+	public boolean tryLock() {
+		return sync.tryAcquire(1);
+	}
+
+	@Override
+// 嘗試，不成功，進入等待佇列，有時限
+	public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+		return sync.tryAcquireNanos(1, unit.toNanos(time));
+	}
+
+	@Override
+// 釋放鎖
+	public void unlock() {
+		sync.release(1);
+	}
+
+	@Override
+// 生成條件變數
+	public Condition newCondition() {
+		return sync.newCondition();
+	}
+}
+```
+
+測試一下
+
+```java
+		MyLock lock = new MyLock();
+		new Thread(() -> {
+			lock.lock();
+			try {
+				log.debug("locking...");
+				sleep(1);
+			} finally {
+				log.debug("unlocking...");
+				lock.unlock();
+			}
+		}, "t1").start();
+		new Thread(() -> {
+			lock.lock();
+			try {
+				log.debug("locking...");
+			} finally {
+				log.debug("unlocking...");
+				lock.unlock();
+			}
+		}, "t2").start();
+```
+
+```java
+22:29:28.727 c.TestAqs [t1] - locking...
+22:29:29.732 c.TestAqs [t1] - unlocking...
+22:29:29.732 c.TestAqs [t2] - locking...
+22:29:29.732 c.TestAqs [t2] - unlocking...
+```
+
+
+***不可重入測試***
+
+如果改為下面程式碼，會發現自己也會被擋住（只會印一次 locking）
+
+```java
+lock.lock();
+log.debug("locking...");
+lock.lock();
+log.debug("locking...");
+```
+
+#### 3. 心得
+***起源***
+
+早期程式設計師會自己透過一種同步器去實現另一種相近的同步器，例如用可重入鎖去實現信號量，或反之。 這顯然不夠優雅，於是在 JSR166（java 規格提案）中創建了 AQS，提供了這種通用的同步器機制。
+
+***目標***
+
+AQS 要達成的功能目標
+
+- 阻塞版本取得鎖定 acquire 和非阻塞的版本嘗試取得鎖定 tryAcquire
+- 取得鎖定超時機制
+- 透過打斷取消機制
+- 獨佔機制及共享機制
+- 條件不滿足時的等待機制
+
+
+要實現的效能目標
+
+> Instead, the primary performance goal here is scalability: to predictably maintain efficiency even, or especially, when synchronizers are contended.
+
+***設計***
+
+AQS 的基本想法其實很簡單
+
+取得鎖的邏輯
+
+```java
+while(state 狀態不允許取得) {
+	if(佇列中還沒有此線程) {
+		入隊並阻塞
+	}
+}
+目前執行緒出隊
+````
+
+釋放鎖的邏輯
+
+```java
+if(state 狀態允許了) {
+	恢復阻塞的線程(s)
+}
+````
+
+
+重點
+
+- 原子維護 state 狀態
+- 阻塞及恢復線程
+- 維護隊列
+
+
+- 1) state 設計
+  - state 使用 volatile 配合 cas 保證其修改時的原子性
+  - state 使用了 32bit int 來維護同步狀態，因為當時使用 long 在許多平台下測試的結果並不理想
+- 2) 阻塞恢復設計
+  - 早期的控制線程暫停和恢復的 api 有 suspend 和 resume，但它們是不可用的，因為如果先呼叫的 resume  那麼 suspend 將感知不到
+  - 解決方法是使用 park & unpark 來實現線程的暫停和恢復，具體原理在之前講過了，先 unpark 再 park 也沒問題
+  - park & unpark 是針對線程的，而不是針對同步器的，因此控製粒度更為精細
+  - park 線程還可以透過 interrupt 打斷
+- 3) 隊列設計
+  - 使用了 FIFO 先入先出佇列，並不支援優先權佇列
+  - 設計時借鑒了 CLH 隊列，它是一種單向無鎖隊列
+
+![79](imgs/79.png)
+
+
+佇列中有 head 和 tail 兩個指標節點，都以 volatile 修飾配合 cas 使用，每個節點有 state 維護節點狀態入隊偽代碼，只需要考慮 tail 賦值的原子性
+
+```java
+do {
+	// 原來的 tail
+	Node prev = tail;
+	// 用 cas 在原來 tail 的基礎上改為 node
+} while(tail.compareAndSet(prev, node))
+```
+出隊偽代碼
+
+```java
+// prev 是上一個節點
+while((Node prev=node.prev).state != 喚醒狀態) {
+}
+// 設定頭節點
+head = node;
+```
+
+CLH 好處：
+
+- 無鎖，使用自旋
+
+- 快速，無阻塞
+
+AQS 在一些方面改進了 CLH
+
+
+```java
+	private Node enq(final Node node) {
+		for (;;) {
+			Node t = tail;
+			// 佇列中還沒有元素 tail 為 null
+			if (t == null) {
+				// 將 head 從 null -> dummy
+				if (compareAndSetHead(new Node()))
+					tail = head;
+			} else {
+				// 將 node 的 prev 設定為原來的 tail
+				node.prev = t;
+				// 將 tail 從原來的 tail 設為 node
+				if (compareAndSetTail(t, node)) {
+					// 原來 tail 的 next 設定為 node
+					t.next = node;
+					return t;
+				}
+			}
+		}
+	}
+```
+
+主要用到 AQS 的並發工具類
+
+
+![80](imgs/80.png)
+
+
+
 ### 2. * ReentrantLock 原理
+
+![81](imgs/81.png)
+
+#### 1. 非公平鎖實現原理
+
+##### 加鎖解鎖流程
+
+先從構造器開始看，預設為非公平鎖實現
+
+```java
+public ReentrantLock() {
+	sync = new NonfairSync();
+}
+```
+
+NonfairSync 繼承自 AQS
+
+沒有競爭時
+
+![82](imgs/82.png)
+
+第一個競爭出現時
+
+![83](imgs/83.png)
+
+
+Thread-1 執行了
+
+- 1. CAS 嘗試將 state 由 0 改為 1，結果失敗
+- 2. 進入 tryAcquire 邏輯，這時 state 已是1，結果還是失敗
+- 3. 接下來進入 addWaiter 邏輯，建構 Node 佇列
+  - 圖中黃色三角形表示該 Node 的 waitStatus 狀態，其中 0 為預設正常狀態
+  - Node 的創建是懶惰的
+  - 其中第一個 Node 稱為 Dummy（啞元）或哨兵，用來佔位，並不關聯線程
+
+![84](imgs/84.png)
+
+
+當前線程進入 acquireQueued 邏輯
+
+- 1. acquireQueued 會在一個死循環中不斷嘗試取得鎖，失敗後進入 park 阻塞
+- 2. 如果自己是緊鄰 head（排第二位），那麼再次 tryAcquire 嘗試取得鎖，當然這時 state 仍為 1，失敗
+- 3. 進入 shouldParkAfterFailedAcquire 邏輯，將前驅 node，即 head 的 waitStatus 改為 -1，這次回傳 false
+
+![85](imgs/85.png)
+
+- 4. shouldParkAfterFailedAcquire 執行完畢回到 acquireQueued ，再次 tryAcquire 嘗試取得鎖，當然此時state 仍為 1，失敗
+- 5. 當再次進入 shouldParkAfterFailedAcquire 時，這時因為其前驅 node 的 waitStatus 已經是 -1，這次返回true
+- 6. 進入 parkAndCheckInterrupt， Thread-1 park（灰色表示）
+  
+  ![86](imgs/86.png)
+  ![86](imgs/86.png)
+  
+- 再次有多個執行緒經歷上述過程競爭失敗，變成這個樣子
+  ![87](imgs/87.png)
+  
+  
+- Thread-0 釋放鎖，進入 tryRelease 流程，如果成功設定
+  - 設定 exclusiveOwnerThread 為 null
+  - state = 0
+
+  ![88](imgs/88.png)
+
+
+目前隊列不為 null，且 head 的 waitStatus = -1，進入 unparkSuccessor 流程
+
+找到隊列中離 head 最近的一個 Node（沒取消的），unpark 恢復其運行，本例中即為 Thread-1
+
+回到 Thread-1 的 acquireQueued 流程
+
+  ![89](imgs/89.png)
+
+
+如果加鎖成功（沒有競爭），會設置
+
+  - exclusiveOwnerThread 為 Thread-1，state = 1
+  - head 指向剛剛 Thread-1 所在的 Node，該 Node 清空 Thread
+  - 原本的 head 因為從鍊錶斷開，而可被垃圾回收
+
+如果這時候有其它線程來競爭（非公平的體現），例如這時有 Thread-4 來了
+
+  ![90](imgs/90.png)
+
+
+如果不巧又被 Thread-4 佔了先
+
+- Thread-4 被設定為 exclusiveOwnerThread，state = 1
+- Thread-1 再次進入 acquireQueued 流程，取得鎖定失敗，重新進入 park 阻塞
+
+#### 加鎖源碼
+
+```java
+//Sync 繼承自 AQS
+static final class NonfairSync extends Sync {
+	private static final long serialVersionUID = 7316153563782823691L;
+
+//加鎖實現
+	final void lock() {
+		// 首先用 cas 嘗試（只嘗試一次）將 state 從 0 改為 1, 如果成功表示獲得了獨佔鎖
+		if (compareAndSetState(0, 1))
+			setExclusiveOwnerThread(Thread.currentThread());
+		else
+			// 如果嘗試失敗，進入 ㈠
+			acquire(1);
+	}
+
+	// ㈠ AQS 繼承過來的方法, 方便閱讀, 放在此處
+	public final void acquire(int arg) {
+		// ㈡ tryAcquire
+		if (!tryAcquire(arg) &&
+		// 當 tryAcquire 回傳為 false 時, 先呼叫 addWaiter ㈣, 接著 acquireQueued ㈤
+				acquireQueued(addWaiter(Node.EXCLUSIVE), arg)) {
+			selfInterrupt();
+		}
+	}
+
+	// ㈡ 進入 ㈢
+	protected final boolean tryAcquire(int acquires) {
+		return nonfairTryAcquire(acquires);
+	}
+
+	// ㈢ Sync 繼承過來的方法, 方便閱讀, 放在此處
+	final boolean nonfairTryAcquire(int acquires) {
+		final Thread current = Thread.currentThread();
+		int c = getState();
+		// 如果還沒有獲得鎖
+		if (c == 0) {
+			// 嘗試用 cas 取得, 這裡體現了非公平性: 不去檢查 AQS 佇列
+			if (compareAndSetState(0, acquires)) {
+				setExclusiveOwnerThread(current);
+				return true;
+			}
+		}
+		// 如果已經獲得了鎖, 執行緒還是當前執行緒, 表示發生了鎖重入
+		else if (current == getExclusiveOwnerThread()) {
+			// state++
+			int nextc = c + acquires;
+			if (nextc < 0) // overflow
+				throw new Error("Maximum lock count exceeded");
+			setState(nextc);
+			return true;
+		}
+		// 取得失敗, 回到呼叫處
+		return false;
+	}
+
+	// ㈣ AQS 繼承過來的方法, 方便閱讀, 放在此處
+	private Node addWaiter(Node mode) {
+		// 將目前執行緒關聯到一個 Node 物件上, 模式為獨佔模式
+		Node node = new Node(Thread.currentThread(), mode);
+		// 如果 tail 不會為 null, cas 嘗試將 Node 物件加入 AQS 佇列尾部
+		Node pred = tail;
+		if (pred != null) {
+			node.prev = pred;
+			if (compareAndSetTail(pred, node)) {
+				// 雙向鍊錶
+				pred.next = node;
+				return node;
+			}
+		}
+		// 嘗試將 Node 加入 AQS, 進入 ㈥
+		enq(node);
+		return node;
+	}
+
+	// ㈥ AQS 繼承過來的方法, 方便閱讀, 放在此處
+	private Node enq(final Node node) {
+		for (;;) {
+			Node t = tail;
+			if (t == null) {
+				// 還沒有, 設定 head 為哨兵節點（不對應線程，狀態為 0）
+				if (compareAndSetHead(new Node())) {
+					tail = head;
+				}
+			} else {
+				// cas 嘗試將 Node 物件加入 AQS 佇列尾部
+				node.prev = t;
+				if (compareAndSetTail(t, node)) {
+					t.next = node;
+					return t;
+				}
+			}
+		}
+	}
+
+	// ㈤ AQS 繼承過來的方法, 方便閱讀, 放在此處
+	final boolean acquireQueued(final Node node, int arg) {
+		boolean failed = true;
+		try {
+			boolean interrupted = false;
+			for (;;) {
+				final Node p = node.predecessor();
+				// 上一個節點是 head, 表示輪到自己（當前線程對應的 node）了, 嘗試獲取
+				if (p == head && tryAcquire(arg)) {
+					// 取得成功, 設定自己（目前執行緒對應的 node）為 head
+					setHead(node);
+					// 上一個節點 help GC
+					p.next = null;
+					failed = false;
+					// 回傳中斷標記 false
+					return interrupted;
+				}
+				if (shouldParkAfterFailedAcquire(p, node) && parkAndCheckInterrupt()) {
+					// park 等待, 此時 Node 的狀態被置為 Node.SIGNAL ㈧
+					// 判斷是否應 park, 進入 ㈦
+					interrupted = true;
+				}
+			}
+		} finally
+
+		{
+			if (failed)
+				cancelAcquire(node);
+		}
+	}
+
+	// ㈦ AQS 繼承過來的方法, 方便閱讀, 放在此處
+	private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
+		// 取得上一個節點的狀態
+		int ws = pred.waitStatus;
+		if (ws == Node.SIGNAL) {
+			// 上一個節點都在阻塞, 那麼自己也阻塞好了
+			return true;
+		}
+		// > 0 表示取消狀態
+		if (ws > 0) {
+			// 上一個節點取消, 那麼重構刪除前面所有取消的節點, 返回到外層循環重試
+			do {
+				node.prev = pred = pred.prev;
+			} while (pred.waitStatus > 0);
+			pred.next = node;
+		} else {
+			// 這次還沒阻塞
+			// 但下次如果重試不成功, 則需要阻塞，這時需要設定上一個節點狀態為 Node.SIGNAL
+			compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
+		}
+		return false;
+	}
+
+	// ㈧ 阻塞目前線程
+	private final boolean parkAndCheckInterrupt() {
+		LockSupport.park(this);
+		return Thread.interrupted();
+	}
+}
+```
+
 ### 3. 讀寫鎖
 #### 3.1 ReentrantReadWriteLock
 當讀取操作遠高於寫入操作時，這時候使用 讀寫鎖定 讓 讀-讀 可以並發，提高效能。 類似於資料庫中的 select ...
@@ -1459,6 +2004,545 @@ class CachedData {
 }
 
 ```
+
+> 注意
+> 是否需要 unpark 是由目前節點的前驅節點的 waitStatus == Node.SIGNAL 來決定，而不是本節點的
+waitStatus 決定
+
+##### 解鎖原始碼
+
+```java
+//Sync 繼承自 AQS
+static final class NonfairSync extends Sync {
+//解鎖實現
+	public void unlock() {
+		sync.release(1);
+	}
+
+//AQS 繼承過來的方法, 方便閱讀, 放在此處
+	public final boolean release(int arg) {
+//嘗試釋放鎖, 進入 ㈠
+		if (tryRelease(arg)) {
+//佇列頭節點 unpark
+			Node h = head;
+			if (
+//隊列不為 null
+			h != null &&
+//waitStatus == Node.SIGNAL 才需要 unpark
+					h.waitStatus != 0) {
+//unpark AQS 中等待的線程, 進入 ㈡
+				unparkSuccessor(h);
+			}
+			return true;
+		}
+		return false;
+	}
+
+//㈠ Sync 繼承過來的方法, 方便閱讀, 放在此處
+	protected final boolean tryRelease(int releases) {
+//state--
+		int c = getState() - releases;
+		if (Thread.currentThread() != getExclusiveOwnerThread())
+			throw new IllegalMonitorStateException();
+		boolean free = false;
+//支援鎖定重入, 只有 state 減為 0, 才釋放成功
+		if (c == 0) {
+			free = true;
+			setExclusiveOwnerThread(null);
+		}
+		setState(c);
+		return free;
+	}
+
+//㈡ AQS 繼承過來的方法, 方便閱讀, 放在此處
+	private void unparkSuccessor(Node node) {
+//如果狀態為 Node.SIGNAL 嘗試重置狀態為 0
+//不成功也可以
+		int ws = node.waitStatus;
+		if (ws < 0) {
+			compareAndSetWaitStatus(node, ws, 0);
+		}
+//找到需要 unpark 的節點, 但本節點從 AQS 佇列中脫離, 是由喚醒節點完成的Node s = node.next;
+//不考慮已取消的節點, 從 AQS 佇列從後至前找到佇列最前面需要 unpark 的節點
+		if (s == null || s.waitStatus > 0) {
+			s = null;
+			for (Node t = tail; t != null && t != node; t = t.prev)
+				if (t.waitStatus <= 0)
+					s = t;
+		}
+		if (s != null)
+			LockSupport.unpark(s.thread);
+	}
+}
+```
+
+#### 2. 可重入原理
+
+```java
+static final class NonfairSync extends Sync {
+	// ...
+	// Sync 繼承過來的方法, 方便閱讀, 放在此處
+	final boolean nonfairTryAcquire(int acquires) {
+		final Thread current = Thread.currentThread();
+		int c = getState();
+		if (c == 0) {
+			if (compareAndSetState(0, acquires)) {
+				setExclusiveOwnerThread(current);
+				return true;
+			}
+		}
+		// 如果已經獲得了鎖, 執行緒還是當前執行緒, 表示發生了鎖重入
+		else if (current == getExclusiveOwnerThread()) {
+			// state++
+			int nextc = c + acquires;
+			if (nextc < 0) // overflow
+				throw new Error("Maximum lock count exceeded");
+			setState(nextc);
+			return true;
+		}
+		return false;
+	}
+
+	// Sync 繼承過來的方法, 方便閱讀, 放在此處
+	protected final boolean tryRelease(int releases) {
+		// state--
+		int c = getState() - releases;
+		if (Thread.currentThread() != getExclusiveOwnerThread())
+			throw new IllegalMonitorStateException();
+		boolean free = false;
+		// 支援鎖定重入, 只有 state 減為 0, 才釋放成功
+		if (c == 0) {
+			free = true;
+			setExclusiveOwnerThread(null);
+		}
+		setState(c);
+		return free;
+	}
+}
+```
+
+####　3. 可打斷原理
+##### 不可打斷模式
+
+在此模式下，即使它被打斷，仍會駐留在 AQS 隊列中，一直要等到獲得鎖後方能得知自己被打斷了
+
+```java
+//Sync 繼承自 AQS
+static final class NonfairSync extends Sync {
+//...
+	private final boolean parkAndCheckInterrupt() {
+//如果打斷標記已經是 true, 則 park 會失效
+		LockSupport.park(this);
+//interrupted 會清除打斷標記
+		return Thread.interrupted();
+	}
+
+	final boolean acquireQueued(final Node node, int arg) {
+		boolean failed = true;
+		try {
+			boolean interrupted = false;
+			for (;;) {
+				final Node p = node.predecessor();
+				if (p == head && tryAcquire(arg)) {
+					setHead(node);
+					p.next = null;
+					failed = false;
+//還是需要獲得鎖後, 才能回到打斷狀態
+					return interrupted;
+				}
+				if (shouldParkAfterFailedAcquire(p, node) && parkAndCheckInterrupt()) {
+//如果是因為 interrupt 被喚醒, 回傳打斷狀態為 true
+					interrupted = true;
+				}
+			}
+		} finally {
+			if (failed)
+				cancelAcquire(node);
+		}
+	}
+
+	public final void acquire(int arg) {
+		if (!tryAcquire(arg) && acquireQueued(addWaiter(Node.EXCLUSIVE), arg)) {
+			// 如果打斷狀態為 true
+			selfInterrupt();
+		}
+	}
+
+	static void selfInterrupt() {
+		// 重新產生一次中斷
+		Thread.currentThread().interrupt();
+	}
+}
+```
+
+##### 可打斷模式
+
+
+```java
+static final class NonfairSync extends Sync {
+	public final void acquireInterruptibly(int arg) throws InterruptedException {
+		if (Thread.interrupted())
+			throw new InterruptedException();
+// 如果沒有獲得到鎖, 進入 ㈠
+		if (!tryAcquire(arg))
+			doAcquireInterruptibly(arg);
+	}
+
+// ㈠ 可打斷的取得鎖定流程
+	private void doAcquireInterruptibly(int arg) throws InterruptedException {
+		final Node node = addWaiter(Node.EXCLUSIVE);
+		boolean failed = true;
+		try {
+			for (;;) {
+				final Node p = node.predecessor();
+				if (p == head && tryAcquire(arg)) {
+					setHead(node);
+					p.next = null; // help GC
+					failed = false;
+					return;
+				}
+				if (shouldParkAfterFailedAcquire(p, node) && parkAndCheckInterrupt()) {
+// 在 park 過程中如果被 interrupt 會進入此
+// 這時候拋出異常, 而不會再進入 for (;;)
+					throw new InterruptedException();
+				}
+			}
+		} finally {
+			if (failed)
+				cancelAcquire(node);
+		}
+	}
+}
+```
+
+#### 4. 公平鎖實現原理
+
+```java
+static final class FairSync extends Sync {
+	private static final long serialVersionUID = -3000897897090466540L;
+
+	final void lock() {
+		acquire(1);
+	}
+
+// AQS 繼承過來的方法, 方便閱讀, 放在此處
+	public final void acquire(int arg) {
+		if (!tryAcquire(arg) && acquireQueued(addWaiter(Node.EXCLUSIVE), arg)) {
+			selfInterrupt();
+		}
+	}
+
+// 與非公平鎖主要區別在於 tryAcquire 方法的實現
+	protected final boolean tryAcquire(int acquires) {
+		final Thread current = Thread.currentThread();
+		int c = getState();
+		if (c == 0) {
+// 先檢查 AQS 佇列中是否有前驅節點, 沒有才去競爭
+			if (!hasQueuedPredecessors() && compareAndSetState(0, acquires)) {
+				setExclusiveOwnerThread(current);
+				return true;
+			}
+		} else if (current == getExclusiveOwnerThread()) {
+			int nextc = c + acquires;
+			if (nextc < 0)
+				throw new Error("Maximum lock count exceeded");
+			setState(nextc);
+			return true;
+		}
+		return false;
+	}
+
+// ㈠ AQS 繼承過來的方法, 方便閱讀, 放在此處
+	public final boolean hasQueuedPredecessors() {
+		Node t = tail;
+		Node h = head;
+		Node s;
+// h != t 時表示佇列中有 Node
+		return h != t && (
+// (s = h.next) == null 表示佇列中還有沒有老二
+		(s = h.next) == null || // 或佇列中老二線程不是此線程
+				s.thread != Thread.currentThread());
+	}
+}
+```
+
+#### 5. 條件變數實現原理
+
+每個條件變數其實就對應一個等待佇列，其實作類別是 ConditionObject
+
+##### await 流程
+
+開始 Thread-0 持有鎖，呼叫 await，進入 ConditionObject 的 addConditionWaiter 流程
+
+建立新的 Node 狀態為 -2（Node.CONDITION），關聯 Thread-0，加入等待佇列尾部
+
+![91](imgs/91.png)
+
+接下來進入 AQS 的 fullyRelease 流程，釋放同步器上的鎖
+
+![92](imgs/92.png)
+
+unpark AQS 佇列中的下一個節點，競爭鎖，假設沒有其他競爭線程，那麼 Thread-1 競爭成功
+
+![93](imgs/93.png)
+
+park 阻塞 Thread-0
+
+![94](imgs/94.png)
+
+
+##### signal 流程
+假設 Thread-1 要來喚醒 Thread-0 進
+
+![95](imgs/95.png)
+
+進入 ConditionObject 的 doSignal 流程，取得等待佇列中第一個 Node，即 Thread-0 所在 Node
+
+![96](imgs/96.png)
+
+執行 transferForSignal 流程，將該 Node 加入 AQS 佇列尾部，將 Thread-0 的 waitStatus 改為 0，Thread-3 的waitStatus 改為 -1
+
+![97](imgs/97.png)
+
+Thread-1 釋放鎖，進入 unlock 流程，略
+
+##### 原始碼
+
+```java
+public class ConditionObject implements Condition, java.io.Serializable {
+	private static final long serialVersionUID = 1173984872572414699L;
+// 第一個等待節點
+	private transient Node firstWaiter;
+// 最後一個等待節點
+	private transient Node lastWaiter;
+
+	public ConditionObject() {
+	}
+
+// ㈠ 新增一個 Node 至等待佇列
+	private Node addConditionWaiter() {
+		Node t = lastWaiter;
+// 所有已取消的 Node 從佇列鍊錶刪除, 見 ㈡
+		if (t != null && t.waitStatus != Node.CONDITION) {
+			unlinkCancelledWaiters();
+			t = lastWaiter;
+		}
+// 建立一個關聯目前執行緒的新 Node, 新增至佇列尾部
+		Node node = new Node(Thread.currentThread(), Node.CONDITION);
+		if (t == null)
+			firstWaiter = node;
+		else
+			t.nextWaiter = node;
+		lastWaiter = node;
+		return node;
+	}
+
+// 喚醒 - 將沒取消的第一個節點轉移至 AQS 佇列
+	private void doSignal(Node first) {
+		do {
+// 已經是尾節點了
+			if ((firstWaiter = first.nextWaiter) == null) {
+				lastWaiter = null;
+			}
+			first.nextWaiter = null;
+		} while (
+// 將等待佇列中的 Node 轉移至 AQS 佇列, 不成功且還有節點則繼續循環 ㈢
+		!transferForSignal(first) &&
+// 隊列還有節點
+				(first = firstWaiter) != null);
+	}
+
+// 外部類別方法, 方便閱讀, 放在此處
+// ㈢ 如果節點狀態是取消, 回傳 false 表示轉移失敗, 否則轉移成功
+final boolean transferForSignal(Node node) {
+// 如果狀態已經不是 Node.CONDITION, 說明被取消了
+if (!compareAndSetWaitStatus(node, Node.CONDITION, 0))
+return false;
+// 加入 AQS 佇列尾部
+Node p = enq(node);
+int ws = p.waitStatus;
+if (
+// 上一個節點被取消
+ws > 0 ||
+// 上一個節點不能設定狀態為 Node.SIGNAL
+!compareAndSetWaitStatus(p, ws, Node.SIGNAL)
+) {
+// unpark 取消阻塞, 讓執行緒重新同步狀態
+LockSupport.unpark(node.thread);
+}
+return true;
+}
+// 全部喚醒 - 等待佇列的所有節點轉移至 AQS 佇列private void doSignalAll(Node first) {
+	lastWaiter=firstWaiter=null;do
+
+	{
+		Node next = first.nextWaiter;
+		first.nextWaiter = null;
+		transferForSignal(first);
+		first = next;
+	}while(first!=null);
+}
+
+// ㈡
+private void unlinkCancelledWaiters() {
+// ...
+}
+
+// 喚醒 - 必須持有鎖定才能喚醒, 因此 doSignal 內無需考慮加鎖
+	public final void signal() {
+		if (!isHeldExclusively())
+			throw new IllegalMonitorStateException();
+		Node first = firstWaiter;
+		if (first != null)
+			doSignal(first);
+	}
+
+// 全部喚醒 - 必須持有鎖定才能喚醒, 因此 doSignalAll 內無需考慮加鎖
+	public final void signalAll() {
+		if (!isHeldExclusively())
+			throw new IllegalMonitorStateException();
+		Node first = firstWaiter;
+		if (first != null)
+			doSignalAll(first);
+	}
+
+// 無法打斷等待 - 直到被喚醒
+	public final void awaitUninterruptibly() {
+// 新增一個 Node 至等待佇列, 見 ㈠
+		Node node = addConditionWaiter();
+// 釋放節點所持有的鎖, 見 ㈣
+		int savedState = fullyRelease(node);
+		boolean interrupted = false;
+// 如果節點尚未轉移至 AQS 佇列, 阻塞
+		while (!isOnSyncQueue(node)) {
+// park 阻塞
+			LockSupport.park(this);
+// 如果被打斷, 僅設定打斷狀態
+			if (Thread.interrupted())
+				interrupted = true;
+		}
+// 喚醒後, 嘗試競爭鎖定, 如果失敗進入 AQS 佇列
+		if (acquireQueued(node, savedState) || interrupted)
+			selfInterrupt();
+	}// 外部類別方法, 方便閱讀, 放在此處
+//㈣ 因為某線程可能會重入，所以需要將 state 全部釋放
+
+	final int fullyRelease(Node node) {
+		boolean failed = true;
+		try {
+			int savedState = getState();
+			if (release(savedState)) {
+				failed = false;
+				return savedState;
+			} else {
+				throw new IllegalMonitorStateException();
+			}
+		} finally {
+			if (failed)
+				node.waitStatus = Node.CANCELLED;
+		}
+	}
+
+//打斷模式 - 在退出等待時重新設定打斷狀態
+	private static final int REINTERRUPT = 1;
+//打斷模式 - 在退出等待時拋出異常
+	private static final int THROW_IE = -1;
+
+//判斷打斷模式
+	private int checkInterruptWhileWaiting(Node node) {
+		return Thread.interrupted() ? (transferAfterCancelledWait(node) ? THROW_IE : REINTERRUPT) : 0;
+	}
+
+//㈤ 應用打斷模式
+	private void reportInterruptAfterWait(int interruptMode) throws InterruptedException {
+		if (interruptMode == THROW_IE)
+			throw new InterruptedException();
+		else if (interruptMode == REINTERRUPT)
+			selfInterrupt();
+	}
+
+//等待 - 直到被喚醒或打斷
+	public final void await() throws InterruptedException {
+		if (Thread.interrupted()) {
+			throw new InterruptedException();
+		}
+//新增一個 Node 至等待佇列, 見 ㈠
+		Node node = addConditionWaiter();
+//釋放節點持有的鎖
+		int savedState = fullyRelease(node);
+		int interruptMode = 0;
+//如果節點尚未轉移至 AQS 佇列, 阻塞
+		while (!isOnSyncQueue(node)) {
+//park 阻塞
+			LockSupport.park(this);// 如果被打斷, 退出等待佇列
+			if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
+				break;
+		}
+// 退出等待佇列後, 還需要取得 AQS 佇列的鎖
+		if (acquireQueued(node, savedState) && interruptMode != THROW_IE)
+			interruptMode = REINTERRUPT;
+// 所有已取消的 Node 從佇列鍊錶刪除, 見 ㈡
+		if (node.nextWaiter != null)
+			unlinkCancelledWaiters();
+// 應用打斷模式, 見 ㈤
+		if (interruptMode != 0)
+			reportInterruptAfterWait(interruptMode);
+	}
+
+// 等待 - 直到被喚醒或打斷或超時
+	public final long awaitNanos(long nanosTimeout) throws InterruptedException {
+		if (Thread.interrupted()) {
+			throw new InterruptedException();
+		}
+// 新增一個 Node 至等待佇列, 見 ㈠
+		Node node = addConditionWaiter();
+// 釋放節點持有的鎖
+		int savedState = fullyRelease(node);
+// 取得最後期限
+		final long deadline = System.nanoTime() + nanosTimeout;
+		int interruptMode = 0;
+// 如果節點尚未轉移至 AQS 佇列, 阻塞
+		while (!isOnSyncQueue(node)) {
+// 已逾時, 退出等待佇列
+			if (nanosTimeout <= 0L) {
+				transferAfterCancelledWait(node);
+				break;
+			}
+// park 阻塞一定時間, spinForTimeoutThreshold 為 1000 ns
+			if (nanosTimeout >= spinForTimeoutThreshold)
+				LockSupport.parkNanos(this, nanosTimeout);
+// 如果被打斷, 退出等待佇列
+			if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
+				break;
+			nanosTimeout = deadline - System.nanoTime();
+		}
+// 退出等待佇列後, 還需要取得 AQS 佇列的鎖
+		if (acquireQueued(node, savedState) && interruptMode != THROW_IE)
+			interruptMode = REINTERRUPT;
+// 所有已取消的 Node 從佇列鍊錶刪除, 見 ㈡
+		if (node.nextWaiter != null)
+			unlinkCancelledWaiters();
+// 應用打斷模式, 見 ㈤
+		if (interruptMode != 0)
+			reportInterruptAfterWait(interruptMode);
+		return deadline - System.nanoTime();
+	}// 等待 - 直到被喚醒或打斷或超時, 邏輯類似於 awaitNanos
+
+	public final boolean awaitUntil(Date deadline) throws InterruptedException {
+		// ...
+	}
+
+	// 等待 - 直到被喚醒或打斷或超時, 邏輯類似於 awaitNanos
+	public final boolean await(long time, TimeUnit unit) throws InterruptedException {
+		// ...
+	}
+	// 工具方法 省略 ...
+}
+
+```
+
+
+
 
 * 應用之緩存
 * 讀寫鎖原理
