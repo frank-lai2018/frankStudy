@@ -267,12 +267,12 @@ class ThreadPool {
 |狀態名|高3位元|接收新任務|處理阻塞隊列任務|說明||
 |RUNNING|111|Y|Y|||
 |SHUTDOWN|000|N|Y|不會接收新任務，但會處理阻塞佇列剩餘任務||
-|STOP|001|N|N|會中斷正在執行的任務，並拋棄阻塞佇列任務||
+|STOP|001|N|N|會(調用interrupted)中斷正在執行的任務，並拋棄阻塞佇列任務||
 |TIDYING|010|-|-|任務全執行完畢，活動線程為 0 即將進入終結||
 |TERMINATED|011|-|-|終點狀態||
 
 
-- 從數字上比較，***TERMINATED > TIDYING > STOP > SHUTDOWN > RUNNING***
+- 從數字上比較，***TERMINATED > TIDYING > STOP > SHUTDOWN > RUNNING(因為最高位代表正負數，1為負數，所以最小)***
 - 這些資訊儲存在一個原子變數 ctl 中，目的是將線程池狀態與線程個數合而為一，這樣就可以用一次 cas 原子操作進行賦值
 
 
@@ -294,6 +294,9 @@ BlockingQueue<Runnable> workQueue,
 ThreadFactory threadFactory,
 RejectedExecutionHandler handler)
 ```
+- ***JDK將執行緒池分成核心執行緒跟救急執行緒***
+  - ***救急執行緒=maximumPoolSize - corePoolSize***
+  - ***核心執行緒=corePoolSize***
 
 - corePoolSize 核心執行緒數目 (最多保留的執行緒數)
 - maximumPoolSize 最大執行緒數目
@@ -310,7 +313,7 @@ RejectedExecutionHandler handler)
 
 - 線程池中剛開始沒有線程，當一個任務提交給線程池後，線程池會建立一個新線程來執行任務。
 - 當執行緒數達到 corePoolSize 並沒有執行緒空閒，這時再加入任務，新加的任務會被加入workQueue 佇列排隊，直到有空閒的線程。
-- 如果佇列選擇了有界佇列，那麼任務超過了佇列大小時，會建立 maximumPoolSize - corePoolSize 數目的線程來救急。
+- 如果佇列選擇了有界佇列(存放任務的佇列是有限制容量的)，那麼任務超過了佇列大小時，會建立 maximumPoolSize - corePoolSize 數目的線程來救急。
 - 如果執行緒到達 maximumPoolSize 仍然有新任務這時會執行拒絕策略。 拒絕策略 jdk 提供了 4 種實現，其它著名框架也提供了實現
 
   - AbortPolicy 讓呼叫者拋出 RejectedExecutionException 異常，這是預設策略CallerRunsPolicy 讓呼叫者執行任務
@@ -492,7 +495,7 @@ shutdownNow
 /*
 線程池狀態變成 STOP
 - 不會接收新任務
-- 會將佇列中的任務傳回
+- 會將佇列中的任務當成返回值傳回
 - 並以 interrupt 的方式中斷正在執行的任務
 */
 List<Runnable> shutdownNow();
@@ -532,7 +535,404 @@ boolean isTerminated();
 boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException;
 ```
 
-* 模式之 Worker Thread
+## 模式之 Worker Thread
+
+### 1. 定義
+
+讓有限的工作執行緒（Worker Thread）來輪流非同步處理無限多的任務。 也可以將其歸類為分工模式，它的典型實現就是線程池，也體現了經典設計模式中的享元模式。
+
+例如，海底撈的服務員（線程），輪流處理每位客人的點餐（任務），如果為每位客人都配一名專屬的服務員，那麼成本就太高了（比較另一種多執行緒設計模式：Thread-Per-Message）
+
+注意，不同任務類型應該使用不同的執行緒池，這樣能夠避免飢餓，並且能提升效率
+
+例如，如果一個餐廳的工人既要招呼客人（任務類型A），又要到後廚做菜（任務類型B）顯然效率不咋地，分成服務生（線程池A）與廚師（線程池B）更為合理，當然你能想到更細緻的分工
+
+### 2. 飢餓
+固定大小線程池會有飢餓現象
+
+- 兩個工人是同一個線程池中的兩個線程
+- 他們要做的事情是：為客人點餐和到後廚做菜，這是兩個階段的工作
+  - 客人點餐：必須先點完餐，等菜做好，上菜，在此期間處理點餐的工人必須等待
+  - 後廚做菜：沒啥說的，做就是了
+- 例如工人A 處理了點餐任務，接下來它要等 工人B 把菜做好，然後上菜，他倆也配合的蠻好
+- 但現在同時來了兩個客人，這個時候工人A 和工人B 都去處理點餐了，這時沒人做飯了，飢餓
+
+```java
+public class TestDeadLock {
+	static final List<String> MENU = Arrays.asList("地三鮮", "宮保雞丁", "辣子雞丁", "烤雞翅");
+	static Random RANDOM = new Random();
+
+	static String cooking() {
+		return MENU.get(RANDOM.nextInt(MENU.size()));
+	}
+
+	public static void main(String[] args) {
+		ExecutorService executorService = Executors.newFixedThreadPool(2);
+		executorService.execute(() -> {
+			log.debug("處理點餐...");
+			Future<String> f = executorService.submit(() -> {
+				log.debug("做菜");
+				return cooking();
+			});
+			try {
+				log.debug("上菜: {}", f.get());
+			} catch (InterruptedException | ExecutionException e) {
+				e.printStackTrace();
+			}
+		});
+		/*
+		 * executorService.execute(() -> { log.debug("處理點餐..."); Future<String> f =
+		 * executorService.submit(() -> { log.debug("做菜"); return cooking(); }); try {
+		 * log.debug("上菜: {}", f.get()); } catch (InterruptedException |
+		 * ExecutionException e) {e.printStackTrace(); } });
+		 */
+	}
+}
+```
+
+輸出
+
+```java
+17:21:27.883 c.TestDeadLock [pool-1-thread-1] - 處理點餐...
+17:21:27.891 c.TestDeadLock [pool-1-thread-2] - 做菜
+17:21:27.891 c.TestDeadLock [pool-1-thread-1] - 上菜: 烤雞翅
+```
+
+當註解取消後，可能的輸出
+
+
+```java
+17:08:41.339 c.TestDeadLock [pool-1-thread-2] - 處理點餐...
+17:08:41.339 c.TestDeadLock [pool-1-thread-1] - 處理點餐...
+```
+解決方法可以增加執行緒池的大小，不過不是根本解決方案，還是前面提到的，不同的任務類型，採用不同的執行緒池，例如：
+
+```java
+public class TestDeadLock {
+	static final List<String> MENU = Arrays.asList("地三鮮", "宮保雞丁", "辣子雞丁", "烤雞翅");
+	static Random RANDOM = new Random();
+
+	static String cooking() {
+		return MENU.get(RANDOM.nextInt(MENU.size()));
+	}
+
+	public static void main(String[] args) {
+		ExecutorService waiterPool = Executors.newFixedThreadPool(1);
+		ExecutorService cookPool = Executors.newFixedThreadPool(1);
+		waiterPool.execute(() -> {
+			log.debug("處理點餐...");
+			Future<String> f = cookPool.submit(() -> {
+				log.debug("做菜");
+				return cooking();
+			});
+			try {
+				log.debug("上菜: {}", f.get());
+			} catch (InterruptedException | ExecutionException e) {
+				e.printStackTrace();
+			}
+		});
+		waiterPool.execute(() -> {
+			log.debug("處理點餐...");
+			Future<String> f = cookPool.submit(() -> {
+				log.debug("做菜");
+				return cooking();
+			});
+			try {
+				log.debug("上菜: {}", f.get());
+			} catch (InterruptedException | ExecutionException e) {
+				e.printStackTrace();
+			}
+		});
+	}
+}
+```
+
+```java
+17:25:14.626 c.TestDeadLock [pool-1-thread-1] - 處理點餐...
+17:25:14.630 c.TestDeadLock [pool-2-thread-1] - 做菜
+17:25:14.631 c.TestDeadLock [pool-1-thread-1] - 上菜: 地三鮮
+17:25:14.632 c.TestDeadLock [pool-1-thread-1] - 處理點餐...
+17:25:14.632 c.TestDeadLock [pool-2-thread-1] - 做菜
+17:25:14.632 c.TestDeadLock [pool-1-thread-1] - 上菜: 辣子雞丁
+```
+
+### 3. 創建多少線程池合適
+- 過小會導致程式無法充分利用系統資源、容易導致飢餓
+- 過大會導致更多的線程上下文切換，佔用更多內存
+
+#### 3.1 CPU 密集型運算
+
+通常採用 cpu 核數 + 1 能夠實現最優的 CPU 使用率，+1 是保證當線程由於頁缺失故障（操作系統）或其它原因導致暫停時，額外的這個執行緒就能頂上去，保證 CPU 時脈週期不會浪費
+
+#### 3.2 I/O 密集型運算
+
+CPU 不會總是處於繁忙狀態，例如，當你執行業務計算時，這時候會使用 CPU 資源，但當你執行 I/O 作業時、遠端RPC 呼叫時，包含進行資料庫操作時，這時候 CPU 就閒下來了，你可以利用多執行緒來提高它的使用率。
+
+經驗公式如下
+
+***執行緒數 = 核數 * 期望 CPU 使用率 * 總時間(CPU運算時間+等待時間) / CPU 運算時間***
+
+例如 4 核心 CPU 計算時間是 50% ，其它等待時間是 50%，期望 cpu 被 100% 利用，套用公式
+
+***4 * 100% * 100% / 50% = 8***
+
+例如 4 核心 CPU 計算時間是 10% ，其它等待時間是 90%，期望 cpu 被 100% 利用，套用公式
+
+***4 * 100% * 100% / 10% = 40***
+
+
+### 4. 自訂執行緒池
+
+
+![78](imgs/78.png)
+
+步驟1：自訂拒絕策略接口
+
+```java
+@FunctionalInterface // 拒絕策略
+interface RejectPolicy<T> {
+	void reject(BlockingQueue<T> queue, T task);
+}
+```
+步驟2：自訂任務佇列
+```java
+class BlockingQueue<T> {
+	// 1. 任務佇列
+	private Deque<T> queue = new ArrayDeque<>();
+	// 2. 鎖
+	private ReentrantLock lock = new ReentrantLock();
+	// 3. 生產者條件變數
+	private Condition fullWaitSet = lock.newCondition();
+	// 4. 消費者條件變數
+	private Condition emptyWaitSet = lock.newCondition();
+	// 5. 容量
+	private int capcity;
+
+	public BlockingQueue(int capcity) {
+		this.capcity = capcity;
+	}// 帶超時阻塞獲取
+
+	public T poll(long timeout, TimeUnit unit) {
+		lock.lock();
+		try {
+			// 將 timeout 統一轉換為 奈秒
+			long nanos = unit.toNanos(timeout);
+			while (queue.isEmpty()) {
+				try {
+					// 傳回值是剩餘時間
+					if (nanos <= 0) {
+						return null;
+					}
+					nanos = emptyWaitSet.awaitNanos(nanos);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			T t = queue.removeFirst();
+			fullWaitSet.signal();
+			return t;
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	// 阻塞取得
+	public T take() {
+		lock.lock();
+		try {
+			while (queue.isEmpty()) {
+				try {
+					emptyWaitSet.await();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			T t = queue.removeFirst();
+			fullWaitSet.signal();
+			return t;
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	// 阻塞新增
+	public void put(T task) {
+		lock.lock();
+		try {
+			while (queue.size() == capcity) {
+				try {
+					log.debug("等待加入任務隊列 {} ...", task);
+					fullWaitSet.await();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			log.debug("加入任務佇列 {}", task);
+			queue.addLast(task);
+			emptyWaitSet.signal();
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	// 帶超時時間阻塞添加
+	public boolean offer(T task, long timeout, TimeUnit timeUnit) {
+		lock.lock();
+		try {
+			long nanos = timeUnit.toNanos(timeout);
+			while (queue.size() == capcity) {
+				try {
+					if (nanos <= 0) {
+						return false;
+					}
+					log.debug("等待加入任務隊列 {} ...", task);
+					nanos = fullWaitSet.awaitNanos(nanos);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			log.debug("加入任務佇列 {}", task);
+			queue.addLast(task);
+			emptyWaitSet.signal();
+			return true;
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	public int size() {
+		lock.lock();
+		try {
+			return queue.size();
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	public void tryPut(RejectPolicy<T> rejectPolicy, T task) {
+		lock.lock();
+		try {
+			// 判斷隊列是否滿
+			if (queue.size() == capcity) {
+				rejectPolicy.reject(this, task);
+			} else { // 有空閒log.debug("加入任務佇列 {}", task);
+				queue.addLast(task);
+				emptyWaitSet.signal();
+			}
+		} finally {
+			lock.unlock();
+		}
+	}
+}
+```
+
+步驟3：自訂執行緒池
+
+```java
+class ThreadPool {
+	// 任務佇列
+	private BlockingQueue<Runnable> taskQueue;
+	// 執行緒集合
+	private HashSet<Worker> workers = new HashSet<>();
+	// 核心執行緒數
+	private int coreSize;
+	// 取得任務時的超時時間
+	private long timeout;
+	private TimeUnit timeUnit;
+	private RejectPolicy<Runnable> rejectPolicy;
+
+	// 執行任務
+	public void execute(Runnable task) {
+		// 當任務數沒有超過 coreSize 時，直接交給 worker 物件執行
+		// 若任務數超過 coreSize 時，加入任務佇列暫存
+		synchronized (workers) {
+			if (workers.size() < coreSize) {
+				Worker worker = new Worker(task);
+				log.debug("新增 worker{}, {}", worker, task);
+				workers.add(worker);
+				worker.start();
+			} else {
+				// taskQueue.put(task);
+				// 1) 死等
+				// 2) 帶超時等待
+				// 3) 讓呼叫者放棄任務執行
+				// 4) 讓呼叫者拋出異常
+				// 5) 讓呼叫者自己執行任務
+				taskQueue.tryPut(rejectPolicy, task);
+			}
+		}
+	}
+
+	public ThreadPool(int coreSize, long timeout, TimeUnit timeUnit, int queueCapcity,
+			RejectPolicy<Runnable> rejectPolicy) {
+		this.coreSize = coreSize;
+		this.timeout = timeout;
+		this.timeUnit = timeUnit;
+		this.taskQueue = new BlockingQueue<>(queueCapcity);
+		this.rejectPolicy = rejectPolicy;
+	}
+
+	class Worker extends Thread {
+		private Runnable task;
+
+		public Worker(Runnable task) {
+			this.task = task;
+		}
+
+		@Override
+		public void run() {
+			// 執行任務
+			// 1) 當 task 不為空，執行任務
+			// 2) 當 task 執行完畢，然後接著從任務佇列取得任務並執行
+			// while(task != null || (task = taskQueue.take()) != null) {
+			while (task != null || (task = taskQueue.poll(timeout, timeUnit)) != null) {
+				try {
+					log.debug("正在執行中...{}", task);
+					task.run();
+				} catch (Exception e) {
+					e.printStackTrace();
+				} finally {
+					task = null;
+				}
+			}
+			synchronized (workers) {
+				log.debug("worker 移除{}", this);
+				workers.remove(this);
+			}
+		}
+	}
+}
+```
+
+
+步驟4：測試
+
+```java
+	public static void main(String[] args) {
+		ThreadPool threadPool = new ThreadPool(1, 1000, TimeUnit.MILLISECONDS, 1, (queue, task) -> {
+			// 1. 死等
+			// queue.put(task);
+			// 2) 帶超時等待
+			// queue.offer(task, 1500, TimeUnit.MILLISECONDS);
+			// 3) 讓呼叫者放棄任務執行
+			// log.debug("放棄{}", task);
+			// 4) 讓呼叫者拋出異常
+			// throw new RuntimeException("任務執行失敗 " + task);// 5) 讓呼叫者自己執行任務
+			task.run();
+		});
+		for (int i = 0; i < 4; i++) {
+			int j = i;
+			threadPool.execute(() -> {
+				try {
+					Thread.sleep(1000L);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				log.debug("{}", j);
+			});
+		}
+	}
+```
 
 #### 8) 任務調度執行緒池
 在『任務排程執行緒池』功能加入之前，可以使用 java.util.Timer 來實現定時功能，Timer 的優點在於簡單易用，但由於所有任務都是由同一個執行緒來調度，因此所有任務都是串列執行的，同一時間只能有一個任務在執行，前一個任務的延遲或異常都會影響到之後的任務。
