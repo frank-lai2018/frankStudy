@@ -119,6 +119,8 @@
 
   接下來我們先來給大家簡單演示一下如何使用內置jetty服務器，部署solr服務；
 
+-  jetty服務器，部署solr服務
+
   ​	進入bin目錄
 
   ​	啟動命令：solr start
@@ -149,8 +151,9 @@
 
   ​	使用cmd窗口
 
-  ​     jar cvf  solr.war ./*
-
+```
+  ​jar cvf  solr.war ./*
+```
 
 
   ​	3.將solr.war複製到tomcat/webapps目錄中；

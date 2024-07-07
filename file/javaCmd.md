@@ -13,3 +13,9 @@ java -c ClassName
 -Djavax.net.debug=all
 -Djavax.net.ssl.trustStore=D:\projects\eclipse\workspaces\gitlab\java\jar\module\HotelDataExchange4\sslkeystore.jks
 ```
+
+# 交整個資料夾打包成War
+
+```
+​jar cvf  solr.war ./*
+```
