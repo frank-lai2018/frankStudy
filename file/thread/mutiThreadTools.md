@@ -1651,7 +1651,7 @@ Thread-1 執行了
 
 - 1. acquireQueued 會在一個死循環中不斷嘗試取得鎖，失敗後進入 park 阻塞
 - 2. 如果自己是緊鄰 head（排第二位），那麼再次 tryAcquire 嘗試取得鎖，當然這時 state 仍為 1，失敗
-- 3. 進入 shouldParkAfterFailedAcquire 邏輯，將前驅 node，即 head 的 waitStatus 改為 -1，這次回傳 false
+- 3. 進入 shouldParkAfterFailedAcquire 邏輯，將前驅 node，即 head 的 waitStatus 改為 -1，這次回傳 false，改為-1代表此Node有責任喚醒後面的Node
 
 ![85](imgs/85.png)
 
