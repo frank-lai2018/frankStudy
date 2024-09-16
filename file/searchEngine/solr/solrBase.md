@@ -207,9 +207,9 @@
 
   8.複製日誌工具相關jar包：將solr-7.7.2/server/lib/ext下的jar包複製至上面Tomcat下Solr的/WEB-INF/lib/目錄下
 
-  9.複製metrics相關jar包：將solr-7.7.2/server/lib下metrics相關jar包也複製至/WEB-INF/lib/目錄下
+  9.複製metrics相關jar包：將solr-7.7.2/server/lib下metrics相關jar包也複製至/WEB-INF/lib/目錄下*(solr聚合函數包)
 
-  10.複製dataimport相關jar包:solr-7.7.2/dist下dataimport相關jar包也複製至/WEB-INF/lib/目錄下
+  10.複製dataimport相關jar包:solr-7.7.2/dist下dataimport相關jar包也複製至/WEB-INF/lib/目錄下(solr 數據導入包)
 
   11.複製log4j2配置文件：將solr-7.7.2/server/resources目錄中的log4j配置文件拷入web工程目錄WEB-INF/classes（自行創建目錄） ，並且修改日誌文件的路徑
 
@@ -221,11 +221,14 @@
 
   http://localhost:8080/solr/index.html
 
-  14.在tomcat的bin\catalina.bat中配置日誌文件的環境參數
+  14.發生沒有solr.log.dir無法創建LOG文件的錯誤，要在tomcat的bin\catalina.bat中配置日誌文件的環境參數
 
+- solr.log.dir 就是LOG的目錄
   ```
   set "JAVA_OPTS=%JAVA_OPTS% -Dsolr.log.dir=C:\webapps\fooFts\logs"
   ```
+
+ ![011](imgs/218.png)
 
   ### 2.4 Linux下安裝Solr
 
@@ -3220,7 +3223,7 @@ facet.range.other=all
 
 
 
-##### 4.5.6 facet_queries
+##### 4.5.6 facet_queries(統計特定字眼的數目、而不是全部統計)
 
 ​	在facet中還提供了第三種分組查詢的方式facet query。提供了類似 filter query (fq)的語法可以更為靈活的對任意字段進行分組統計查詢 .
 
@@ -3240,16 +3243,32 @@ facet.query=item_brand:三星
 
 ​
 
-​	我們會發現統計的結果中對應名稱tem_category:平板電視和item_brand:華為，我們也可以起別名；
+​- 我們會發現統計的結果中對應名稱tem_category:平板電視和item_brand:華為，我們也可以起別名；
+
+- 這樣可以讓字段名統一起來，方便我們拿到請求數據後，封裝成自己的對象;
+
+```
+{!key=需要的名子}
+```
 
 ```
 facet=on&
 facet.query={!key=平板電視}item_category:平板電視&
 facet.query={!key=華為品牌}item_brand:華為&
 facet.query={!key=三星品牌}item_brand:三星
-{---->%7B   }---->%7D
-這樣可以讓字段名統一起來，方便我們拿到請求數據後，封裝成自己的對象;
+```
 
+- 如果大括號沒有url encodeing，會出現下圖錯誤
+
+![119](imgs/219.png)
+
+- 使用以下編碼替換大括號
+
+```
+{---->%7B   }---->%7D
+```
+
+```
 facet=on&
 facet.query=%7B!key=平板電視%7Ditem_category:平板電視&
 facet.query=%7B!key=華為品牌%7Ditem_brand:華為&
@@ -3281,7 +3300,10 @@ facet.query=%7B!key=三星品牌%7Ditem_brand:三星
 &f.item_price.facet.interval.set=[1000,2000]
 &facet.interval=item_createtime
 &f.item_createtime.facet.interval.set=[2019-01-01T0:0:0Z,NOW]
-由於有特殊符號需要進行URL編碼[---->%5B   ]---->%5D
+```
+
+- 由於有特殊符號需要進行URL編碼[---->%5B   ]---->%5D
+```
 http://localhost:8080/solr/collection1/select?q=*:*&facet=on
 &facet.interval=item_price
 &f.item_price.facet.interval.set=%5B0,10%5D
@@ -3404,13 +3426,16 @@ q=item_title:手機
 
 需求：查詢Item_title中包含手機的文檔，按照品牌對文檔進行分組；
 
+
+- group分組結果和Fact分組查詢的結果完全不同，他把同組的文檔放在一起，顯示該組文檔數量，僅僅展示了第一個文檔。
+
 ```
 q=item_title:手機
 &group=true
 &group.field=item_brand
-group分組結果和Fact分組查詢的結果完全不同，他把同組的文檔放在一起，顯示該組文檔數量，僅僅展示了第一個文檔。
-
 ```
+
+
 
 ![126](imgs/126.png)
 
@@ -3818,6 +3843,8 @@ q=item_title:三星平板電視
    <str name="hl.fragmentsBuilder">colored</str>
 ```
 
+![141](imgs/220.png)
+
 ```
 q=item_title:三星平板電視 AND item_category:平板電視
 &hl=true
@@ -4150,10 +4177,12 @@ q=item_title:ip hone&spellcheck=true
 http://localhost:8080/solr/collection1/suggest?q=三星
 ```
 
-上面的會失敗，因為沒有指定自動建議器的名稱suggest.dictionary=mySuggester
+​	![157](imgs/221.png)
+
+- 上面的會失敗，因為沒有指定自動建議器的名稱suggest.dictionary=mySuggester
 
 ```
-http://localhost:8080/solr/collection1/select?q=三星&suggest=true&suggest.dictionary=mySuggester
+http://localhost:8080/solr/collection1/suggest?q=%E4%B8%89%E6%98%9F&suggest=true&suggest.dictionary=mySuggester
 ```
 
 ​	5.結果
