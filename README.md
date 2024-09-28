@@ -7,7 +7,7 @@
 |[spring](file/spring/SpringFramework.md )| [springMVC](file/spring/springMVC.md )| [springBoot](file/springBoot.md ) | [springCloud](file/springCloud.md )  |
 | [Jackson](file/jackson.md ) |  [憑證匯入](file/crt.md ) |[APP](file/app.md )| [APP 推播](file/appNotification.md )|
 |[URL百分比編碼](file/urlEncoder.md )|[異常排除](file/javaException.md )|[JVM](file/jvm.md )|[MutiThread](file/thread/mutiThread.md)|
-|[SpringSecurity](file/SpringSecurity.md)|||
+|[SpringSecurity](file/spring/SpringSecurity.md)|||
 
 
 ## 2.前端
