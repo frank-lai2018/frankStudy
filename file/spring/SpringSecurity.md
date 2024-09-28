@@ -52,7 +52,6 @@ Dependencies：Spring Web、Spring Security、Thymeleaf
 ### 1.2、建立IndexController
 
 ```java
-package com.atguigu.securitydemo.controller;
 
 @Controller
 public class IndexController {
@@ -156,7 +155,9 @@ Spring Security之所以預設幫我們做了那麼多事情，它的底層原�
 
 ### 2.2、DelegatingFilterProxy
 
-DelegatingFilterProxy 是 Spring Security 提供的 Filter 實現，可在 Servlet 容器和 Spring 容器之間建立橋樑。透過使用 DelegatingFilterProxy，這樣就可以將Servlet容器中的 Filter 執行個體放在 Spring 容器中管理。
+- DelegatingFilterProxy 是 Spring Security 提供的 Filter 實現，可在 Servlet 容器和 Spring 容器之間建立橋樑。
+- 可以將傳統的註冊在Spring Bean管理的Filter加載到Servlet的生命週期當中
+- 透過使用 DelegatingFilterProxy，這樣就可以將Servlet容器中的 Filter 執行個體放在 Spring 容器中管理。
 
 ![19](SpringSecurity/imgs/22.png)
 
@@ -190,6 +191,7 @@ SecurityFilterChain 被 FilterChainProxy 使用，負責尋找目前的要求需
 SecurityFilterChain介面的實現，載入了預設的16個Filter
 
 ![19](SpringSecurity/imgs/26.png)
+![19](SpringSecurity/imgs/53.png)
 
 
 
@@ -210,6 +212,7 @@ spring.security.user.password=123
 
 # 第二章 Spring Security自訂配置
 
+
 ## 1、基於記憶體的使用者認證
 
 ### 1.1、建立自訂配置
@@ -220,6 +223,7 @@ spring.security.user.password=123
 
 **UserDetailsS​​ervice**用來管理使用者訊息，**InMemoryUserDetailsManager**是UserDetailsS​​ervice的實現，用來管理基於記憶體的使用者資訊。
 
+![19](SpringSecurity/imgs/54.png)
 
 
 建立一個WebSecurityConfig檔：
@@ -233,23 +237,36 @@ package com.atguigu.securitydemo.config;
 @EnableWebSecurity//Spring專案總是需要添加此註解，SpringBoot專案中不需要
 public class WebSecurityConfig {
 
- @Bean
- public UserDetailsS​​ervice userDetailsS​​ervice() {
- InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager();
- manager.createUser( //此行設定斷點可以查看已建立的user對象
- User
- .withDefaultPasswordEncoder()
- .username("huan") //自訂使用者名稱
- .password("password") //自訂密碼
- .roles("USER") //自訂角色
- .build()
- );
- return manager;
- }
+	@Bean
+	public UserDetailsS​​ervice userDetailsS​​ervice() {
+		InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager();
+		manager.createUser( // 此行設定斷點可以查看已建立的user對象
+				User.withDefaultPasswordEncoder().username("frank") // 自訂使用者名稱
+						.password("password1") // 自訂密碼
+						.roles("USER") // 自訂角色
+						.build());
+		manager.createUser( // 此行設定斷點可以查看已建立的user對象
+				User.withDefaultPasswordEncoder().username("frank1") // 自訂使用者名稱
+						.password("password") // 自訂密碼
+						.roles("USER") // 自訂角色
+						.build());
+		manager.createUser( // 此行設定斷點可以查看已建立的user對象
+				User.withDefaultPasswordEncoder().username("frank2") // 自訂使用者名稱
+						.password("password2") // 自訂密碼
+						.roles("USER") // 自訂角色
+						.build());
+		return manager;
+	}
 }
 ```
 
-**測試：**使用使用者名稱huan，密碼password登入
+- 可以設定多組
+
+**測試：**使用使用者名稱frank，密碼password登入
+**測試：**使用使用者名稱frank1，密碼password1登入
+**測試：**使用使用者名稱frank2，密碼password2登入
+
+
 
 
 
