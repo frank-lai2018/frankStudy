@@ -274,4 +274,104 @@ server_name ~^[0-9]+\.mmban\.com$;
 ## 負載平衡策略
 ```
 ```
+
+
+## 動靜分離
+
+### 配置反向代理
+
+```
+location / {
+  proxy_pass http://127.0.0.1:8080;
+  root html;
+  index index.html index.htm;
+}
+```
+
+### 配置靜態檔 js/css/images
+
+#### 個別增加一個location
+```
+location /css {
+  root /usr/local/nginx/static;
+  index index.html index.htm;
+}
+location /images {
+  root /usr/local/nginx/static;
+  index index.html index.htm;
+}
+location /js {
+  root /usr/local/nginx/static;
+  index index.html index.htm;
+}
+```
+
+#### 使用一個location做配置
+
+  - 使用正則
+
+- location 前綴
+
+  - / 通用匹配，任何請求都會匹配到。
+  - = 精準匹配，不是以指定模式開頭
+  - ~ 正規匹配，區分大小寫
+  - ~* 正規匹配，不區分大小寫
+  - ^~ 非正則匹配，匹配以指定模式開頭的location
+
+
+##### location匹配順序
+- 多個正則location直接按書寫順序匹配，成功後就不會繼續往後面匹配
+- 普通（非正規）location會一直往下，直到找到匹配度最高的（最大前綴匹配）
+- 當普通location與正規location同時存在，如果正則匹配成功,則不會再執行普通匹配
+- 所有類型location存在時，“=”匹配 > “^~”匹配 > 正規匹配 > 普通（最大前綴匹配）
+
+```
+location ~*/(css|img|js) {
+  root /usr/local/nginx/static;
+  index index.html index.htm;
+}
+```
+
+### alias與root
+
+```
+location /css {
+  alias /usr/local/nginx/static/css;
+  index index.html index.htm;
+}
+```
+
+root用來設定根目錄，而alias在接受請求的時候在路徑上不會加上location。
+- 1）alias指定的目錄是準確的，即location匹配訪問的path目錄下的文件直接是在alias目錄下查找的； 
+- 2）root指定的目錄是location匹配訪問的path目錄的上一層目錄,這個path目錄一定要是真實存在root指定目錄下的； 
+- 3）使用alias標籤的目錄區塊中不能使用rewrite的break（具體原因不明）；另外，alias指定的目錄後面必須加上"/"符號！ ！ 
+- 4）在alias虛擬目錄配置中，location匹配的path目錄如果後面不帶"/"，那麼訪問的url地址中這個path目錄後面加不加"/"不影響訪問，訪問時它會自動加上"/"； 但是如果location匹配的path目錄後面加上"/"，那麼訪問的url地址中這個path目錄必須加上"/"，訪問時它不會自動加上"/"。如果不加上"/"，訪問就會失敗！ 
+- 5）root目錄配置中，location匹配的path目錄後面帶不帶"/"，都不會影響訪問。
+
+
+## UrlRewrite
+
+### rewrite語法格式及參數語法
+
+rewrite是實作URL重寫的關鍵指令，根據regex (正規表示式)部分內容，
+重定向到replacement，結尾是flag標記。
+
+```
+rewrite   <regex>   <replacement>    [flag];
+關鍵字     正規      替代內容         flag標記
+```
+
+- regex：perl相容正規表示式語句進行規則匹配
+- replacement：將正規匹配的內容替換成replacement
+- flag：rewrite支援的flag標記
+- rewrite參數的標籤段位置：server,location,if
+- flag標記說明：
+  - last #本條規則符合完成後，繼續向下比對新的location URI規則
+  - break #本條規則符合完成即終止，不再符合後面的任何規則
+  - redirect #回傳302暫時重定向，瀏覽器位址會顯示跳轉後的URL位址
+  - permanent #返回301永久重定向，瀏覽器網址列會顯示跳轉後的URL位址
+- ^$ 中間寫正則
+
+```
+rewrite ^/([0-9]+).html$ /index.jsp?pageNum=$1 break;
 ```
