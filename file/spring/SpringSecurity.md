@@ -323,7 +323,7 @@ INSERT INTO `user` (`username`, `password`, `enabled`) VALUES
 <dependency>
  <groupId>com.baomidou</groupId>
  <artifactId>mybatis-plus-boot-starter</artifactId>
- <version>3.5.4.1</version>
+ <version>3.5.5</version>
  <exclusions>
  <exclusion>
  <groupId>org.mybatis</groupId>
@@ -362,12 +362,16 @@ mybatis-plus.configuration.log-impl=org.apache.ibatis.logging.stdout.StdOutImpl
 ### 2.4、實體類
 
 ```java
-package com.atguigu.securitydemo.entity;
+package com.frank.SpringSecurity.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import lombok.Data;
 
 @Data
 public class User {
 
- @TableId(value = "id", type = IdType.AUTO)
+ @TableId(value = "id", type = IdType.AUTO)//主鍵自增
  private Integer id;
 
  private String username;
@@ -376,7 +380,9 @@ public class User {
 
  private Boolean enabled;
 
+
 }
+
 ```
 
 
@@ -402,7 +408,7 @@ resources/mapper/UserMapper.xml
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.atguigu.securitydemo.mapper.UserMapper">
+<mapper namespace="com.frank.SpringSecurity.mapper.UserMapper">
 
 </mapper>
 ```
@@ -413,16 +419,21 @@ resources/mapper/UserMapper.xml
 介面
 
 ```java
-package com.atguigu.securitydemo.service;
+package com.frank.SpringSecurity.service;
+
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.frank.SpringSecurity.entity.User;
 
 public interface UserService extends IService<User> {
+
 }
+
 ```
 
 實現
 
 ```java
-package com.atguigu.securitydemo.service.impl;
+package com.frank.SpringSecurity.service.impl;
 
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
@@ -434,7 +445,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 ### 2.7、Controller
 
 ```java
-package com.atguigu.securitydemo.controller;
+package com.frank.SpringSecurity.controller;
 
 @RestController
 @RequestMapping("/user")
@@ -460,15 +471,17 @@ public class UserController {
 ### 3.1、基於資料庫的使用者認證流程
 
 - 程式啟動時：
- - 建立`DBUserDetailsManager`類，實作介面 UserDetailsManager, UserDetailsPasswordService
- - 在應用程式中初始化這個類別的對象
+  - 建立`DBUserDetailsManager`類，實作介面 UserDetailsManager, UserDetailsPasswordService
+  - 在應用程式中初始化這個類別的對象
 - 校驗用戶時：
- - SpringSecurity自動使用`DBUserDetailsManager`的`loadUserByUsername`方法從`資料庫中`取得User對象
- - 在`UsernamePasswordAuthenticationFilter`過濾器中的`attemptAuthentication`方法中將使用者輸入的使用者名稱密碼和從資料庫中取得的使用者資訊進行比較，進行使用者認證
+  - SpringSecurity自動使用`DBUserDetailsManager`的`loadUserByUsername`方法從`資料庫中`取得User對象
+  - 在`UsernamePasswordAuthenticationFilter`過濾器中的`attemptAuthentication`方法中將使用者輸入的使用者名稱密碼和從資料庫中取得的使用者資訊進行比較，進行使用者認證
 
 
 
 ### 3.2、定義DBUserDetailsManager
+
+- 主要實作loadUserByUsername方法，用於登入驗證
 
 ```java
 package com.atguigu.securitydemo.config;
@@ -558,18 +571,21 @@ public UserDetailsS​​ervice userDetailsS​​ervice() {
 在WebSecurityConfig中新增如下配置
 
 ```java
-@Bean
-public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
- //authorizeRequests()：開啟授權保護
- //anyRequest()：對所有請求開啟授權保護
- //authenticated()：已認證請求會自動被授權
- http
- .authorizeRequests(authorize -> authorize.anyRequest().authenticated())
- .formLogin(withDefaults())//表單授權方式
- .httpBasic(withDefaults());//基本授權方式
+	
+	@Bean
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		//authorizeRequests()：開啟授權保護
+		 //anyRequest()：對所有請求開啟授權保護
+		 //authenticated()：已認證請求會自動被授權
+		http
+			.authorizeHttpRequests((authorize) -> authorize
+				.anyRequest().authenticated()
+			)
+			.httpBasic(Customizer.withDefaults())//表單授權方式
+			.formLogin(Customizer.withDefaults());//基本授權方式(使用瀏覽器的輸入框)
 
- return http.build();
-}
+		return http.build();
+	}
 ```
 
 
@@ -856,7 +872,7 @@ SecurityConfiguration：
 - 登入成功後呼叫：AuthenticationSuccessHandler
 - 登入失敗後呼叫：AuthenticationFailureHandler
 
-![usernamepasswordauthenticationfilter](assets/usernamepasswordauthenticationfilter-16822329079281.png)
+![19](SpringSecurity/imgs/55.png)
 
 ## 2、引進fastjson
 
