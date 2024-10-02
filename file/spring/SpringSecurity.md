@@ -231,7 +231,7 @@ spring.security.user.password=123
 定義一個@Bean，類型是UserDetailsS​​ervice，實作是InMemoryUserDetailsManager
 
 ```java
-package com.atguigu.securitydemo.config;
+package com.frank.SpringSecurity.config;
 
 @Configuration
 @EnableWebSecurity//Spring專案總是需要添加此註解，SpringBoot專案中不需要
@@ -392,7 +392,7 @@ public class User {
 介面
 
 ```java
-package com.atguigu.securitydemo.mapper;
+package com.frank.SpringSecurity.mapper;
 
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
@@ -484,7 +484,7 @@ public class UserController {
 - 主要實作loadUserByUsername方法，用於登入驗證
 
 ```java
-package com.atguigu.securitydemo.config;
+package com.frank.SpringSecurity.config;
 
 public class DBUserDetailsManager implements UserDetailsManager, UserDetailsPasswordService {
 
@@ -799,7 +799,7 @@ void testPassword() {
 ### 7.1、建立登入Controller
 
 ```java
-package com.atguigu.securitydemo.controller;
+package com.frank.SpringSecurity.controller;
 
 @Controller
 public class LoginController {
@@ -891,7 +891,7 @@ SecurityConfiguration：
 ### 3.1、成功結果處理
 
 ```java
-package com.atguigu.securitydemo.config;
+package com.frank.SpringSecurity.config;
 
 public class MyAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
  @Override
@@ -929,7 +929,7 @@ form.successHandler(new MyAuthenticationSuccessHandler()) //認證成功時的�
 ### 4.1、失敗結果處理
 
 ```java
-package com.atguigu.securitydemo.config;
+package com.frank.SpringSecurity.config;
 
 public class MyAuthenticationFailureHandler implements AuthenticationFailureHandler {
 
@@ -966,7 +966,7 @@ form.failureHandler(new MyAuthenticationFailureHandler()) //認證失敗時的�
 ### 5.1、註銷結果處理
 
 ```java
-package com.atguigu.securitydemo.config;
+package com.frank.SpringSecurity.config;
 
 public class MyLogoutSuccessHandler implements LogoutSuccessHandler {
 
@@ -1009,7 +1009,7 @@ http.logout(logout -> {
 這裡我們也希望系統`回傳json結果`，因此我們定義類別`實作AuthenticationEntryPoint介面`
 
 ```java
-package com.atguigu.securitydemo.config;
+package com.frank.SpringSecurity.config;
 
 public class MyAuthenticationEntryPoint implements AuthenticationEntryPoint {
  @Override
@@ -1048,12 +1048,43 @@ http.exceptionHandling(exception -> {
 
 跨域全名為跨域資源共享(Cross-Origin Resources Sharing,CORS)，它是瀏覽器的保護機制，只允許網頁請求統一域名下的服務，同一域名指=>協議、域名、端口號都要保持一致，如果有一項不同，那麼就是跨域請求。在前後端分離的專案中，需要解決跨域的問題。
 
+### 跨域參數內容
 
-在SpringSecurity中解決跨域很簡單，在設定檔中加入如下配置即可
+- 首先要把域名告訴瀏覽器那些可以使用不要阻擋
+  - Access-Control-Allow-Origin
+- Access-Control-Allow-Headers:要帶自訂義Header時使用
+- 要使用cookie時
+  - Access-Control-Allow-Origin 不能是 *
+  - Access-Control-Allow-Credentials: true
+- 前端需要存取 header
+  - 後端必須提供 Access-Control-Expose-Headers，跟瀏覽器說前端可以拿到哪些 header
+- 而前端如果要使用 HEAD、GET 跟 POST 之外的 method
+  - 後端要加上 Access-Control-Allow-Methods
+- 快取的部分，則是用 Access-Control-Max-Age
+
+- 在SpringSecurity中解決跨域很簡單，在設定檔中加入如下配置即可
 
 ```java
 //跨域
 http.cors(withDefaults());
+```
+
+- 或者複寫 CorsConfigurationSource Bean
+
+```
+	//配置跨域請求
+	@Bean
+	CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(Arrays.asList("https://example.com"));
+		configuration.setAllowedMethods(Arrays.asList("GET","POST"));
+		configuration.setAllowCredentials(true);
+		configuration.setAllowedHeaders(Arrays.asList("PUT"));
+		configuration.setExposedHeaders(Arrays.asList("custom"));
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
 ```
 
 # 第四章 身分認證
@@ -1082,7 +1113,7 @@ http.cors(withDefaults());
 IndexController：
 
 ```java
-package com.atguigu.securitydemo.controller;
+package com.frank.SpringSecurity.controller;
 
 @RestController
 public class IndexController {
@@ -1125,7 +1156,7 @@ public class IndexController {
 實作介面SessionInformationExpiredStrategy
 
 ```java
-package com.atguigu.securitydemo.config;
+package com.frank.SpringSecurity.config;
 
 public class MySessionInformationExpiredStrategy implements SessionInformationExpiredStrategy {
  @Override
@@ -1246,6 +1277,47 @@ http.exceptionHandling(exception -> {
 });
 ```
 
+或者
+
+```
+package com.frank.SpringSecurity.config;
+
+import java.io.IOException;
+import java.util.HashMap;
+
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.web.access.AccessDeniedHandler;
+
+import com.alibaba.fastjson2.JSON;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+public class CustomizeAccessDeniedHandler implements AccessDeniedHandler {
+
+	@Override
+	public void handle(HttpServletRequest request, HttpServletResponse response,
+			AccessDeniedException accessDeniedException) throws IOException, ServletException {
+
+		 //建立結果對象
+		 HashMap result = new HashMap();
+		 result.put("code", -1);
+		 result.put("message", "沒有權限");
+
+		 //轉換成json字串
+		 String json = JSON.toJSONString(result);
+
+		 //回傳回應
+		 response.setContentType("application/json;charset=UTF-8");
+		 response.getWriter().println(json);
+
+	}
+
+}
+
+```
+
 
 
 **更多的例子：**[Authorize HttpServletRequests :: Spring Security](https://docs.spring.io/spring-security/reference/servlet/authorization/authorize-http-requests.html)
@@ -1284,6 +1356,11 @@ return org.springframework.security.core.userdetails.User
  .roles("ADMIN")
  .build();
 ```
+
+- 這總方式角色會是以 ROLE_ 開頭
+
+![19](SpringSecurity/imgs/56.png)
+
 
 ### 1.3、使用者-角色-權限-資源
 
@@ -1349,6 +1426,7 @@ RBAC（Role-Based Access Control，基於角色的存取控制）是一種常用
 @EnableMethodSecurity
 ```
 
+- 默認情況下，只加這個註解，沒加@PreAuthorize的方法都有權限可以訪問
 
 
 ### 2.2、授予使用者角色和權限
@@ -1630,7 +1708,7 @@ https://a.com/callback#token=ACCESS_TOKEN
 ![19](SpringSecurity/imgs/51.png)
 
 
-範例程式碼參考：[spring-security-samples/servlet/spring-boot/java/oauth2/login at 6.2.x · spring-projects/spring-security-samples (github.com)](https://github.com /spring-projects/spring-security-samples/tree/6.2.x/servlet/spring-boot/java/oauth2/login)
+範例程式碼參考：[spring-security-samples/servlet/spring-boot/java/oauth2/login at 6.2.x · spring-projects/spring-security-samples (github.com)](https://github.com/spring-projects/spring-security-samples/tree/6.2.x/servlet/spring-boot/java/oauth2/login)
 
 
 ### 3.3、設定OAuth客戶端屬性
@@ -1680,37 +1758,42 @@ resources/templates/index.html
 
 ```html
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/thymeleaf -extras-springsecurity5">
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="https://www.thymeleaf.org"
+	xmlns:sec="https://www.thymeleaf.org/thymeleaf -extras-springsecurity5">
 <head>
- <title>Spring Security - OAuth 2.0 Login</title>
- <meta charset="utf-8" />
+<title>Spring Security - OAuth 2.0 Login</title>
+<meta charset="utf-8" />
 </head>
 <body>
-<div style="float: right" th:fragment="logout" sec:authorize="isAuthenticated()">
- <div style="float:left">
- <span style="font-weight:bold">User: </span><span sec:authentication="name"></span>
- </div>
- <div style="float:none">&nbsp;</div>
- <div style="float:right">
- <form action="#" th:action="@{/logout}" method="post">
- <input type="submit" value="Logout" />
- </form>
- </div>
-</div>
-<h1>OAuth 2.0 Login with Spring Security</h1>
-<div>
- You are successfully logged in <span style="font-weight:bold" th:text="${userName}"></span>
- via the OAuth 2.0 Client <span style="font-weight:bold" th:text="${clientName}"></span>
-</div>
-<div>&nbsp;</div>
-<div>
- <span style="font-weight:bold">User Attributes:</span>
- <ul>
- <li th:each="userAttribute : ${userAttributes}">
- <span style="font-weight:bold" th:text="${userAttribute.key}"></span>: <span th:text="${userAttribute.value}"></span>
- </li>
- </ul>
-</div>
+	<div style="float: right" th:fragment="logout"
+		sec:authorize="isAuthenticated()">
+		<div style="float: left">
+			<span style="font-weight: bold">User: </span><span
+				sec:authentication="name"></span>
+		</div>
+		<div style="float: none">&nbsp;</div>
+		<div style="float: right">
+			<form action="#" th:action="@{/logout}" method="post">
+				<input type="submit" value="Logout" />
+			</form>
+		</div>
+	</div>
+	<h1>OAuth 2.0 Login with Spring Security</h1>
+	<div>
+		You are successfully logged in <span style="font-weight: bold"
+			th:text="${userName}"></span> via the OAuth 2.0 Client <span
+			style="font-weight: bold" th:text="${clientName}"></span>
+	</div>
+	<div>&nbsp;</div>
+	<div>
+		<span style="font-weight: bold">User Attributes:</span>
+		<ul>
+			<li th:each="userAttribute : ${userAttributes}"><span
+				style="font-weight: bold" th:text="${userAttribute.key}"></span>: <span
+				th:text="${userAttribute.value}"></span></li>
+		</ul>
+	</div>
 </body>
 </html>
 ```
