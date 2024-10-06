@@ -1858,3 +1858,50 @@ GITHUB {
 },
 ```
 
+## 5.CAS單點登入
+
+- CAS角色:
+  - CAS服務端:是一個WEB系統需要獨立部屬
+  - CAS客戶端:是添加了CAS的過濾器的系統
+
+### 5.1 CAS 認證流程
+
+![19](SpringSecurity/imgs/59.png)
+
+- CAS認證過程為:在用戶瀏覽器中要訪問系統A時，將在系統A裡面重定向到CAS Server進行登入驗證。
+- 如果沒有登入那麼跳轉到CAS Server的登入頁面，用戶在該登入頁面需要輸入帳號和密碼。
+- 如果帳密正確的話，那麼在CAS Server中將用戶信息加密保存到Cookie(TGC(Ticket Granted Cookie))，這時再由CAS Server生成一個ticket一次型憑證，隨帶這個ticket重定向道系統A。
+- 再由系統A獲取到的ticket在重定向回CAS Server，驗證ticket後，CAS Server返回用戶名，系統A將用戶信息存入自身系統的Session裡
+- 以後訪問會先到系統A的Session裡查找用戶信息，如果能找到則說明已經登入認證，如果Session中讀取不到用戶信息，那麼會到CAS Server根據瀏覽器中讀取到的Cookie(TGC(Ticket Granted Cookie))獲取用戶信息並返回
+- 如果還沒有那麼則和前面認證流程一樣需要登入等。
+- 訪問系統B的時候因為其Session中無用戶信息，所以將會到CAS Server中根據Cookie(TGC(Ticket Granted Cookie))讀取用戶信息，從而實現不用再次登入即可訪問系統B的資源。
+- 在退出的時候，CAS Server會刪除TGC對應的TGT(TGT物件就是CAS Servers內存忠存的用戶物件，TGT物件的ID就是TGC的值，在服務氣端，通過TGC查詢TGT。TGT裡面包含的用戶信息)，並通知各個已登錄過的服務器退出登入(刪除session信息)
+
+
+
+
+
+## 5.2 部屬CAS Server
+- 生成證書
+
+
+
+
+
+```
+keytool -genkey -v -alias java1234 -keyalg RSA -keystore F:\CAS\frank.keystore
+```
+
+![19](SpringSecurity/imgs/57.png)
+
+- 導出證書
+
+```
+keytool -export -trustcacerts -alias frank.com -file F:/CAS/frank.cer -keystore F:\CAS\frank.keystore
+```
+
+![19](SpringSecurity/imgs/58.png)
+
+
+
+
