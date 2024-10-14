@@ -1620,6 +1620,20 @@ https://a.com/callback#token=ACCESS_TOKEN
 ![19](SpringSecurity/imgs/46.png)
 
 
+#### 1.6 Oauth2標準介面
+
+- /oauth/authorize：授權端點(也就是詢問用戶給予授權的頁面)
+
+- /oauth/token：取得令牌端點
+
+- /oauth/confirm_access：使用者確認授權提交端點
+
+- /oauth/error：授權服務錯誤訊息端點
+
+- /oauth/check_token：用於資源服務存取的令牌解析端點
+
+- /oauth/token_key：如果使用JWT令牌的話，提供公有密匙的端點
+
 ## 2、Spring中的OAuth2
 
 ### 2.1、相關角色
@@ -1856,6 +1870,87 @@ GITHUB {
  return builder;
  }
 },
+```
+
+
+### 4.3
+
+```sql
+
+CREATE database oauth2;
+
+use oauth2;
+
+create table oauth_client_details (
+  client_id VARCHAR(256) PRIMARY KEY,
+  resource_ids VARCHAR(256),
+  client_secret VARCHAR(256),
+  scope VARCHAR(256),
+  authorized_grant_types VARCHAR(256),
+  web_server_redirect_uri VARCHAR(256),
+  authorities VARCHAR(256),
+  access_token_validity INTEGER,
+  refresh_token_validity INTEGER,
+  additional_information VARCHAR(4096),
+  autoapprove VARCHAR(256)
+);
+ 
+create table oauth_client_token (
+  token_id VARCHAR(256),
+  token BLOB,
+  authentication_id VARCHAR(256) PRIMARY KEY,
+  user_name VARCHAR(256),
+  client_id VARCHAR(256)
+);
+ 
+create table oauth_access_token (
+  token_id VARCHAR(256),
+  token BLOB,
+  authentication_id VARCHAR(256) PRIMARY KEY,
+  user_name VARCHAR(256),
+  client_id VARCHAR(256),
+  authentication BLOB,
+  refresh_token VARCHAR(256)
+);
+ 
+create table oauth_refresh_token (
+  token_id VARCHAR(256),
+  token BLOB,
+  authentication BLOB
+);
+ 
+create table oauth_code (
+  code VARCHAR(256), authentication BLOB
+);
+ 
+create table oauth_approvals (
+	userId VARCHAR(256),
+	clientId VARCHAR(256),
+	scope VARCHAR(256),
+	status VARCHAR(10),
+	expiresAt TIMESTAMP,
+	lastModifiedAt TIMESTAMP
+);
+ 
+ 
+-- customized oauth_client_details table
+create table ClientDetails (
+  appId VARCHAR(256) PRIMARY KEY,
+  resourceIds VARCHAR(256),
+  appSecret VARCHAR(256),
+  scope VARCHAR(256),
+  grantTypes VARCHAR(256),
+  redirectUrl VARCHAR(256),
+  authorities VARCHAR(256),
+  access_token_validity INTEGER,
+  refresh_token_validity INTEGER,
+  additionalInformation VARCHAR(4096),
+  autoApproveScopes VARCHAR(256)
+);
+ 
+
+
+INSERT INTO `oauth_client_details` VALUES ('frankId', '', '$2a$10$rvtuV.bPeFA5zfowgr9OJuQSj07AFJfHl5Y7QND0thykzlB7S8hW6', 'read', 'authorization_code,refresh_token', 'http://www.google.com', NULL, NULL, NULL, NULL, NULL);
 ```
 
 ## 5.CAS單點登入
