@@ -68,7 +68,7 @@ make clean
 
 - redis.conf配置文件，改完後確保生效，記得重啟，記得重啟
   - 1 默認daemonize no (是否使用後台啟動)             改為  daemonize yes
-  - 2 默認protected-mode  yes    改為  protected-mode no
+  - 2 默認protected-mode  yes    改為  protected-mode no 這個設置影響到安全保護，有其他系統要連的話要打關掉它
   - 3 默認bind 127.0.0.1             改為  直接註釋掉(默認bind 127.0.0.1只能本機訪問)或改成本機IP地址，否則影響遠程IP連接
   - 4 添加redis密碼                      改為 requirepass 你自己設置的密碼
 
@@ -270,7 +270,7 @@ OK
 #### 語法
 
 ```
-SET key value [EX seconds|PX milliseconds|KEEPTTL] [NX|XX] [GET]
+SET key value [NX | XX] [GET] [EX seconds | PX milliseconds | EXAT unix-time-seconds | PXAT unix-time-milliseconds | KEEPTTL]
 ```
 
 - Redis SET 命令用於將鍵 key 設定為指定的“字符串”值。
@@ -286,7 +286,15 @@ SET key value [EX seconds|PX milliseconds|KEEPTTL] [NX|XX] [GET]
   - PX milliseconds – 設置鍵key的過期時間，單位時毫秒
   - NX – 只有鍵key不存在的時候才會設置key的值
   - XX – 只有鍵key存在的時候才會設置key的值
-  - KEEPTTL -- 獲取 key 的過期時間
+  - KEEPTTL -- 保留設置前指定鍵的生存時間，就是說原本覆蓋完前面設置的值時過期時間也會跟著覆蓋，設了這個參數代表不覆蓋過期時間，沿用之前的過期時間，剩幾秒就剩幾秒
+  - GET --返回指定鍵原本的值，若鍵不存在時返回nil
+  - EXAT timestamp-seconds -- 設定值的過期的指定 Unix 時間，以秒為單位（正整數）。
+  - PXAT timestamp-milliseconds --設定值的過期的指定 Unix 時間，以豪秒為單位（正整數）。
+
+使用JAVA獲取UNIX時間  
+```java
+System.out.println(Long.toString(System.currentTimeMillis()/1000L));
+```
 
 - GET -- 返回 key 存儲的值，如果 key 不存在返回空
   - 注意: 由於SET命令加上選項已經可以完全取代SETNX, SETEX, PSETEX, GETSET,的功能，所以在將來的版本中，redis可能會不推薦使用並且最終拋棄這幾個命令。
@@ -917,25 +925,266 @@ redis> GET mykey
 ## List列表
 
 
-- Redis列表是簡單的字符串列表，按照插入順序排序。你可以添加一個元素到列表的頭部（左邊）或者尾部（右邊）
-- 它的底層實際是個雙端鍊錶，最多可以包含 2^32 - 1 個元素 (4294967295, 每個列表超過40億個元素)
+- 一個雙端鍊錶的結構，容量是2的32次方減1個元素，大概40多億，主要功能有push/pop等，一般用在棧、佇列、訊息佇列等場景。
+
+- left、right都可以插入添加；
+
+- 如果鍵不存在，建立新的鍊錶；
+
+- 如果鍵已存在，新增內容；
+
+- 如果值全移除，對應的鍵也就消失了。
+
+- 它的底層實際上是雙向鍊錶，對兩端的操作效能很高，透過索引下標的操作中間的節點效能會較差。
+  
+![019](redis/imgs/10.png)
+
+### LPUSH	將一個或多個值插入到列表頭部
+
+```
+127.0.0.1:6379> LPUSH list1 1 2 3 4 5
+(integer) 5
+
+```
+### RPUSH	在列表中添加一個或多個值
+```
+127.0.0.1:6379> RPUSH list2 11 22 33 44 55
+(integer) 5
+```
+
+### LRANGE	獲取列表指定範圍內的元素
+
+```
+127.0.0.1:6379> LRANGE list1 0 -1
+1) "5"
+2) "4"
+3) "3"
+4) "2"
+5) "1"
+127.0.0.1:6379> LRANGE list2 0 -1
+1) "11"
+2) "22"
+3) "33"
+4) "44"
+5) "55"
+
+```
+### LPOP	移出並獲取列表的第一個元素
+```
+127.0.0.1:6379> LRANGE list1 0 -1
+1) "5"
+2) "4"
+3) "3"
+4) "2"
+5) "1"
+127.0.0.1:6379> LPOP list1
+"5"
+127.0.0.1:6379> LRANGE list1 0 -1
+1) "4"
+2) "3"
+3) "2"
+4) "1"
+
+```
+### RPOP	移除並獲取列表最後一個元素
+```
+127.0.0.1:6379> LRANGE list1 0 -1
+1) "4"
+2) "3"
+3) "2"
+4) "1"
+127.0.0.1:6379> RPOP list1
+"1"
+127.0.0.1:6379> LRANGE list1 0 -1
+1) "4"
+2) "3"
+3) "2"
+
+```
+### LINDEX	通過索引獲取列表中的元素
+
+```
+127.0.0.1:6379> LRANGE list1 0 -1
+1) "4"
+2) "3"
+3) "2"
+127.0.0.1:6379> LINDEX list1 2
+"2"
+127.0.0.1:6379> LINDEX list1 1
+"3"
+
+```
+### LLEN	獲取列表長度
+```
+127.0.0.1:6379> LRANGE list1 0 -1
+1) "4"
+2) "3"
+3) "2"
+127.0.0.1:6379> LLEN list1
+(integer) 3
+
+```
+### LREM	移除列表元素
+
+```
+127.0.0.1:6379> LPUSH list3 1 1 1 1 2 2 2 2 3 3 3 3 4 4 4 5 5
+(integer) 17
+127.0.0.1:6379> LRANGE list3 0 -1
+ 1) "5"
+ 2) "5"
+ 3) "4"
+ 4) "4"
+ 5) "4"
+ 6) "3"
+ 7) "3"
+ 8) "3"
+ 9) "3"
+10) "2"
+11) "2"
+12) "2"
+13) "2"
+14) "1"
+15) "1"
+16) "1"
+17) "1"
+127.0.0.1:6379> LREM list3 1 3
+(integer) 1
+127.0.0.1:6379> LRANGE list3 0 -1
+ 1) "5"
+ 2) "5"
+ 3) "4"
+ 4) "4"
+ 5) "4"
+ 6) "3"
+ 7) "3"
+ 8) "3"
+ 9) "2"
+10) "2"
+11) "2"
+12) "2"
+13) "1"
+14) "1"
+15) "1"
+16) "1"
+127.0.0.1:6379> LREM list3 3 1
+(integer) 3
+127.0.0.1:6379> LRANGE list3 0 -1
+ 1) "5"
+ 2) "5"
+ 3) "4"
+ 4) "4"
+ 5) "4"
+ 6) "3"
+ 7) "3"
+ 8) "3"
+ 9) "2"
+10) "2"
+11) "2"
+12) "2"
+13) "1"
+
+```
+### LTRIM	KEY 開始index結束index，截取指定範圍的值後再賦值給KEY
+
+```
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "7"
+2) "6"
+3) "5"
+4) "4"
+5) "3"
+6) "2"
+7) "1"
+8) "0"
+127.0.0.1:6379> LTRIM list4 1 4
+OK
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "6"
+2) "5"
+3) "4"
+4) "3"
+
+```
+### RPOPLPUSH	移除列表的最後一個元素，並將該元素添加到另一個列表並返回
+
+![019](redis/imgs/11.png)
+
+```
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "6"
+2) "5"
+3) "4"
+4) "3"
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "6"
+2) "5"
+3) "4"
+4) "3"
+127.0.0.1:6379> LRANGE list1 0 -1
+1) "4"
+2) "3"
+3) "2"
+127.0.0.1:6379> RPOPLPUSH list4 list1
+"3"
+127.0.0.1:6379> LRANGE list1 0 -1
+1) "3"
+2) "4"
+3) "3"
+4) "2"
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "6"
+2) "5"
+3) "4"
+
+```
+
+### LSET KEY INDEX VALUE 通過索引設置列表元素的值
+
+```
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "6"
+2) "5"
+3) "4"
+127.0.0.1:6379> LSET list4 1 JAVA
+OK
+127.0.0.1:6379> LSET list4 2 C++
+OK
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "6"
+2) "JAVA"
+3) "C++"
+
+```
+### LINSERT	before/after 在列表的元素前或者後插入元素
+
+```
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "6"
+2) "JAVA"
+3) "C++"
+127.0.0.1:6379> LINSERT list4 BEFORE JAVA PYTHON
+(integer) 4
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "6"
+2) "PYTHON"
+3) "JAVA"
+4) "C++"
+127.0.0.1:6379> LINSERT list4 AFTER JAVA PHP
+(integer) 5
+127.0.0.1:6379> LRANGE list4 0 -1
+1) "6"
+2) "PYTHON"
+3) "JAVA"
+4) "PHP"
+5) "C++"
+
+```
 
 ### BLPOP	移出並獲取列表的第一個元素
 ### BRPOP	移出並獲取列表的最後一個元素
 ### BRPOPLPUSH	從列表中彈出一個值，並將該值插入到另外一個列表中並返回它
-### LINDEX	通過索引獲取列表中的元素
-### LINSERT	在列表的元素前或者後插入元素
-### LLEN	獲取列表長度
-### LPOP	移出並獲取列表的第一個元素
-### LPUSH	將一個或多個值插入到列表頭部
 ### LPUSHX	將一個值插入到已存在的列表頭部
-### LRANGE	獲取列表指定範圍內的元素
-### LREM	移除列表元素
-### LSET	通過索引設置列表元素的值
-### LTRIM	對一個列表進行修剪(trim)
-### RPOP	移除並獲取列表最後一個元素
-### RPOPLPUSH	移除列表的最後一個元素，並將該元素添加到另一個列表並返回
-### RPUSH	在列表中添加一個或多個值
+
 ### RPUSHX	為已存在的列表添加值
 
 ## Hash哈希表
@@ -944,16 +1193,175 @@ redis> GET mykey
  
 - Redis 中每個 hash 可以存儲 2^32 - 1 鍵值對（40多億）
 
+### HSET	用於設置存儲在 key 中的哈希表字段的值
+### HGET	獲取存儲在哈希表中指定字段的值
+
+```
+127.0.0.1:6379> HSET user:001 name Frank id 11 age 36
+(integer) 3
+127.0.0.1:6379> HGET user:001 id
+"11"
+127.0.0.1:6379> HGET user:001 age
+"36"
+```
+
+### HMSET
+### HMGET
+
+```
+127.0.0.1:6379> HMSET user:002 name JIM id 12 age 30
+OK
+127.0.0.1:6379> HMGET user:002 name id age
+1) "JIM"
+2) "12"
+3) "30"
+
+```
+
+### HGETALL	獲取在哈希表中指定 key 的所有字段和值
+
+```
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "id"
+4) "11"
+5) "age"
+6) "36"
+
+```
 
 ### HDEL	用於刪除哈希表中一個或多個字段
-### HEXISTS	用於判斷哈希表中字段是否存在
-### HGET	獲取存儲在哈希表中指定字段的值
-### HGETALL	獲取在哈希表中指定 key 的所有字段和值
-### HINCRBY	為存儲在 key 中的哈希表指定字段做整數增量運算
-### HKEYS	獲取存儲在 key 中的哈希表的所有字段
+
+```
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "id"
+4) "11"
+5) "age"
+6) "36"
+127.0.0.1:6379> HDEL user:001 id
+(integer) 1
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "age"
+4) "36"
+
+```
 ### HLEN	獲取存儲在 key 中的哈希表的字段數量
-### HSET	用於設置存儲在 key 中的哈希表字段的值
+
+```
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "age"
+4) "36"
+127.0.0.1:6379> HLEN user:001
+(integer) 2
+
+```
+
+### HEXISTS	用於判斷哈希表中字段是否存在
+
+```
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "age"
+4) "36"
+127.0.0.1:6379> HEXISTS user:001 name
+(integer) 1
+127.0.0.1:6379> HEXISTS user:001 id
+(integer) 0
+
+```
+### HKEYS	獲取存儲在 key 中的哈希表的所有字段
+
+```
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "age"
+4) "36"
+127.0.0.1:6379> HKEYS user:001
+1) "name"
+2) "age"
+
+```
+
 ### HVALS	用於獲取哈希表中的所有值
+
+```
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "age"
+4) "36"
+127.0.0.1:6379> HVALS user:001
+1) "Frank"
+2) "36"
+
+```
+
+### HINCRBY	為存儲在 key 中的哈希表指定字段做整數增量運算
+
+```
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "age"
+4) "18"
+5) "score"
+6) "99.1"
+127.0.0.1:6379> HINCRBY user:001 age 1
+(integer) 19
+127.0.0.1:6379> HINCRBY user:001 age 2
+(integer) 21
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "age"
+4) "21"
+5) "score"
+6) "99.1"
+
+```
+
+### HINCRBYFLOAT	為存儲在 key 中的哈希表指定字段做小數增量運算
+
+```
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "age"
+4) "21"
+5) "score"
+6) "99.1"
+127.0.0.1:6379> HINCRBYFLOAT user:001 score 0.2
+"99.3"
+127.0.0.1:6379> HINCRBYFLOAT user:001 score 0.4
+"99.7"
+127.0.0.1:6379> HGETALL user:001
+1) "name"
+2) "Frank"
+3) "age"
+4) "21"
+5) "score"
+6) "99.7"
+
+```
+
+### HSETNX不存在再新增
+
+```
+127.0.0.1:6379> HSETNX user:002 age 1
+(integer) 0
+127.0.0.1:6379> HSETNX user:003 age 1
+(integer) 1
+
+```
 
 ## Set集合
 
@@ -965,17 +1373,172 @@ redis> GET mykey
 
 
 ### SADD	向集合添加一個或多個成員
+### SMEMBERS	返回集合中的所有成員
+```
+127.0.0.1:6379> SADD set1 1 1 1 1 1 2 2 2 2 3 3 3 3 4 5 6
+(integer) 6
+127.0.0.1:6379> SMEMBERS set1
+1) "1"
+2) "2"
+3) "3"
+4) "4"
+5) "5"
+6) "6"
+
+```
+### SISMEMBER	判斷 member 元素是否是集合 key 的成員
+
+
+```
+127.0.0.1:6379> SMEMBERS set1
+1) "1"
+2) "2"
+3) "3"
+4) "4"
+5) "5"
+6) "6"
+127.0.0.1:6379> SISMEMBER set1 1
+(integer) 1
+127.0.0.1:6379> SISMEMBER set1 9
+(integer) 0
+
+```
+
+### SREM	移除集合中一個或多個成員
+
+```
+127.0.0.1:6379> SMEMBERS set1
+1) "1"
+2) "2"
+3) "3"
+4) "4"
+5) "5"
+6) "6"
+127.0.0.1:6379> SREM set1 1
+(integer) 1
+127.0.0.1:6379> SREM set1 9
+(integer) 0
+127.0.0.1:6379> SREM set1 5 6
+(integer) 2
+
+```
+
 ### SCARD	獲取集合的成員數
+
+```
+127.0.0.1:6379> SCARD set1
+(integer) 3
+127.0.0.1:6379> SMEMBERS set1
+1) "2"
+2) "3"
+3) "4"
+
+```
+### SRANDMEMBER	返回集合中一個或多個隨機數
+
+```
+127.0.0.1:6379> SMEMBERS set2
+ 1) "0"
+ 2) "1"
+ 3) "2"
+ 4) "3"
+ 5) "4"
+ 6) "5"
+ 7) "6"
+ 8) "7"
+ 9) "8"
+10) "9"
+127.0.0.1:6379> SRANDMEMBER set2
+"8"
+127.0.0.1:6379> SRANDMEMBER set2
+"7"
+127.0.0.1:6379> SRANDMEMBER set2
+"1"
+127.0.0.1:6379> SRANDMEMBER set2
+"2"
+127.0.0.1:6379> SRANDMEMBER set2
+"4"
+127.0.0.1:6379> SMEMBERS set2
+ 1) "0"
+ 2) "1"
+ 3) "2"
+ 4) "3"
+ 5) "4"
+ 6) "5"
+ 7) "6"
+ 8) "7"
+ 9) "8"
+10) "9"
+
+```
+### SPOP	移除並返回集合中的一個隨機元素
+
+- 可用來做尾牙抽獎，或者任何活動抽獎，只能中獎一次
+
+```
+127.0.0.1:6379> SMEMBERS set2
+ 1) "0"
+ 2) "1"
+ 3) "2"
+ 4) "3"
+ 5) "4"
+ 6) "5"
+ 7) "6"
+ 8) "7"
+ 9) "8"
+10) "9"
+127.0.0.1:6379> SPOP set2
+"9"
+127.0.0.1:6379> SPOP set2
+"1"
+127.0.0.1:6379> SPOP set2
+"3"
+127.0.0.1:6379> SMEMBERS set2
+1) "0"
+2) "2"
+3) "4"
+4) "5"
+5) "6"
+6) "7"
+7) "8"
+
+```
+### SMOVE	將 member 元素從 source 集合移動到 destination 集合
+
+```
+127.0.0.1:6379> SMEMBERS set2
+1) "0"
+2) "2"
+3) "4"
+4) "5"
+5) "6"
+6) "7"
+7) "8"
+127.0.0.1:6379> SMOVE set2 set3 4
+(integer) 1
+127.0.0.1:6379> SMEMBERS set2
+1) "0"
+2) "2"
+3) "5"
+4) "6"
+5) "7"
+6) "8"
+127.0.0.1:6379> SMEMBERS set3
+1) "4"
+
+```
+## SET 集合處理
+
+### A-B
+
+### A \cup B
+
+### A \cap B
+
 ### SDIFF	返回給定所有集合的差集
 ### SDIFFSTORE	返回給定所有集合的差集並存儲在 destination 中
 ### SINTER	返回給定所有集合的交集
 ### SINTERSTORE	返回給定所有集合的交集並存儲在 destination 中
-### SISMEMBER	判斷 member 元素是否是集合 key 的成員
-### SMEMBERS	返回集合中的所有成員
-### SMOVE	將 member 元素從 source 集合移動到 destination 集合
-### SPOP	移除並返回集合中的一個隨機元素
-### SRANDMEMBER	返回集合中一個或多個隨機數
-### SREM	移除集合中一個或多個成員
 ### SUNION	返回所有給定集合的並集
 ### SUNIONSTORE	所有給定集合的並集存儲在 destination 集合中
 ### SSCAN	迭代集合中的元素
