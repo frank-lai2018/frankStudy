@@ -2051,6 +2051,90 @@ OK
 (integer) 2
 ```
 
+### BITOP <AND | OR | XOR | NOT> destkey key [key ...]
+
+- 做位元運算，將結果存入 destkey
+
+
+例子:
+
+- 建立 Hash 用戶資料 key = uid:map
+- 0、1為用戶流水號 uid-001ikk-ll、uid-002lfo-ss為用戶ID
+- 使用SETBIT 建立每天用戶簽到情況 
+  -例如: SETBIT 20241101 0 1 ===> 0號用戶在20241101簽到
+- 使用 BITCOUNT 統計每天簽到人數
+  - 例如:BITCOUNT 20241101
+- 使用 BITOP統計20241101跟20241102連續兩天簽到人數
+- BITCOUNT dest 查看統計人數
+
+```
+127.0.0.1:6379> HSET uid:map 0 uid-001ikk-ll
+(integer) 1
+127.0.0.1:6379> HSET uid:map 1 uid-002lfo-ss
+(integer) 1
+127.0.0.1:6379> HGETALL uid:map
+1) "0"
+2) "uid-001ikk-ll"
+3) "1"
+4) "uid-002lfo-ss"
+
+127.0.0.1:6379> SETBIT 20241101 0 1
+(integer) 0
+127.0.0.1:6379> SETBIT 20241101 2 1
+(integer) 0
+127.0.0.1:6379> SETBIT 20241101 3 1
+(integer) 0
+127.0.0.1:6379> SETBIT 20241101 4 1
+(integer) 0
+127.0.0.1:6379> SETBIT 20241102 0 1
+(integer) 0
+127.0.0.1:6379> SETBIT 20241102 1 1
+(integer) 0
+127.0.0.1:6379> BITCOUNT 20241101
+(integer) 4
+127.0.0.1:6379> BITCOUNT 20241102
+(integer) 2
+127.0.0.1:6379> BITOP AND dest 20241101 20241102
+(integer) 1
+127.0.0.1:6379> BITCOUNT dest
+(integer) 1
+
+
+
+```
+
+## HyperLogLog 基數統計
+
+- HyperLogLog 是用來做基數統計的算法，HyperLogLog 的優點是，在輸入元素的數量或者體積非常非常大時，計算基數所需的空間總是固定且是很小的。
+
+- 在 Redis 裡面，每個 HyperLogLog 鍵只需要花費 12 KB 內存，就可以計算接近 2^64 個不同元素的基 數。這和計算基數時，元素越多耗費內存就越多的集合形成鮮明對比。
+
+- 但是，因為 HyperLogLog 只會根據輸入元素來計算基數，而不會儲存輸入元素本身，所以 HyperLogLog 不能像集合那樣，返回輸入的各個元素。
+
+### PFADD key [element [element ...]] 添加指定元素到 HyperLogLog 中。
+
+
+### FCOUNT key [key ...] 返回給定 HyperLogLog 的基數估算值。
+
+
+
+### PFMERGE destkey [sourcekey [sourcekey ...]] 將多個 HyperLogLog 合併為一個 HyperLogLog
+
+
+```
+127.0.0.1:6379> PFADD hllo1 1 3 4 5 9 7
+(integer) 1
+127.0.0.1:6379> PFADD hllo2 1 3 4 4 4 5 5 5 9 7
+(integer) 1
+127.0.0.1:6379> PFCOUNT hllo2
+(integer) 6
+127.0.0.1:6379> PFMERGE distRes hllo1 hllo2
+OK
+127.0.0.1:6379> PFCOUNT distRes
+(integer) 6
+
+```
+
 ## GEO 地理空間
 
 - Redis GEO 主要用於存儲地理位置信息，並對存儲的信息進行操作，包括
@@ -2071,20 +2155,6 @@ OK
 ### GEOADD 將指定的地理空間位置（緯度、經度、名稱）添加到指定的 key 中
 
 ### GEORADIUSBYMEMBER 找出位於指定範圍內的元素，中心點是由給定的位置元素決定
-
-## HyperLogLog 基數統計
-
-- HyperLogLog 是用來做基數統計的算法，HyperLogLog 的優點是，在輸入元素的數量或者體積非常非常大時，計算基數所需的空間總是固定且是很小的。
-
-- 在 Redis 裡面，每個 HyperLogLog 鍵只需要花費 12 KB 內存，就可以計算接近 2^64 個不同元素的基 數。這和計算基數時，元素越多耗費內存就越多的集合形成鮮明對比。
-
-- 但是，因為 HyperLogLog 只會根據輸入元素來計算基數，而不會儲存輸入元素本身，所以 HyperLogLog 不能像集合那樣，返回輸入的各個元素。
-
-### PFGMERGE 將多個 HyperLogLog 合併為一個 HyperLogLog
-
-### PFADD 添加指定元素到 HyperLogLog 中。
-
-### PFCOUNT 返回給定 HyperLogLog 的基數估算值。
 
 ## bitfield
 
