@@ -227,6 +227,8 @@ public class Ticket01 implements Runnable{
 
 ```
 
+
+
 # 8.java8 lambda
 
     lambda即為函數是接口的一個實例，以前是用匿名類方式實例化接口，現在可以改用lambda去實例化接口
