@@ -69,3 +69,25 @@ Docker運行的基本流程為：
 - Docker鏡像commit作業案例
 
 ![9](imgs/9.png)
+
+## 提交遠端流程
+
+![1](imgs/11.png)
+
+
+
+## 安裝軟體實例
+
+### 安裝Tomcat
+
+### 安裝mysql 5.7
+
+```
+docker run -d -p 3306:3306 --privileged=true -v 'G:\docker\mysql\log':/var/log/mysql -v 'G:\docker\mysql\data':/var/lib/mysql -v 'G:\docker\mysql\conf':/etc/mysql/conf.d -e MYSQL_ROOT_PASSWORD=123456  --name mysql mysql:5.7
+```
+
+### 安裝redis 6.0.8
+
+```
+docker run  -p 6379:6379 --name myr3 --privileged=true -v 'G:\docker\redis\redis.conf':/etc/redis/redis.conf -v 'G:\docker\redis\data':/data -d redis:6.0.8 redis-server /etc/redis/redis.conf
+```
