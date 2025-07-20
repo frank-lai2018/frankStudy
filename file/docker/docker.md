@@ -309,3 +309,397 @@ redis-cli --cluster check 192.168.47.137:6382
 ```
 
 ![1](imgs/38.png)
+
+# DockerFile
+
+
+使用build 產出印象檔
+
+```
+docker build -t frank_docker:1.6 .
+```
+
+# Docker compose
+
+- Docker-Compose是Docker官方的開源項目，負責實現對Docker容器叢集的快速編排。
+
+## 安裝
+
+-  官網 https://docs.docker.com/compose/install/standalone/
+-  
+
+![1](imgs/40.png)
+
+```
+curl -SL https://github.com/docker/compose/releases/download/v2.35.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+```
+
+```
+chmod +x /usr/local/bin/docker-compose
+```
+
+```
+docker-compose --version
+```
+![1](imgs/39.png)
+
+
+## 移除
+
+https://docs.docker.com/compose/install/uninstall/
+
+
+
+```
+rm $DOCKER_CONFIG/cli-plugins/docker-compose
+```
+
+
+![1](imgs/41.png)
+
+
+```
+docker
+```
+
+## 沒有使用Docker compose時
+
+- 1.啟動mySql
+```
+docker run -p 3306:3306 --name mysql57 --privileged=true -v /docker/mysql/conf:/etc/mysql/conf.d -v /docker/mysql/logs:/logs -v /docker/mysql/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=1234 -d mysql:5.7
+```
+
+- 2.啟動redis
+```
+docker run  -p 6379:6379 --name redis608 --privileged=true -v /docker/redis/redis.conf:/etc/redis/redis.conf -v /docker/redis/data:/data -d redis:6.0.8 redis-server /etc/redis/redis.conf
+```
+
+- 3.啟動為服務實例
+```
+docker run -d -p 6002:6001 frank_docker:1.7
+```
+
+- 4.開通防火牆
+```
+sudo firewall-cmd --zone=public --remove-port=6001/tcp --permanent
+sudo firewall-cmd --reload
+
+```
+
+- 5.測試
+
+```
+http://192.168.47.137:6001/swagger-ui.html#/
+
+http://192.168.47.137:6001/swagger-ui.html#/user-controller/findUserByIdUsingGET
+```
+
+## 使用Docker compose
+
+- 1.編寫docker-compose.yml文件
+
+```yml
+version: "3"
+ 
+services:
+  microService:
+    image: frank_docker:1.9
+    container_name: ms01
+    ports:
+      - "6001:6001"
+    volumes:
+      - /app/microService:/data
+    networks: 
+      - frank_net 
+    depends_on: 
+      - redis
+      - mysql
+ 
+  redis:
+    image: redis:6.0.8
+    ports:
+      - "6379:6379"
+    volumes:
+      - /docker/redis/redis.conf:/etc/redis/redis.conf
+      - /docker/redis/data:/data
+    networks: 
+      - frank_net
+    command: redis-server /etc/redis/redis.conf
+ 
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: '1234'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'no'
+      MYSQL_DATABASE: 'db2021'
+      MYSQL_USER: 'zzyy'
+      MYSQL_PASSWORD: 'zzyy123'
+    ports:
+       - "3306:3306"
+    volumes:
+       - /docker/mysql/db:/var/lib/mysql
+       - /docker/mysql/conf/my.cnf:/etc/my.cnf
+       - /docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - frank_net
+    command: --default-authentication-plugin=mysql_native_password #解决外部无法访问
+ 
+networks: 
+   frank_net: 
+ 
+
+```
+
+- 檢查yml文件
+
+```
+docker-compose config -q
+```
+
+- 2.修改為服務文件
+  - 原本mysql跟redis用ip，現在可以改成docker-compose.yml文件名稱(mysql、redis)
+```
+
+```
+
+![1](imgs/42.png)
+![1](imgs/43.png)
+
+- 3.啟動
+
+```
+docker-compose up -d
+```
+![1](imgs/44.png)
+- 4.停止
+
+```
+ docker-compose stop
+```
+![1](imgs/45.png)
+
+
+## Compose常用指令
+
+- docker-compose -h # 查看幫助
+- docker-compose up # 啟動所有docker-compose服務
+- docker-compose up -d # 啟動所有docker-compose服務並後台運行
+- docker-compose down # 停止並刪除容器、網路、磁碟區、映像。
+- docker-compose exec yml裡面的服務id # 進入容器實例內部 docker-compose exec 
+- docker-compose.yml檔案中所寫的服務id /bin/bash
+- docker-compose ps # 展示目前docker-compose編排過的運作的所有容器
+- docker-compose top # 展示目前docker-compose編排過的容器流程
+
+- docker-compose logs yml裡面的服務id # 查看容器輸出日誌
+- dokcer-compose config # 檢查配置
+- dokcer-compose config -q # 檢查配置，有問題才有輸出
+- docker-compose restart # 重啟服務
+- docker-compose start # 啟動服務
+- docker-compose stop # 停止服務
+
+
+# 
+
+## 安裝
+
+```
+docker run -d -p 8000:8000 -p 9000:9000 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer
+```
+
+![1](imgs/46.png)
+
+## 首次登入
+
+```
+http://192.168.47.137:9000/#!/init/admin
+```
+
+- 創建admin帳號
+- admin/admin123456789
+
+
+
+# Docker容器監控之CAdvisor+InfluxDB+Granfana
+
+```yml
+version: '3.1'
+ 
+volumes:
+  grafana_data: {}
+ 
+services:
+ influxdb:
+  image: tutum/influxdb:0.9
+  restart: always
+  environment:
+    - PRE_CREATE_DB=cadvisor
+  ports:
+    - "8083:8083"
+    - "8086:8086"
+  volumes:
+    - ./data/influxdb:/data
+ 
+ cadvisor:
+  image: google/cadvisor
+  links:
+    - influxdb:influxsrv
+  command: -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxsrv:8086
+  restart: always
+  ports:
+    - "8080:8080"
+  volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:rw
+    - /sys:/sys:ro
+    - /var/lib/docker/:/var/lib/docker:ro
+ 
+ grafana:
+  user: "104"
+  image: grafana/grafana
+  user: "104"
+  restart: always
+  links:
+    - influxdb:influxsrv
+  ports:
+    - "3000:3000"
+  volumes:
+    - grafana_data:/var/lib/grafana
+  environment:
+    - HTTP_USER=admin
+    - HTTP_PASS=admin
+    - INFLUXDB_HOST=influxsrv
+    - INFLUXDB_PORT=8086
+    - INFLUXDB_NAME=cadvisor
+    - INFLUXDB_USER=root
+    - INFLUXDB_PASS=root
+
+```
+
+- 使用cadvisor如果遇到下圖的錯誤，代表OS使用 cgroup v2，沒有使用 cgroup v1，需要使用v0.43.0 或更高版本，才有支援cgroup v2
+
+
+![1](imgs/47.png)
+
+
+```yml
+version: '3.1'
+
+volumes:
+  grafana_data: {}
+
+services:
+  influxdb:
+    image: influxdb
+    restart: always
+    environment:
+      - PRE_CREATE_DB=cadvisor
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+    volumes:
+      - ./data/influxdb:/data
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor
+    links:
+      - influxdb:influxsrv
+    command: -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxsrv:8086
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  grafana:
+    image: grafana/grafana
+    user: "104"
+    restart: always
+    links:
+      - influxdb:influxsrv
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - INFLUXDB_HOST=influxsrv
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_DB=cadvisor
+      - INFLUXDB_USER=root
+      - INFLUXDB_PASS=root
+~
+
+```
+
+
+```yml
+version: '3.8'
+ 
+services:
+  # 1. cAdvisor: 容器資源監控
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2  #最新穩定版
+    container_name: cadvisor
+    ports:
+      - "8080:8080"
+    command: -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host=influxsrv:8086      
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: always
+    links:
+      - influxdb:influxsrv    
+ 
+  # 2. InfluxDB 2.x: 時序數據庫
+  influxdb:
+    image: influxdb:2.7  # 最新穩定版
+    container_name: influxdb
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - ./data/influxdb:/data
+    environment:
+      - PRE_CREATE_DB=cadvisor    
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword
+      - DOCKER_INFLUXDB_INIT_ORG=monitoring
+      - DOCKER_INFLUXDB_INIT_BUCKET=metrics
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=myadmintoken
+    restart: always
+ 
+  # 3. Grafana: 可是化儀表盤
+  grafana:
+    image: grafana/grafana:10.2.3 
+    container_name: grafana
+    user: "104"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    links:
+      - influxdb:influxsrv      
+    environment:
+      - HTTP_USER=admin
+      - HTTP_PASS=admin    
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - INFLUXDB_HOST=influxsrv
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_DB=cadvisor
+      - INFLUXDB_USER=root
+      - INFLUXDB_PASS=root
+    restart: always
+ 
+volumes:
+  influxdb_data:
+  grafana_data:
+```
