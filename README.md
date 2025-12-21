@@ -49,7 +49,7 @@
 |        |  |  |  |
 | ---------- | --- |--- |--- |
 |[指令](file/command.md )|[ubuntu](file/ubuntu.md )
-|[網路問題](file/network.md )||
+|[網路問題](file/network.md )|[新裝的Centos9如何配置網路](file/新裝的Centos9如何配置網路.md)|
 
 
 ### 7.版控
